@@ -1,0 +1,70 @@
+package com.vodang.greenmind
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import android.view.WindowManager
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.vodang.greenmind.permission.PermissionGroup
+import com.vodang.greenmind.permission.PermissionRequester
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+
+        // Ensure keyboard does not resize the layout; it will overlay the UI.
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+
+        // ── Geolocation ──────────────────────────────────────────────
+        com.vodang.greenmind.location.Geo.service.initialize(this)
+        // ── Accounts repository
+        com.vodang.greenmind.accounts.AccountsRepository.initialize(this)
+
+        val locationLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            val granted = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                          results[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            PermissionRequester.updateGranted(PermissionGroup.LOCATION, granted)
+        }
+        PermissionRequester.registerLauncher(PermissionGroup.LOCATION) {
+            locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+        }
+        PermissionRequester.updateGranted(
+            PermissionGroup.LOCATION,
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        )
+
+        // ── Camera ───────────────────────────────────────────────────
+        com.vodang.greenmind.camera.Camera.service.initialize(this)
+
+        val cameraLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            PermissionRequester.updateGranted(PermissionGroup.CAMERA, granted)
+        }
+        PermissionRequester.registerLauncher(PermissionGroup.CAMERA) {
+            cameraLauncher.launch(Manifest.permission.CAMERA)
+        }
+        PermissionRequester.updateGranted(
+            PermissionGroup.CAMERA,
+            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
+
+        setContent {
+            App()
+        }
+    }
+}
+
+@Preview
+@Composable
+fun AppAndroidPreview() {
+    App()
+}
