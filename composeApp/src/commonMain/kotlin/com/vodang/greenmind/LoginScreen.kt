@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +17,10 @@ import androidx.compose.runtime.setValue
 
 import com.vodang.greenmind.accounts.Account
 import com.vodang.greenmind.accounts.AccountsRepository
+import com.vodang.greenmind.api.auth.LoginEmailRequest
+import com.vodang.greenmind.api.auth.loginWithEmail
+import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.store.SettingsStore
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -32,6 +35,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
+    val s = LocalAppStrings.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
@@ -43,9 +47,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(listOf(Color(0xFFE8F5E9), Color(0xFFF1F8E9)))
-            )
+            .background(Brush.verticalGradient(listOf(Color(0xFFE8F5E9), Color(0xFFF1F8E9))))
             .safeContentPadding()
     ) {
         val maxH = maxHeight
@@ -53,6 +55,8 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
         val logoSize = if (smallScreen) 72.dp else 88.dp
 
         val scope = rememberCoroutineScope()
+        var isLoading by remember { mutableStateOf(false) }
+        var errorMessage by remember { mutableStateOf<String?>(null) }
 
         var showAccountsDialog by remember { mutableStateOf(false) }
         var showAddDialog by remember { mutableStateOf(false) }
@@ -66,7 +70,6 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
             verticalArrangement = Arrangement.SpaceEvenly,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top: logo + title
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
@@ -79,19 +82,14 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "GreenMind",
+                    text = s.appName,
                     fontSize = if (smallScreen) 22.sp else 30.sp,
                     fontWeight = FontWeight.Bold,
                     color = green800
                 )
-                Text(
-                    text = "Smart Environmental System",
-                    fontSize = 12.sp,
-                    color = Color(0xFF66BB6A)
-                )
+                Text(text = s.appSubtitle, fontSize = 12.sp, color = Color(0xFF66BB6A))
             }
 
-            // Middle: input card (constrained height so it never expands beyond screen)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -102,184 +100,132 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
                 Column(
-                    modifier = Modifier
-                        .padding(20.dp)
-                        .fillMaxWidth(),
+                    modifier = Modifier.padding(20.dp).fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Sign In",
+                        text = s.signIn,
                         fontSize = if (smallScreen) 18.sp else 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1B5E20)
                     )
 
-                    // Email
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = { Text("Email Address") },
-                        placeholder = { Text("you@example.com") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Next
-                        ),
+                        label = { Text(s.emailAddress) },
+                        placeholder = { Text(s.emailPlaceholder) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = green800,
-                            focusedLabelColor = green800,
-                            cursorColor = green800
-                        )
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = green800, focusedLabelColor = green800, cursorColor = green800)
                     )
 
-                    // Password
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Password") },
-                        visualTransformation = if (passwordVisible) VisualTransformation.None
-                                               else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Done
-                        ),
+                        label = { Text(s.password) },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                         trailingIcon = {
-                            TextButton(
-                                onClick = { passwordVisible = !passwordVisible },
-                                contentPadding = PaddingValues(horizontal = 8.dp)
-                            ) {
-                                Text(
-                                    text = if (passwordVisible) "Hide" else "Show",
-                                    fontSize = 12.sp,
-                                    color = green500
-                                )
+                            TextButton(onClick = { passwordVisible = !passwordVisible }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                                Text(if (passwordVisible) s.hide else s.show, fontSize = 12.sp, color = green500)
                             }
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = green800,
-                            focusedLabelColor = green800,
-                            cursorColor = green800
-                        )
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = green800, focusedLabelColor = green800, cursorColor = green800)
                     )
 
-                    // Remember me (compact) and Forgot password (centered)
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clickable { rememberMe = !rememberMe }
-                                .padding(vertical = 4.dp)
+                            modifier = Modifier.clickable { rememberMe = !rememberMe }.padding(vertical = 4.dp)
                         ) {
                             Checkbox(
                                 checked = rememberMe,
                                 onCheckedChange = { rememberMe = it },
                                 modifier = Modifier.size(20.dp),
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = green800,
-                                    checkmarkColor = Color.White,
-                                    uncheckedColor = Color(0xFF9E9E9E)
-                                )
+                                colors = CheckboxDefaults.colors(checkedColor = green800, checkmarkColor = Color.White, uncheckedColor = Color(0xFF9E9E9E))
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text(
-                                "Remember me",
-                                fontSize = 14.sp,
-                                color = Color(0xFF424242),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Text(s.rememberMe, fontSize = 14.sp, color = Color(0xFF424242), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            TextButton(onClick = { /* TODO: forgot password */ }) {
-                                Text(
-                                    "Forgot password?",
-                                    fontSize = 13.sp,
-                                    color = green500,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            TextButton(onClick = { }) {
+                                Text(s.forgotPassword, fontSize = 13.sp, color = green500, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }
 
-                    // Login button
+                    if (errorMessage != null) {
+                        Text(errorMessage!!, color = Color.Red, fontSize = 13.sp)
+                    }
                     Button(
-                        onClick = onLoginSuccess,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
+                        onClick = {
+                            errorMessage = null
+                            if (email.isBlank() || password.isBlank()) {
+                                errorMessage = s.loginError
+                                return@Button
+                            }
+                            scope.launch {
+                                isLoading = true
+                                try {
+                                    val resp = loginWithEmail(LoginEmailRequest(email = email.trim(), password = password))
+                                    SettingsStore.setAccessToken(resp.accessToken)
+                                    SettingsStore.setRefreshToken(resp.refreshToken)
+                                    SettingsStore.setUser(resp.user)
+                                    onLoginSuccess()
+                                } catch (t: Throwable) {
+                                    errorMessage = t.message ?: "Login failed"
+                                } finally {
+                                    isLoading = false
+                                }
+                            }
+                        },
+                        enabled = !isLoading,
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = green800)
                     ) {
-                        Text(
-                            text = "LOGIN",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
+                        if (isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(s.loggingIn, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        } else {
+                            Text(s.loginButton, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        }
                     }
                 }
             }
 
-            // Bottom: social sign-in + sign up
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFBDBDBD))
-                    Text("  OR  ", fontSize = 13.sp, color = Color(0xFF9E9E9E))
+                    Text(s.or, fontSize = 13.sp, color = Color(0xFF9E9E9E))
                     HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFBDBDBD))
                 }
-
                 Spacer(Modifier.height(12.dp))
-
                 OutlinedButton(
-                    onClick = { /* TODO: Google sign-in integration */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
+                    onClick = { onLoginSuccess() },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, Color(0xFFDBDBDB)),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF3C4043))
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                         Text("G", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4285F4))
                         Spacer(Modifier.width(12.dp))
-                        Text("Continue with Google", fontSize = 15.sp)
+                        Text(s.continueWithGoogle, fontSize = 15.sp)
                     }
                 }
-
                 Spacer(Modifier.height(12.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Don't have an account? ",
-                        fontSize = 14.sp,
-                        color = Color(0xFF757575)
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                    Text(s.noAccount, fontSize = 14.sp, color = Color(0xFF757575))
                     TextButton(onClick = { onNavigateToRegister() }) {
-                        Text(
-                            text = "Sign up",
-                            fontSize = 14.sp,
-                            color = green800,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Text(s.signUp, fontSize = 14.sp, color = green800, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -288,66 +234,47 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
         if (showAccountsDialog) {
             AlertDialog(
                 onDismissRequest = { showAccountsDialog = false },
-                title = { Text("Choose account") },
+                title = { Text(s.chooseAccount) },
                 text = {
                     Column {
-                        if (accounts.isEmpty()) Text("No saved accounts")
+                        if (accounts.isEmpty()) Text(s.noSavedAccounts)
                         accounts.forEach { a ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(a.email, modifier = Modifier.weight(1f))
-                                TextButton(onClick = {
-                                    email = a.email
-                                    password = a.password
-                                    showAccountsDialog = false
-                                }) { Text("Select") }
-                                TextButton(onClick = {
-                                    scope.launch { AccountsRepository.removeAccount(a) }
-                                }) { Text("Delete") }
+                                TextButton(onClick = { email = a.email; password = a.password; showAccountsDialog = false }) { Text(s.select) }
+                                TextButton(onClick = { scope.launch { AccountsRepository.removeAccount(a) } }) { Text(s.delete) }
                             }
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                            TextButton(onClick = { showAddDialog = true }) { Text("Add account") }
+                            TextButton(onClick = { showAddDialog = true }) { Text(s.addAccount) }
                         }
                     }
                 },
-                confirmButton = {
-                    TextButton(onClick = { showAccountsDialog = false }) { Text("Close") }
-                }
+                confirmButton = { TextButton(onClick = { showAccountsDialog = false }) { Text(s.close) } }
             )
         }
 
         if (showAddDialog) {
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
-                title = { Text("Add account") },
+                title = { Text(s.addAccount) },
                 text = {
                     Column {
-                        OutlinedTextField(value = addEmail, onValueChange = { addEmail = it }, label = { Text("Email") })
-                        OutlinedTextField(value = addPassword, onValueChange = { addPassword = it }, label = { Text("Password") })
+                        OutlinedTextField(value = addEmail, onValueChange = { addEmail = it }, label = { Text(s.emailAddress) })
+                        OutlinedTextField(value = addPassword, onValueChange = { addPassword = it }, label = { Text(s.password) })
                     }
                 },
                 confirmButton = {
                     TextButton(onClick = {
                         val a = Account(addEmail.trim(), addPassword)
-                        scope.launch {
-                            AccountsRepository.addAccount(a)
-                        }
-                        // fill fields and close
-                        email = a.email
-                        password = a.password
-                        addEmail = ""
-                        addPassword = ""
-                        showAddDialog = false
-                        showAccountsDialog = false
-                    }) { Text("Save") }
+                        scope.launch { AccountsRepository.addAccount(a) }
+                        email = a.email; password = a.password
+                        addEmail = ""; addPassword = ""
+                        showAddDialog = false; showAccountsDialog = false
+                    }) { Text(s.save) }
                 },
-                dismissButton = {
-                    TextButton(onClick = { showAddDialog = false }) { Text("Cancel") }
-                }
+                dismissButton = { TextButton(onClick = { showAddDialog = false }) { Text(s.cancel) } }
             )
         }
     }

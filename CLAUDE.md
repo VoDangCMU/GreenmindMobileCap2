@@ -1,0 +1,78 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Build Commands
+
+```bash
+# Android
+./gradlew :composeApp:assembleDebug    # Build debug APK
+./gradlew :composeApp:build            # Full build with tests
+./gradlew :composeApp:clean            # Clean build artifacts
+./gradlew :composeApp:test             # Run unit tests
+
+# iOS: Open iosApp/ in Xcode and run from there
+```
+
+## Project Overview
+
+GreenMind is a **Kotlin Multiplatform (KMP)** app targeting **Android and iOS** using **Compose Multiplatform** for shared UI. The single module is `composeApp`.
+
+**Target platforms:** Android (API 24+), iOS (arm64 + simulator arm64)
+**Backend:** REST API at `https://vodang-api.gauas.com`
+
+## Architecture
+
+### Navigation
+`App.kt` uses a simple `AppScreen` enum (`LOGIN`, `REGISTER`, `HOME`) with mutable state. Navigation is driven by `SettingsStore`: if an access token exists, the app goes directly to `HOME`.
+
+### State Management
+`store/SettingsStore.kt` is a singleton `object` using `multiplatform-settings` for persistent key-value storage. It exposes `StateFlow<T>` for reactive updates and holds `accessToken`, `refreshToken`, and user data.
+
+### API Layer
+`api/ApiClient.kt` configures a Ktor HTTP client with content negotiation (JSON) and logging. All API calls use `kotlinx.serialization`. Platform-specific engines: `ktor-client-android` / `ktor-client-darwin`.
+
+**Auth endpoints:**
+- `POST /auth/login/email` → `LoginEmailRequest` / `LoginEmailResponse`
+- `POST /auth/register/email` → `RegisterEmailRequest` / `RegisterEmailResponse`
+
+### Platform-Specific Code
+Platform differences are handled via Kotlin `expect`/`actual` declarations:
+- `location/GeolocationService.kt` — expect class; Android uses `LocationForegroundService`
+- `camera/CameraService.kt` — expect class; Android uses CameraX
+- `permission/PermissionRequester.kt` — expect class; Android uses `ActivityResultContracts`
+- `accounts/AccountsRepository.kt` — expect class for multi-account storage
+
+Android entry point: `MainActivity.kt` initializes camera, location, and permissions before calling `App()`.
+
+## Key Libraries
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| Compose Multiplatform | 1.10.0 | Shared UI |
+| Ktor Client | 3.1.3 | HTTP networking |
+| kotlinx.serialization | 1.8.0 | JSON parsing |
+| multiplatform-settings | 1.1.1 | Persistent KV storage |
+| KoalaPlot | 0.11.0 | Charts (electricity card) |
+| CameraX | 1.4.1 | Android camera |
+| Play Services Location | 21.0.1 | Android GPS |
+
+## Source Layout
+
+```
+composeApp/src/
+├── commonMain/kotlin/com/vodang/greenmind/
+│   ├── App.kt                    # Entry point, navigation
+│   ├── LoginScreen.kt
+│   ├── RegisterScreen.kt
+│   ├── api/                      # ApiClient + AuthApi (data models, calls)
+│   ├── store/                    # SettingsStore (tokens, user)
+│   ├── home/
+│   │   ├── HomeScreen.kt
+│   │   └── components/           # Reusable home UI cards/components
+│   ├── location/                 # GeolocationService (expect + data)
+│   ├── camera/                   # CameraService (expect)
+│   └── permission/               # PermissionRequester (expect)
+├── androidMain/                  # Android actuals + MainActivity
+└── iosMain/                      # iOS actuals
+```

@@ -1,6 +1,5 @@
 package com.vodang.greenmind.location
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -8,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -65,18 +65,12 @@ class LocationForegroundService : Service() {
         }
     }
 
-    private fun buildNotification(): Notification {
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, CHANNEL_ID)
-        } else {
-            Notification.Builder(this)
-        }
-        return builder
+    private fun buildNotification() =
+        NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Location tracking")
             .setContentText("Collecting location in background")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .build()
-    }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
