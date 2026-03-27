@@ -1,5 +1,6 @@
 package com.vodang.greenmind.home.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -23,13 +24,14 @@ fun MetricCard(
     subtitle: String,
     bgColor: Color,
     valueColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = bgColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = modifier
+        modifier = modifier.clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(icon, fontSize = 22.sp)

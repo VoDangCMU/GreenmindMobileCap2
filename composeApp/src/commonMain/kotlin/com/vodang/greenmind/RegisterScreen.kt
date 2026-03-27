@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +16,9 @@ import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import com.vodang.greenmind.api.auth.RegisterEmailRequest
 import com.vodang.greenmind.api.auth.registerWithEmail
+import com.vodang.greenmind.api.cities.getCitiesByCountry
+import com.vodang.greenmind.api.restcountries.CountryDto
+import com.vodang.greenmind.api.restcountries.getAllCountries
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.SettingsStore
 import androidx.compose.ui.Alignment
@@ -28,6 +33,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
     val s = LocalAppStrings.current
@@ -38,6 +44,19 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
     var road         by remember { mutableStateOf("") }
     var city         by remember { mutableStateOf("") }
     var gender       by remember { mutableStateOf("other") }
+
+    // Country picker state
+    var selectedCountry   by remember { mutableStateOf<CountryDto?>(null) }
+    var showCountryPicker by remember { mutableStateOf(false) }
+    var countrySearch     by remember { mutableStateOf("") }
+    var countries         by remember { mutableStateOf<List<CountryDto>>(emptyList()) }
+    var countriesLoading  by remember { mutableStateOf(false) }
+
+    // City picker state
+    var showCityPicker  by remember { mutableStateOf(false) }
+    var citySearch      by remember { mutableStateOf("") }
+    var citiesForCountry by remember { mutableStateOf<List<String>>(emptyList()) }
+    var citiesLoading   by remember { mutableStateOf(false) }
 
     var acceptTerms     by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -56,6 +75,25 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
     val step1Valid = email.isNotBlank()
     val step2Valid = password.isNotEmpty() && password == confirm
     val step3Valid = acceptTerms
+
+    // Load countries when step 3 first opens
+    LaunchedEffect(currentStep) {
+        if (currentStep == 3 && countries.isEmpty()) {
+            countriesLoading = true
+            countries = try { getAllCountries() } catch (_: Throwable) { emptyList() }
+            countriesLoading = false
+        }
+    }
+
+    // Load cities whenever the selected country changes
+    LaunchedEffect(selectedCountry) {
+        val countryName = selectedCountry?.name?.common ?: return@LaunchedEffect
+        city = ""
+        citiesForCountry = emptyList()
+        citiesLoading = true
+        citiesForCountry = try { getCitiesByCountry(countryName) } catch (_: Throwable) { emptyList() }
+        citiesLoading = false
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFE8F5E9), Color(0xFFF1F8E9))))) {
         Column(
@@ -148,17 +186,81 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                                 trailingIcon = { TextButton(onClick = { confirmVisible = !confirmVisible }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(if (confirmVisible) s.hide else s.show, fontSize = 12.sp, color = green500) } },
                                 supportingText = if (confirm.isNotEmpty() && confirm != password) { { Text(s.passwordMismatch, color = Color.Red, fontSize = 11.sp) } } else null
                             )
+                            // Fix: no letterSpacing so "Tiếp theo" fits in the half-width button
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { currentStep = 1 }, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, green800), colors = ButtonDefaults.outlinedButtonColors(contentColor = green800)) { Text(s.back, fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
-                                Button(onClick = { if (step2Valid) currentStep = 3 }, enabled = step2Valid, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = green800)) { Text(s.next, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) }
+                                OutlinedButton(onClick = { currentStep = 1 }, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, green800), colors = ButtonDefaults.outlinedButtonColors(contentColor = green800)) {
+                                    Text(s.back, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                                Button(onClick = { if (step2Valid) currentStep = 3 }, enabled = step2Valid, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = green800)) {
+                                    Text(s.next, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                         3 -> {
                             Text(s.address, fontSize = 13.sp, color = Color(0xFF757575))
                             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(value = road, onValueChange = { road = it }, label = { Text(s.road) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = fieldShape, colors = fieldColors, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
-                                OutlinedTextField(value = city, onValueChange = { city = it }, label = { Text(s.city) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = fieldShape, colors = fieldColors, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done))
+
+                                // Road
+                                OutlinedTextField(
+                                    value = road,
+                                    onValueChange = { road = it },
+                                    label = { Text(s.road) },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = fieldShape,
+                                    colors = fieldColors,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                )
+
+                                // Country selector
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    OutlinedTextField(
+                                        value = selectedCountry?.let { "${it.flag}  ${it.name.common}" } ?: "",
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text(s.country) },
+                                        placeholder = { Text(s.selectCountry, color = Color.Gray) },
+                                        trailingIcon = {
+                                            if (countriesLoading) {
+                                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = green800)
+                                            } else {
+                                                Text("▼", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(end = 4.dp))
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = fieldShape,
+                                        colors = fieldColors,
+                                    )
+                                    Spacer(modifier = Modifier.matchParentSize().clickable(enabled = !countriesLoading) { showCountryPicker = true })
+                                }
+
+                                // City selector
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    OutlinedTextField(
+                                        value = city,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text(s.city) },
+                                        placeholder = { Text(s.selectCity, color = Color.Gray) },
+                                        trailingIcon = {
+                                            if (citiesLoading) {
+                                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = green800)
+                                            } else {
+                                                Text("▼", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(end = 4.dp))
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = fieldShape,
+                                        colors = fieldColors,
+                                    )
+                                    Spacer(
+                                        modifier = Modifier.matchParentSize().clickable(
+                                            enabled = selectedCountry != null && !citiesLoading
+                                        ) { showCityPicker = true }
+                                    )
+                                }
                             }
+
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { acceptTerms = !acceptTerms }.padding(vertical = 4.dp)) {
                                 Checkbox(checked = acceptTerms, onCheckedChange = { acceptTerms = it }, modifier = Modifier.size(20.dp), colors = CheckboxDefaults.colors(checkedColor = green800, checkmarkColor = Color.White, uncheckedColor = Color(0xFF9E9E9E)))
                                 Spacer(Modifier.width(8.dp))
@@ -166,7 +268,9 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                             }
                             if (errorMessage != null) Text(errorMessage!!, color = Color.Red, fontSize = 12.sp)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { currentStep = 2 }, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, green800), colors = ButtonDefaults.outlinedButtonColors(contentColor = green800)) { Text(s.back, fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
+                                OutlinedButton(onClick = { currentStep = 2 }, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, green800), colors = ButtonDefaults.outlinedButtonColors(contentColor = green800)) {
+                                    Text(s.back, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                                }
                                 Button(
                                     onClick = {
                                         errorMessage = null
@@ -174,7 +278,17 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                                         scope.launch {
                                             isLoading = true
                                             try {
-                                                val req = RegisterEmailRequest(email = email, password = password, confirmPassword = confirm, fullName = fullName.ifBlank { "User" }, dateOfBirth = "2000-01-01", location = listOfNotNull(road.ifBlank { null }, city.ifBlank { null }).joinToString(", "), gender = gender, region = city.ifBlank { "unknown" })
+                                                val countryName = selectedCountry?.name?.common
+                                                val req = RegisterEmailRequest(
+                                                    email = email,
+                                                    password = password,
+                                                    confirmPassword = confirm,
+                                                    fullName = fullName.ifBlank { "User" },
+                                                    dateOfBirth = "2000-01-01",
+                                                    location = listOfNotNull(road.ifBlank { null }, city.ifBlank { null }, countryName).joinToString(", "),
+                                                    gender = gender,
+                                                    region = countryName ?: city.ifBlank { "unknown" },
+                                                )
                                                 val resp = registerWithEmail(req)
                                                 SettingsStore.setAccessToken(resp.accessToken)
                                                 SettingsStore.setRefreshToken(resp.refreshToken)
@@ -193,7 +307,7 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                                     colors = ButtonDefaults.buttonColors(containerColor = green800)
                                 ) {
                                     if (isLoading) CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
-                                    else Text(s.register, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                                    else Text(s.register, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -221,6 +335,114 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                 TextButton(onClick = onCancel) { Text(s.signIn, fontSize = 14.sp, color = green800, fontWeight = FontWeight.SemiBold) }
             }
             Spacer(Modifier.height(32.dp))
+        }
+    }
+
+    // ── Country picker bottom sheet ───────────────────────────────────────────
+    if (showCountryPicker) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showCountryPicker = false; countrySearch = "" },
+            sheetState = sheetState,
+            containerColor = Color.White,
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Text(s.selectCountry, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20), modifier = Modifier.padding(bottom = 12.dp))
+                OutlinedTextField(
+                    value = countrySearch,
+                    onValueChange = { countrySearch = it },
+                    placeholder = { Text(s.searchCountry, color = Color.Gray) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF2E7D32), focusedLabelColor = Color(0xFF2E7D32), cursorColor = Color(0xFF2E7D32)),
+                    leadingIcon = { Text("🔍", fontSize = 16.sp) },
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+            val filteredCountries = countries.filter { countrySearch.isBlank() || it.name.common.contains(countrySearch, ignoreCase = true) }
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.75f),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                items(filteredCountries, key = { it.cca2 }) { country ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .clickable {
+                                selectedCountry = country
+                                showCountryPicker = false
+                                countrySearch = ""
+                            }
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(country.flag.ifBlank { "🏳" }, fontSize = 24.sp)
+                        Text(country.name.common, fontSize = 15.sp, color = Color(0xFF212121), modifier = Modifier.weight(1f))
+                        if (selectedCountry?.cca2 == country.cca2) {
+                            Text("✓", fontSize = 16.sp, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)
+                }
+            }
+        }
+    }
+
+    // ── City picker bottom sheet ──────────────────────────────────────────────
+    if (showCityPicker) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showCityPicker = false; citySearch = "" },
+            sheetState = sheetState,
+            containerColor = Color.White,
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Text(s.selectCity, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20), modifier = Modifier.padding(bottom = 12.dp))
+                OutlinedTextField(
+                    value = citySearch,
+                    onValueChange = { citySearch = it },
+                    placeholder = { Text(s.searchCity, color = Color.Gray) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF2E7D32), focusedLabelColor = Color(0xFF2E7D32), cursorColor = Color(0xFF2E7D32)),
+                    leadingIcon = { Text("🔍", fontSize = 16.sp) },
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+            val filteredCities = citiesForCountry.filter { citySearch.isBlank() || it.contains(citySearch, ignoreCase = true) }
+            if (filteredCities.isEmpty() && !citiesLoading) {
+                Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                    Text(citySearch.ifBlank { s.selectCountry }, fontSize = 14.sp, color = Color.Gray)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight(0.75f),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    items(filteredCities, key = { it }) { cityName ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                                .clickable {
+                                    city = cityName
+                                    showCityPicker = false
+                                    citySearch = ""
+                                }
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text("📍", fontSize = 18.sp)
+                            Text(cityName, fontSize = 15.sp, color = Color(0xFF212121), modifier = Modifier.weight(1f))
+                            if (city == cityName) {
+                                Text("✓", fontSize = 16.sp, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)
+                    }
+                }
+            }
         }
     }
 }

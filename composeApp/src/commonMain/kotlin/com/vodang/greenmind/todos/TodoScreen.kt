@@ -39,7 +39,11 @@ private val greenBg  = Color(0xFFF1F8E9)
 fun TodoScreen() {
     val s = LocalAppStrings.current
     val todos by TodoStore.todos.collectAsState()
+    val isLoading by TodoStore.isLoading.collectAsState()
+    val error by TodoStore.error.collectAsState()
     var newTodoText by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) { TodoStore.load() }
 
     val total = todos.sumOf { it.countAll() }
     val done  = todos.sumOf { it.countDone() }
@@ -121,8 +125,29 @@ fun TodoScreen() {
             }
         }
 
+        // ── Error banner ──────────────────────────────────────────────────────
+        error?.let { msg ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFFFEBEE))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(msg, color = Color(0xFFB71C1C), fontSize = 13.sp, modifier = Modifier.weight(1f))
+                TextButton(onClick = { TodoStore.clearError() }) {
+                    Text("✕", color = Color(0xFFB71C1C))
+                }
+            }
+        }
+
         // ── List ──────────────────────────────────────────────────────────────
-        if (todos.isEmpty()) {
+        if (isLoading && todos.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = green800)
+            }
+        } else if (todos.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("🌱", fontSize = 48.sp)
@@ -256,7 +281,7 @@ private fun TodoItemContent(item: TodoItem, depth: Int) {
                         )
                         Column(modifier = Modifier.padding(start = 4.dp)) {
                             item.children.forEach { child ->
-                                TodoItemContent(item = child, depth = 0)
+                                TodoItemContent(item = child, depth = depth + 1)
                             }
                         }
                     }

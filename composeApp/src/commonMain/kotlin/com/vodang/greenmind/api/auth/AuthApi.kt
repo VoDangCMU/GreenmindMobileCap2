@@ -2,6 +2,7 @@ package com.vodang.greenmind.api.auth
 
 import com.vodang.greenmind.api.BASE_URL
 import com.vodang.greenmind.api.httpClient
+import com.vodang.greenmind.util.AppLogger
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -63,6 +64,7 @@ class ApiException(val code: Int, override val message: String) : Exception(mess
  * for error details (e.g. "Email already exists" on 400).
  */
 suspend fun registerWithEmail(request: RegisterEmailRequest): RegisterEmailResponse {
+    AppLogger.i("Auth", "registerWithEmail email=${request.email}")
     val resp = httpClient.post("$BASE_URL/auth/register/email") {
         contentType(ContentType.Application.Json)
         setBody(request)
@@ -71,8 +73,8 @@ suspend fun registerWithEmail(request: RegisterEmailRequest): RegisterEmailRespo
     return if (resp.status.isSuccess()) {
         resp.body()
     } else {
-        // try parse error body
         val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+        AppLogger.e("Auth", "registerWithEmail failed: ${resp.status.value} $text")
         throw ApiException(resp.status.value, text)
     }
 }
@@ -94,6 +96,7 @@ data class LoginEmailResponse(
 )
 
 suspend fun loginWithEmail(request: LoginEmailRequest): LoginEmailResponse {
+    AppLogger.i("Auth", "loginWithEmail email=${request.email}")
     val resp = httpClient.post("$BASE_URL/auth/login/email") {
         contentType(ContentType.Application.Json)
         setBody(request)
@@ -103,6 +106,7 @@ suspend fun loginWithEmail(request: LoginEmailRequest): LoginEmailResponse {
         resp.body()
     } else {
         val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+        AppLogger.e("Auth", "loginWithEmail failed: ${resp.status.value} $text")
         throw ApiException(resp.status.value, text)
     }
 }

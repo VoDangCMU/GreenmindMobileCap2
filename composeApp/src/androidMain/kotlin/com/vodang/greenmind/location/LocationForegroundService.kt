@@ -9,9 +9,15 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
+import com.vodang.greenmind.store.LocationTrackingStore
+import com.vodang.greenmind.store.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class LocationForegroundService : Service() {
@@ -23,6 +29,9 @@ class LocationForegroundService : Service() {
 
     private lateinit var fusedClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
+
+    // Scoped to the service lifetime — cancelled in onDestroy
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -39,29 +48,35 @@ class LocationForegroundService : Service() {
                     accuracy = last.accuracy,
                     timestampMillis = last.time
                 )
-                CoroutineScope(Dispatchers.Main).launch {
-                    locationFlow.emit(loc)
-                }
+                serviceScope.launch { locationFlow.emit(loc) }
             }
         }
 
         requestLocationUpdates()
+        startTrackingLoop()
     }
 
     private fun requestLocationUpdates() {
-        // Use highest-accuracy, frequent updates for real-time tracking
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000L)
             .setMinUpdateDistanceMeters(0f)
             .setMinUpdateIntervalMillis(500L)
             .build()
         try {
             fusedClient.requestLocationUpdates(request, locationCallback, mainLooper)
-        } catch (se: SecurityException) {
-            // Missing location permission — stop service to avoid crash
+        } catch (_: SecurityException) {
             stopSelf()
-        } catch (t: Throwable) {
-            // Any other error, stop to avoid uncontrolled crashes
+        } catch (_: Throwable) {
             stopSelf()
+        }
+    }
+
+    /** Runs every 55 s for as long as the foreground service is alive. */
+    private fun startTrackingLoop() {
+        serviceScope.launch {
+            while (isActive) {
+                LocationTrackingStore.tick()
+                delay(SettingsStore.locationIntervalMs.value)
+            }
         }
     }
 
@@ -84,6 +99,7 @@ class LocationForegroundService : Service() {
 
     override fun onDestroy() {
         try { fusedClient.removeLocationUpdates(locationCallback) } catch (_: Exception) {}
+        serviceScope.cancel()
         super.onDestroy()
     }
 }

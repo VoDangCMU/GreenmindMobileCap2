@@ -1,5 +1,6 @@
 package com.vodang.greenmind.home.components
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -39,7 +40,7 @@ data class VolunteerEvent(
 )
 
 @Composable
-fun VolunteerDashboard(user: UserDto? = null) {
+fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = rememberScrollState()) {
     val s = LocalAppStrings.current
 
     val activeEvents = listOf(
@@ -55,26 +56,29 @@ fun VolunteerDashboard(user: UserDto? = null) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "${user?.fullName ?: s.volunteerTitle} 🤝",
-                    fontSize = 20.sp, fontWeight = FontWeight.Bold, color = green800v
-                )
-                Text(s.volunteerSubtitle, fontSize = 12.sp, color = Color.Gray)
-            }
-            Box(
-                modifier = Modifier.size(56.dp).background(green800v, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("🤝", fontSize = 24.sp)
-            }
-        }
+        // Row(verticalAlignment = Alignment.CenterVertically) {
+        //     Column(modifier = Modifier.weight(1f)) {
+        //         Text(
+        //             "${user?.fullName ?: s.volunteerTitle} 🤝",
+        //             fontSize = 20.sp, fontWeight = FontWeight.Bold, color = green800v
+        //         )
+        //         Text(s.volunteerSubtitle, fontSize = 12.sp, color = Color.Gray)
+        //     }
+        //     Box(
+        //         modifier = Modifier.size(56.dp).background(green800v, CircleShape),
+        //         contentAlignment = Alignment.Center
+        //     ) {
+        //         Text("🤝", fontSize = 24.sp)
+        //     }
+        // }
+
+        // OCEAN
+        OceanScoreCard()
 
         // Metrics
         Row(

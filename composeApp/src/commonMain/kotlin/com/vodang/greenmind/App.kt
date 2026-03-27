@@ -64,7 +64,7 @@ fun App() {
                         onRegisterSuccess = { currentScreen = AppScreen.HOME },
                         onCancel = { currentScreen = AppScreen.LOGIN }
                     )
-                    AppScreen.HOME -> HomeScreen()
+                    AppScreen.HOME -> HomeScreen(onLogout = { currentScreen = AppScreen.LOGIN })
                 }
             }
         }

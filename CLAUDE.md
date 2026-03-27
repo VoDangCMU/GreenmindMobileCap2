@@ -57,6 +57,18 @@ Android entry point: `MainActivity.kt` initializes camera, location, and permiss
 | CameraX | 1.4.1 | Android camera |
 | Play Services Location | 21.0.1 | Android GPS |
 
+## Feature Catalogue
+
+`catalogue/CatalogueScreen.kt` is the **single source of truth** for all app features. It is accessible from the drawer (left menu) by any user.
+
+**Rule: whenever a new feature is added, changed, or removed, you MUST update `CatalogueScreen.kt`** — specifically the feature lists inside `CatalogueScreen()`. Add a new `FeatureEntry` to the appropriate role section (`allFeatures`, `householdFeatures`, `collectorFeatures`, `volunteerFeatures`).
+
+Current features tracked:
+- **All users**: Todos, Surveys, OCEAN Score
+- **Household**: Waste Sorting, Garbage Drop, Electricity Usage, Scan Meal, Scan Bill, Walk Distance
+- **Collector**: Waste Heatmap, Collection Route, Check-in Collection
+- **Volunteer**: Volunteer Events
+
 ## Source Layout
 
 ```

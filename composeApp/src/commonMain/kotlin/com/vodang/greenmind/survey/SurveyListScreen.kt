@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.api.survey.SurveyDto
+import com.vodang.greenmind.api.survey.QuestionSetDto
 import com.vodang.greenmind.i18n.LocalAppStrings
 
 private val green800 = Color(0xFF2E7D32)
@@ -24,8 +24,8 @@ private val greenBg  = Color(0xFFF1F8E9)
 
 @Composable
 fun SurveyListScreen(
-    surveys: List<SurveyDto>,
-    onSelectSurvey: (SurveyDto) -> Unit
+    sets: List<QuestionSetDto>,
+    onSelectSet: (QuestionSetDto) -> Unit
 ) {
     val s = LocalAppStrings.current
 
@@ -53,10 +53,10 @@ fun SurveyListScreen(
             }
         }
 
-        items(surveys) { survey ->
-            SurveyCard(
-                survey = survey,
-                onTap = { onSelectSurvey(survey) }
+        items(sets) { set ->
+            QuestionSetCard(
+                set = set,
+                onTap = { onSelectSet(set) }
             )
         }
 
@@ -65,7 +65,7 @@ fun SurveyListScreen(
 }
 
 @Composable
-private fun SurveyCard(survey: SurveyDto, onTap: () -> Unit) {
+private fun QuestionSetCard(set: QuestionSetDto, onTap: () -> Unit) {
     val s = LocalAppStrings.current
 
     Card(
@@ -79,48 +79,36 @@ private fun SurveyCard(survey: SurveyDto, onTap: () -> Unit) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(green50, RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("📋", fontSize = 20.sp)
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = survey.title,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.DarkGray
-                        )
-                        Text(
-                            text = s.surveyQuestions(survey.questionCount),
-                            fontSize = 11.sp,
-                            color = Color.Gray
-                        )
-                    }
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(green50, RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("📋", fontSize = 20.sp)
                 }
-                if (survey.isCompleted) {
-                    Box(
-                        modifier = Modifier
-                            .background(green50, RoundedCornerShape(20.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(s.surveyCompleted, fontSize = 11.sp, color = green600, fontWeight = FontWeight.Medium)
-                    }
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = set.name,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.DarkGray
+                    )
+                    Text(
+                        text = s.surveyQuestions(set.items.size),
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
                 }
             }
 
             Spacer(Modifier.height(10.dp))
 
             Text(
-                text = survey.description,
+                text = set.description,
                 fontSize = 12.sp,
                 color = Color.Gray,
                 lineHeight = 17.sp
@@ -132,23 +120,11 @@ private fun SurveyCard(survey: SurveyDto, onTap: () -> Unit) {
 
             Spacer(Modifier.height(10.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "⏱ ${s.surveyMinutes(survey.estimatedMinutes)}",
-                    fontSize = 11.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = if (survey.isCompleted) s.surveyRetake else s.surveyStart,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = green800
-                )
-            }
+            Text(
+                text = "by ${set.owner.fullName}",
+                fontSize = 11.sp,
+                color = Color.Gray
+            )
         }
     }
 }

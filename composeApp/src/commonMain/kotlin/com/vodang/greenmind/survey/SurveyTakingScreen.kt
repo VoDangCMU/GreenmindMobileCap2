@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -21,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.survey.SurveyAnswerDto
 import com.vodang.greenmind.api.survey.SurveyDetailDto
 import com.vodang.greenmind.api.survey.SurveyQuestionDto
+import com.vodang.greenmind.home.components.GreenAppBar
 import com.vodang.greenmind.i18n.LocalAppStrings
 
 private val green800 = Color(0xFF2E7D32)
@@ -43,14 +43,7 @@ fun SurveyTakingScreen(
     val answers = remember { mutableStateMapOf<String, List<String>>() }
 
     if (submitted) {
-        SurveyThankYouScreen(title = survey.title, onDone = {
-            val result = questions.map { q ->
-                val selected = answers[q.id] ?: emptyList()
-                if (q.type == "text") SurveyAnswerDto(q.id, textValue = selected.firstOrNull())
-                else SurveyAnswerDto(q.id, selectedOptions = selected)
-            }
-            onSubmit(result)
-        })
+        SurveyThankYouScreen(title = survey.title, onDone = onBack)
         return
     }
 
@@ -63,33 +56,11 @@ fun SurveyTakingScreen(
             .background(greenBg)
     ) {
         // Top bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFF5F5F5))
-                    .clickable { onBack() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text("←", fontSize = 18.sp, color = Color(0xFF757575))
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(survey.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
-                Text(
-                    s.surveyQuestion(currentIndex + 1, questions.size),
-                    fontSize = 11.sp,
-                    color = Color.Gray
-                )
-            }
-        }
+        GreenAppBar(
+            title = survey.title,
+            subtitle = s.surveyQuestion(currentIndex + 1, questions.size),
+            onBack = onBack,
+        )
 
         // Progress bar
         LinearProgressIndicator(
@@ -175,8 +146,17 @@ fun SurveyTakingScreen(
             val isLast = currentIndex == questions.lastIndex
             Button(
                 onClick = {
-                    if (isLast) submitted = true
-                    else currentIndex++
+                    if (isLast) {
+                        val result = questions.map { q ->
+                            val selected = answers[q.id] ?: emptyList()
+                            if (q.type == "text") SurveyAnswerDto(q.id, textValue = selected.firstOrNull())
+                            else SurveyAnswerDto(q.id, selectedOptions = selected)
+                        }
+                        onSubmit(result)
+                        submitted = true
+                    } else {
+                        currentIndex++
+                    }
                 },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(10.dp),

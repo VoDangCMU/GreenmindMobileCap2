@@ -8,18 +8,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-private const val KEY_ACCESS_TOKEN = "access_token"
-private const val KEY_REFRESH_TOKEN = "refresh_token"
-private const val KEY_USER = "user"
-private const val KEY_LANGUAGE = "language"
+private const val KEY_ACCESS_TOKEN       = "access_token"
+private const val KEY_REFRESH_TOKEN      = "refresh_token"
+private const val KEY_USER               = "user"
+private const val KEY_LANGUAGE           = "language"
+private const val KEY_LOCATION_INTERVAL  = "location_interval_ms"
+private const val KEY_MIN_MOVE_METERS    = "min_move_meters"
+private const val KEY_MAX_WALK_SPEED     = "max_walk_speed_ms"
+private const val KEY_LOCATION_ENABLED   = "location_enabled"
 
 object SettingsStore {
 
     private val settings: Settings = Settings()
     private val json = Json { ignoreUnknownKeys = true }
 
-    // Initialise flows from persisted values so they survive app restarts
-    private val _accessToken = MutableStateFlow<String?>(settings.getStringOrNull(KEY_ACCESS_TOKEN))
+    // ── Auth ─────────────────────────────────────────────────────────────────
+    private val _accessToken  = MutableStateFlow<String?>(settings.getStringOrNull(KEY_ACCESS_TOKEN))
     private val _refreshToken = MutableStateFlow<String?>(settings.getStringOrNull(KEY_REFRESH_TOKEN))
     private val _user = MutableStateFlow<UserDto?>(
         settings.getStringOrNull(KEY_USER)
@@ -27,41 +31,74 @@ object SettingsStore {
     )
     private val _language = MutableStateFlow(settings.getStringOrNull(KEY_LANGUAGE) ?: "vi")
 
-    val accessToken: StateFlow<String?> = _accessToken.asStateFlow()
-    val refreshToken: StateFlow<String?> = _refreshToken.asStateFlow()
-    val user: StateFlow<UserDto?> = _user.asStateFlow()
-    val language: StateFlow<String> = _language.asStateFlow()
+    val accessToken:  StateFlow<String?>  = _accessToken.asStateFlow()
+    val refreshToken: StateFlow<String?>  = _refreshToken.asStateFlow()
+    val user:         StateFlow<UserDto?> = _user.asStateFlow()
+    val language:     StateFlow<String>   = _language.asStateFlow()
 
-    fun getAccessToken(): String? = _accessToken.value
-    fun getRefreshToken(): String? = _refreshToken.value
-    fun getUser(): UserDto? = _user.value
+    fun getAccessToken():  String?  = _accessToken.value
+    fun getRefreshToken(): String?  = _refreshToken.value
+    fun getUser():         UserDto? = _user.value
 
     fun setAccessToken(token: String?) {
         if (token == null) settings.remove(KEY_ACCESS_TOKEN) else settings.putString(KEY_ACCESS_TOKEN, token)
         _accessToken.value = token
     }
-
     fun setRefreshToken(token: String?) {
         if (token == null) settings.remove(KEY_REFRESH_TOKEN) else settings.putString(KEY_REFRESH_TOKEN, token)
         _refreshToken.value = token
     }
-
     fun setUser(userDto: UserDto?) {
         if (userDto == null) settings.remove(KEY_USER) else settings.putString(KEY_USER, json.encodeToString(userDto))
         _user.value = userDto
     }
-
     fun setLanguage(lang: String) {
         settings.putString(KEY_LANGUAGE, lang)
         _language.value = lang
     }
-
     fun clearAll() {
         settings.remove(KEY_ACCESS_TOKEN)
         settings.remove(KEY_REFRESH_TOKEN)
         settings.remove(KEY_USER)
-        _accessToken.value = null
+        _accessToken.value  = null
         _refreshToken.value = null
-        _user.value = null
+        _user.value         = null
+    }
+
+    // ── Location tracking settings ────────────────────────────────────────────
+
+    private val _locationIntervalMs = MutableStateFlow(
+        settings.getLongOrNull(KEY_LOCATION_INTERVAL) ?: 55_000L
+    )
+    private val _minMoveMeters = MutableStateFlow(
+        settings.getFloatOrNull(KEY_MIN_MOVE_METERS) ?: 20f
+    )
+    private val _maxWalkSpeedMs = MutableStateFlow(
+        settings.getFloatOrNull(KEY_MAX_WALK_SPEED) ?: 7f
+    )
+    private val _locationEnabled = MutableStateFlow(
+        settings.getBooleanOrNull(KEY_LOCATION_ENABLED) ?: true
+    )
+
+    val locationIntervalMs: StateFlow<Long>    = _locationIntervalMs.asStateFlow()
+    val minMoveMeters:      StateFlow<Float>   = _minMoveMeters.asStateFlow()
+    val maxWalkSpeedMs:     StateFlow<Float>   = _maxWalkSpeedMs.asStateFlow()
+    val locationEnabled:    StateFlow<Boolean> = _locationEnabled.asStateFlow()
+
+    fun setLocationInterval(ms: Long) {
+        settings.putLong(KEY_LOCATION_INTERVAL, ms)
+        _locationIntervalMs.value = ms
+    }
+    fun setMinMoveMeters(meters: Float) {
+        settings.putFloat(KEY_MIN_MOVE_METERS, meters)
+        _minMoveMeters.value = meters
+    }
+    fun setMaxWalkSpeedMs(speed: Float) {
+        settings.putFloat(KEY_MAX_WALK_SPEED, speed)
+        _maxWalkSpeedMs.value = speed
+    }
+    fun setLocationEnabled(enabled: Boolean) {
+        settings.putBoolean(KEY_LOCATION_ENABLED, enabled)
+        _locationEnabled.value = enabled
     }
 }

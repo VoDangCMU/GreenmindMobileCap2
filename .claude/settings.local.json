@@ -26,7 +26,9 @@
       "Bash(javap -p org/maplibre/android/maps/MapView.class)",
       "Bash(javap -p /tmp/maplibre_inspect/org/maplibre/android/maps/MapView.class)",
       "WebFetch(domain:unpkg.com)",
-      "Bash(unzip -l composeApp/build/outputs/apk/debug/composeApp-debug.apk)"
+      "Bash(unzip -l composeApp/build/outputs/apk/debug/composeApp-debug.apk)",
+      "WebFetch(domain:127.0.0.1)",
+      "WebFetch(domain:countriesnow.space)"
     ]
   }
 }

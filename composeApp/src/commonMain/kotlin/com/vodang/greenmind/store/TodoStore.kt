@@ -1,12 +1,21 @@
 package com.vodang.greenmind.store
 
-import com.russhwolf.settings.Settings
+import com.vodang.greenmind.api.todo.CreateTodoRequest
+import com.vodang.greenmind.api.todo.SubtaskDto
+import com.vodang.greenmind.api.todo.TodoWithSubtasksDto
+import com.vodang.greenmind.api.todo.createTodo
+import com.vodang.greenmind.api.todo.deleteTodo
+import com.vodang.greenmind.api.todo.getTodos
+import com.vodang.greenmind.api.todo.toggleTodo
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 @Serializable
 data class TodoItem(
@@ -19,74 +28,138 @@ data class TodoItem(
 fun TodoItem.countAll(): Int = 1 + children.sumOf { it.countAll() }
 fun TodoItem.countDone(): Int = (if (done) 1 else 0) + children.sumOf { it.countDone() }
 
-// ── Tree helpers ──────────────────────────────────────────────────────────────
+// ── Mapping ───────────────────────────────────────────────────────────────────
 
-private fun TodoItem.withChildrenSetTo(done: Boolean): TodoItem =
-    copy(done = done, children = children.map { it.withChildrenSetTo(done) })
+private fun SubtaskDto.toTodoItem(): TodoItem = TodoItem(
+    id = id,
+    title = title,
+    done = completed,
+    children = subtasks.map { it.toTodoItem() }
+)
 
-private fun List<TodoItem>.containsId(id: String): Boolean =
-    any { it.id == id || it.children.containsId(id) }
-
-private fun List<TodoItem>.toggleById(id: String): List<TodoItem> = map { item ->
-    when {
-        item.id == id -> item.withChildrenSetTo(!item.done)
-        item.children.containsId(id) -> {
-            val newChildren = item.children.toggleById(id)
-            item.copy(children = newChildren, done = newChildren.isNotEmpty() && newChildren.all { it.done })
-        }
-        else -> item
-    }
-}
-
-private fun List<TodoItem>.deleteById(id: String): List<TodoItem> =
-    filter { it.id != id }.map { it.copy(children = it.children.deleteById(id)) }
-
-private fun List<TodoItem>.addChildTo(parentId: String, child: TodoItem): List<TodoItem> = map { item ->
-    if (item.id == parentId) item.copy(children = item.children + child)
-    else item.copy(children = item.children.addChildTo(parentId, child))
-}
+private fun TodoWithSubtasksDto.toTodoItem(): TodoItem = TodoItem(
+    id = id,
+    title = title,
+    done = completed,
+    children = subtasks.map { it.toTodoItem() }
+)
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
-private const val KEY_TODOS = "todos"
-
 object TodoStore {
 
-    private val settings: Settings = Settings()
-    private val json = Json { ignoreUnknownKeys = true }
+    private val scope = CoroutineScope(SupervisorJob())
 
-    private val _todos = MutableStateFlow<List<TodoItem>>(
-        settings.getStringOrNull(KEY_TODOS)
-            ?.let { runCatching { json.decodeFromString<List<TodoItem>>(it) }.getOrNull() }
-            ?: emptyList()
-    )
+    private val _todos = MutableStateFlow<List<TodoItem>>(emptyList())
+    private val _isLoading = MutableStateFlow(false)
+    private val _error = MutableStateFlow<String?>(null)
 
     val todos: StateFlow<List<TodoItem>> = _todos.asStateFlow()
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    val error: StateFlow<String?> = _error.asStateFlow()
 
-    private fun persist() {
-        settings.putString(KEY_TODOS, json.encodeToString(_todos.value))
+    private suspend fun reload(token: String) {
+        _isLoading.value = true
+        try {
+            val resp = getTodos(token)
+            _todos.value = resp.data.map { it.toTodoItem() }
+        } finally {
+            _isLoading.value = false
+        }
     }
 
-    private fun newId() = kotlin.random.Random.nextLong().toString()
-
-    /** Add a root-level item when [parentId] is null, otherwise add as child. */
-    fun addItem(parentId: String?, title: String) {
-        val child = TodoItem(id = newId(), title = title)
-        _todos.value = if (parentId == null) {
-            _todos.value + child
-        } else {
-            _todos.value.addChildTo(parentId, child)
+    fun load() {
+        val token = SettingsStore.getAccessToken() ?: return
+        scope.launch {
+            _error.value = null
+            try {
+                reload(token)
+            } catch (e: Throwable) {
+                _error.value = e.message
+            }
         }
-        persist()
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
+    fun addItem(parentId: String?, title: String) {
+        val token = SettingsStore.getAccessToken() ?: return
+        val tempId = "temp-${Uuid.random()}"
+        val newItem = TodoItem(id = tempId, title = title, done = false)
+        val snapshot = _todos.value
+
+        // Optimistic: insert into UI immediately
+        if (parentId == null) {
+            _todos.value = snapshot + newItem
+        } else {
+            _todos.value = snapshot.map { it.addChildOptimistic(parentId, newItem) }
+        }
+
+        scope.launch {
+            try {
+                createTodo(token, CreateTodoRequest(title = title, parentId = parentId))
+                // Sync with server to get real id
+                reload(token)
+            } catch (e: Throwable) {
+                // Revert on failure
+                _todos.value = snapshot
+                _error.value = e.message
+            }
+        }
     }
 
     fun deleteItem(id: String) {
-        _todos.value = _todos.value.deleteById(id)
-        persist()
+        val token = SettingsStore.getAccessToken() ?: return
+        val snapshot = _todos.value
+
+        // Optimistic: remove from UI immediately
+        _todos.value = snapshot.removeItemRecursive(id)
+
+        scope.launch {
+            try {
+                deleteTodo(token, id)
+            } catch (e: Throwable) {
+                // Revert on failure
+                _todos.value = snapshot
+                _error.value = e.message
+            }
+        }
     }
 
     fun toggleItem(id: String) {
-        _todos.value = _todos.value.toggleById(id)
-        persist()
+        val token = SettingsStore.getAccessToken() ?: return
+        val snapshot = _todos.value
+
+        // Optimistic: toggle in UI immediately
+        _todos.value = snapshot.map { it.toggleRecursive(id) }
+
+        scope.launch {
+            try {
+                toggleTodo(token, id)
+            } catch (e: Throwable) {
+                // Revert on failure
+                _todos.value = snapshot
+                _error.value = e.message
+            }
+        }
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 }
+
+// ── Optimistic-update helpers ─────────────────────────────────────────────────
+
+private fun TodoItem.addChildOptimistic(parentId: String, child: TodoItem): TodoItem =
+    if (id == parentId) copy(children = children + child)
+    else copy(children = children.map { it.addChildOptimistic(parentId, child) })
+
+private fun List<TodoItem>.removeItemRecursive(targetId: String): List<TodoItem> =
+    mapNotNull { item ->
+        if (item.id == targetId) null
+        else item.copy(children = item.children.removeItemRecursive(targetId))
+    }
+
+private fun TodoItem.toggleRecursive(targetId: String): TodoItem =
+    if (id == targetId) copy(done = !done)
+    else copy(children = children.map { it.toggleRecursive(targetId) })

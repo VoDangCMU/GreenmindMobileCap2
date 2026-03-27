@@ -1,6 +1,7 @@
 package com.vodang.greenmind.home.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -17,7 +18,7 @@ import com.vodang.greenmind.i18n.LocalAppStrings
 private val green100 = Color(0xFFC8E6C9)
 
 @Composable
-fun ProfilePlaceholder(user: UserDto? = null) {
+fun ProfilePlaceholder(user: UserDto? = null, onEditClick: () -> Unit = {}) {
     val s = LocalAppStrings.current
     Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(32.dp))
@@ -28,6 +29,8 @@ fun ProfilePlaceholder(user: UserDto? = null) {
         Text(user?.fullName ?: s.profileName, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Text(user?.email ?: s.profileEmail, fontSize = 14.sp, color = Color.Gray)
         Spacer(Modifier.height(32.dp))
-        SectionCard { Text(s.editProfile, fontWeight = FontWeight.Medium) }
+        SectionCard(modifier = Modifier.clickable { onEditClick() }) {
+            Text(s.editProfile, fontWeight = FontWeight.Medium)
+        }
     }
 }

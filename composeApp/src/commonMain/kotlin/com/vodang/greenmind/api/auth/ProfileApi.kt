@@ -2,6 +2,7 @@ package com.vodang.greenmind.api.auth
 
 import com.vodang.greenmind.api.BASE_URL
 import com.vodang.greenmind.api.httpClient
+import com.vodang.greenmind.util.AppLogger
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -50,6 +51,7 @@ fun ProfileDto.toUserDto() = UserDto(
  * Throws [ApiException] on 401 or other non-2xx responses.
  */
 suspend fun getProfile(accessToken: String): ProfileDto {
+    AppLogger.i("Profile", "getProfile")
     val resp = httpClient.get("$BASE_URL/auth/profile") {
         header("Authorization", "Bearer $accessToken")
     }
@@ -58,6 +60,7 @@ suspend fun getProfile(accessToken: String): ProfileDto {
         resp.body()
     } else {
         val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+        AppLogger.e("Profile", "getProfile failed: ${resp.status.value} $text")
         throw ApiException(resp.status.value, text)
     }
 }

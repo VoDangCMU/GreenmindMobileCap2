@@ -1,0 +1,194 @@
+package com.vodang.greenmind.catalogue
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.home.components.GreenAppBar
+import com.vodang.greenmind.i18n.LocalAppStrings
+
+// ── Feature catalogue ──────────────────────────────────────────────────────
+//
+// HOW TO ADD A NEW FEATURE:
+//   1. Add a new FeatureEntry to the appropriate section list below.
+//   2. Use the role that best describes who can use it (ALL / HOUSEHOLD /
+//      COLLECTOR / VOLUNTEER).
+//   3. The description should be one short sentence — what the feature does.
+//
+// This screen is the single source of truth for what the app can do.
+// Keep it up to date whenever a feature is added, changed, or removed.
+// ──────────────────────────────────────────────────────────────────────────
+
+private data class FeatureEntry(
+    val icon: String,
+    val title: String,
+    val desc: String,
+)
+
+private val green800 = Color(0xFF2E7D32)
+private val green50  = Color(0xFFE8F5E9)
+
+@Composable
+fun CatalogueScreen(onBack: () -> Unit) {
+    val s = LocalAppStrings.current
+
+    // ── Feature lists ──────────────────────────────────────────────────────
+    val allFeatures = listOf(
+        FeatureEntry("📋", s.todos,    s.todosDesc),
+        FeatureEntry("📊", s.surveys,  s.surveysDesc),
+        FeatureEntry("🌊", s.oceanTitle, s.oceanSubtitle),
+    )
+    val householdFeatures = listOf(
+        FeatureEntry("♻️", s.wasteSort,       s.wasteSortDesc),
+        FeatureEntry("🗑️", s.garbageDrop,     s.garbageDropDesc),
+        FeatureEntry("💡", s.electricityUsage, s.electricityChartDesc),
+        FeatureEntry("🍽️", s.scanMeal,        s.scanMealDesc),
+        FeatureEntry("🧾", s.scanBill,         s.scanBillDesc),
+        FeatureEntry("🚶", s.walkDistance,     s.walkValue),
+    )
+    val collectorFeatures = listOf(
+        FeatureEntry("🗺️", s.heatmapFeatureLabel,  s.heatmapFeatureDesc),
+        FeatureEntry("📍", s.routeLabel,            s.scheduleDesc),
+        FeatureEntry("✅", s.checkInCardTitle,      s.checkInButton),
+    )
+    val volunteerFeatures = listOf(
+        FeatureEntry("🤝", s.volunteerTitle,        s.volunteerSubtitle),
+        FeatureEntry("🗓️", s.volunteerEventsCardTitle, s.volunteerUpcomingTitle),
+    )
+    // ──────────────────────────────────────────────────────────────────────
+
+    val scrollState = rememberScrollState()
+    val scrolled by androidx.compose.runtime.derivedStateOf { scrollState.value > 0 }
+
+    Scaffold(
+        topBar = {
+            GreenAppBar(
+                title = s.catalogue,
+                subtitle = s.catalogueSubtitle,
+                onBack = onBack,
+                scrolled = scrolled,
+            )
+        },
+        containerColor = Color(0xFFF5F5F5)
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(padding)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            CatalogueSection(
+                roleIcon = "👥",
+                roleLabel = "All users",
+                roleColor = Color(0xFF1565C0),
+                roleBg = Color(0xFFE3F2FD),
+                features = allFeatures
+            )
+            CatalogueSection(
+                roleIcon = "🏠",
+                roleLabel = s.householdRole,
+                roleColor = green800,
+                roleBg = green50,
+                features = householdFeatures
+            )
+            CatalogueSection(
+                roleIcon = "🚛",
+                roleLabel = s.collectorRole,
+                roleColor = Color(0xFFE65100),
+                roleBg = Color(0xFFFFF3E0),
+                features = collectorFeatures
+            )
+            CatalogueSection(
+                roleIcon = "🤝",
+                roleLabel = s.volunteerRole,
+                roleColor = Color(0xFF6A1B9A),
+                roleBg = Color(0xFFF3E5F5),
+                features = volunteerFeatures
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun CatalogueSection(
+    roleIcon: String,
+    roleLabel: String,
+    roleColor: Color,
+    roleBg: Color,
+    features: List<FeatureEntry>,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Section header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(roleBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(roleIcon, fontSize = 16.sp)
+            }
+            Text(
+                text = roleLabel,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = roleColor
+            )
+        }
+
+        // Feature cards
+        features.forEach { feature ->
+            CatalogueCard(feature = feature, accentColor = roleColor, bgColor = roleBg)
+        }
+    }
+}
+
+@Composable
+private fun CatalogueCard(feature: FeatureEntry, accentColor: Color, bgColor: Color) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(bgColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(feature.icon, fontSize = 22.sp)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(feature.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1B1B1B))
+                Spacer(Modifier.height(2.dp))
+                Text(feature.desc, fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
+            }
+        }
+    }
+}

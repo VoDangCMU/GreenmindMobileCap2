@@ -1,5 +1,6 @@
 package com.vodang.greenmind.home.components
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -29,7 +30,7 @@ private val blue50 = Color(0xFFE3F2FD)
 data class WastePoint(val id: Int, val address: String, val zone: String, val collected: Boolean, val bags: Int)
 
 @Composable
-fun CollectorDashboard(user: UserDto? = null) {
+fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = rememberScrollState()) {
     val s = LocalAppStrings.current
     val points = listOf(
         WastePoint(1, "12 Trần Phú, Hải Châu",         "Khu A", true,  3),
@@ -45,25 +46,25 @@ fun CollectorDashboard(user: UserDto? = null) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "${user?.fullName ?: s.collectorTitle} 🚛",
-                    fontSize = 20.sp, fontWeight = FontWeight.Bold, color = green800
-                )
-                Text(s.collectorShift, fontSize = 12.sp, color = Color.Gray)
-            }
-            Box(modifier = Modifier.size(56.dp).background(amber600, CircleShape), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("$collectedCount/$totalCount", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text(s.collectorPointsUnit, fontSize = 9.sp, color = Color.White.copy(alpha = 0.85f))
-                }
-            }
-        }
+        // Row(verticalAlignment = Alignment.CenterVertically) {
+        //     // Column(modifier = Modifier.weight(1f)) {
+        //     //     Text(
+        //     //         "${user?.fullName ?: s.collectorTitle} 🚛",
+        //     //         fontSize = 20.sp, fontWeight = FontWeight.Bold, color = green800
+        //     //     )
+        //     //     Text(s.collectorShift, fontSize = 12.sp, color = Color.Gray)
+        //     // }
+        //     Box(modifier = Modifier.size(56.dp).background(amber600, CircleShape), contentAlignment = Alignment.Center) {
+        //         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        //             Text("$collectedCount/$totalCount", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        //             Text(s.collectorPointsUnit, fontSize = 9.sp, color = Color.White.copy(alpha = 0.85f))
+        //         }
+        //     }
+        // }
 
         SectionCard {
             Text(s.progressToday, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
@@ -87,6 +88,10 @@ fun CollectorDashboard(user: UserDto? = null) {
             MetricCard("📍", s.routeLabel, "8.2 km", s.today, blue50, blue600, Modifier.weight(1f).aspectRatio(1f))
         }
 
+        
+        CheckInCard(points)
+        CollectionRouteCard(points)
+        GarbageHeatmapCard()
         Text(s.features, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -94,9 +99,5 @@ fun CollectorDashboard(user: UserDto? = null) {
                 FeatureButton("📅", s.scheduleLabel, s.scheduleDesc, blue50, blue600, Modifier.weight(1f)) { }
             }
         }
-
-        CollectionRouteCard(points)
-        GarbageHeatmapCard()
-        CheckInCard(points)
     }
 }

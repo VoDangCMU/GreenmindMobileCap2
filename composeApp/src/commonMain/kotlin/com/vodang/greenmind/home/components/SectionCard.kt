@@ -13,9 +13,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.ColumnScope
 
 @Composable
-fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
+fun SectionCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().then(modifier),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
