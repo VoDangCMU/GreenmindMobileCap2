@@ -48,20 +48,18 @@ fun TodoScreen() {
     val total = todos.sumOf { it.countAll() }
     val done  = todos.sumOf { it.countDone() }
     val progress = if (total == 0) 0f else done.toFloat() / total
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(greenBg)
     ) {
-        // ── Green header ──────────────────────────────────────────────────────
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Brush.linearGradient(listOf(green800, green600)))
-                .padding(horizontal = 20.dp, vertical = 20.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // ── Header metrics ──────────────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.linearGradient(listOf(green800, green600)))
+                    .padding(horizontal = 20.dp, vertical = 20.dp)
+            ) {
                 Text(
                     "🌿 ${s.todosScreenTitle}",
                     color = Color.White,
@@ -83,7 +81,6 @@ fun TodoScreen() {
                     trackColor = Color.White.copy(alpha = 0.3f)
                 )
             }
-        }
 
         // ── Add todo row ──────────────────────────────────────────────────────
         Row(

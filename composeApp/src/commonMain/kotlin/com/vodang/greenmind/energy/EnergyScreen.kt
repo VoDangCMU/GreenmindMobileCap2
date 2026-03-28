@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,8 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.home.components.GreenAppBar
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.fmt
 import kotlin.math.roundToInt
 
 private val blue700  = Color(0xFF1565C0)
@@ -34,7 +36,7 @@ private val blue100  = Color(0xFFBBDEFB)
 private val bgGray   = Color(0xFFF5F5F5)
 
 @Composable
-fun EnergyScreen(onBack: () -> Unit) {
+fun EnergyScreen() {
     val s = LocalAppStrings.current
 
     // Static data — replace with real API data when available
@@ -45,29 +47,15 @@ fun EnergyScreen(onBack: () -> Unit) {
     val monthTotal = 127.4f
 
     val scrollState = rememberScrollState()
-    val scrolled = scrollState.value > 0
 
-    Scaffold(
-        topBar = {
-            GreenAppBar(
-                title = s.electricityUsage,
-                subtitle = s.electricityWeekTitle,
-                onBack = onBack,
-                scrolled = scrolled,
-            )
-        },
-        containerColor = Color.Transparent,
-    ) { _ ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(bgGray)
-                .verticalScroll(scrollState)
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(horizontal = 16.dp)
-                .padding(top = 64.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bgGray)
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
             // ── Hero card: today ──────────────────────────────────────────
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -90,7 +78,7 @@ fun EnergyScreen(onBack: () -> Unit) {
                         Spacer(Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
-                                "%.1f".format(todayKwh),
+                                todayKwh.fmt(1),
                                 fontSize = 48.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
@@ -129,12 +117,12 @@ fun EnergyScreen(onBack: () -> Unit) {
             ) {
                 StatChip(
                     label = s.energyMonthTotal,
-                    value = "%.1f kWh".format(monthTotal),
+                    value = "${monthTotal.fmt(1)} kWh",
                     modifier = Modifier.weight(1f)
                 )
                 StatChip(
                     label = s.energyAvgDaily,
-                    value = "%.1f kWh".format(dailyAvg),
+                    value = "${dailyAvg.fmt(1)} kWh",
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -182,7 +170,6 @@ fun EnergyScreen(onBack: () -> Unit) {
                 }
             }
         }
-    }
 }
 
 @Composable
@@ -262,7 +249,7 @@ private fun WeekChart(values: List<Float>, labels: List<String>) {
 
         values.forEachIndexed { i, v ->
             Text(
-                text = "%.1f".format(v),
+                text = v.fmt(1),
                 modifier = Modifier.offset {
                     IntOffset(
                         x = (xOf(i) - 12.dp.toPx()).roundToInt(),

@@ -1,14 +1,14 @@
 package com.vodang.greenmind.catalogue
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.home.components.GreenAppBar
 import com.vodang.greenmind.i18n.LocalAppStrings
 
 // ── Feature catalogue ──────────────────────────────────────────────────────
@@ -35,25 +34,28 @@ private data class FeatureEntry(
     val icon: String,
     val title: String,
     val desc: String,
+    val onClick: (() -> Unit)? = null,
 )
 
 private val green800 = Color(0xFF2E7D32)
 private val green50  = Color(0xFFE8F5E9)
 
 @Composable
-fun CatalogueScreen(onBack: () -> Unit) {
+fun CatalogueScreen(onWasteReport: () -> Unit) {
     val s = LocalAppStrings.current
 
     // ── Feature lists ──────────────────────────────────────────────────────
     val allFeatures = listOf(
         FeatureEntry("📋", s.todos,    s.todosDesc),
         FeatureEntry("📊", s.surveys,  s.surveysDesc),
+        FeatureEntry("📰", s.blog,     s.blogDesc),
         FeatureEntry("🌊", s.oceanTitle, s.oceanSubtitle),
     )
     val householdFeatures = listOf(
         FeatureEntry("♻️", s.wasteSort,       s.wasteSortDesc),
         FeatureEntry("🗑️", s.garbageDrop,     s.garbageDropDesc),
-        FeatureEntry("💡", s.electricityUsage, s.electricityChartDesc),
+        FeatureEntry("�", s.wasteReport,    s.wasteReportDesc, onClick = onWasteReport),
+        FeatureEntry("�💡", s.electricityUsage, s.electricityChartDesc),
         FeatureEntry("🍽️", s.scanMeal,        s.scanMealDesc),
         FeatureEntry("🧾", s.scanBill,         s.scanBillDesc),
         FeatureEntry("🚶", s.walkDistance,     s.walkValue),
@@ -70,27 +72,15 @@ fun CatalogueScreen(onBack: () -> Unit) {
     // ──────────────────────────────────────────────────────────────────────
 
     val scrollState = rememberScrollState()
-    val scrolled by androidx.compose.runtime.derivedStateOf { scrollState.value > 0 }
 
-    Scaffold(
-        topBar = {
-            GreenAppBar(
-                title = s.catalogue,
-                subtitle = s.catalogueSubtitle,
-                onBack = onBack,
-                scrolled = scrolled,
-            )
-        },
-        containerColor = Color(0xFFF5F5F5)
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(padding)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5))
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
             CatalogueSection(
                 roleIcon = "👥",
                 roleLabel = "All users",
@@ -120,7 +110,6 @@ fun CatalogueScreen(onBack: () -> Unit) {
                 features = volunteerFeatures
             )
             Spacer(Modifier.height(8.dp))
-        }
     }
 }
 
@@ -165,7 +154,9 @@ private fun CatalogueSection(
 @Composable
 private fun CatalogueCard(feature: FeatureEntry, accentColor: Color, bgColor: Color) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (feature.onClick != null) Modifier.clickable { feature.onClick.invoke() } else Modifier),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)

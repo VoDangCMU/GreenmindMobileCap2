@@ -9,7 +9,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -17,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -29,6 +27,7 @@ import androidx.core.content.FileProvider
 import com.vodang.greenmind.api.bill.BillAnalysisResult
 import com.vodang.greenmind.api.bill.analyzeBill
 import com.vodang.greenmind.i18n.LocalAppStrings
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -56,7 +55,7 @@ private fun createBillPhotoUri(context: Context): Uri {
 
 @Composable
 actual fun BillScanScreen(
-    onScanComplete: (result: BillAnalysisResult, storeName: String) -> Unit,
+    onScanComplete: (result: BillAnalysisResult, storeName: String, imageUrl: String?) -> Unit,
     onBack: () -> Unit,
 ) {
     val s = LocalAppStrings.current
@@ -67,6 +66,7 @@ actual fun BillScanScreen(
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var capturedBytes by remember { mutableStateOf<ByteArray?>(null) }
     var result by remember { mutableStateOf<BillAnalysisResult?>(null) }
+    var imageUrl by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
@@ -82,110 +82,132 @@ actual fun BillScanScreen(
         }
     }
 
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            if (bytes != null) {
+                capturedBytes = bytes
+                phase = BillScanPhase.CAPTURED
+            }
+        }
+    }
+
     when (phase) {
         BillScanPhase.IDLE -> {
             Column(
-                modifier = Modifier.fillMaxSize().background(green50),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(green50)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Brush.linearGradient(listOf(green800, green600)))
-                        .statusBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    TextButton(
-                        onClick = onBack,
-                        modifier = Modifier.align(Alignment.CenterStart)
-                    ) {
-                        Text("←", color = Color.White, fontSize = 24.sp)
-                    }
-                    Text(
-                        "🧾 ${s.billScanTitle}",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-                error?.let { msg ->
-                    Text(msg, color = red, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp))
-                    Spacer(Modifier.height(16.dp))
-                }
+                Text(s.billScanTitle, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = green800)
+                Spacer(Modifier.height(8.dp))
+                Text(s.billScanHint, fontSize = 14.sp, color = Color.Gray)
+                Spacer(Modifier.height(32.dp))
                 Button(
+                    modifier = Modifier.fillMaxWidth(),
                     onClick = {
                         error = null
                         val uri = createBillPhotoUri(context)
                         photoUri = uri
                         cameraLauncher.launch(uri)
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = green800),
-                    shape = CircleShape,
-                    modifier = Modifier.size(120.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = green800)
                 ) {
-                    Text("📷", fontSize = 40.sp)
+                    Text("📷 ${s.billCapture}")
                 }
-                Spacer(Modifier.height(16.dp))
-                Text(s.billScanHint, color = Color.Gray, fontSize = 13.sp)
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { galleryLauncher.launch("image/*") }
+                ) {
+                    Text("🖼 ${s.billUpload}")
+                }
+                Spacer(Modifier.height(12.dp))
+                TextButton(modifier = Modifier.fillMaxWidth(), onClick = onBack) {
+                    Text(s.back, color = Color.Gray)
+                }
+                if (error != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(error!!, color = red, fontSize = 13.sp)
+                }
             }
         }
 
         BillScanPhase.CAPTURED -> {
             val bytes = capturedBytes
-            Box(modifier = Modifier.fillMaxSize()) {
-                if (bytes != null) {
-                    val bitmap = remember(bytes) { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
-                    bitmap?.let { bmp ->
-                        Image(
-                            bitmap = bmp,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
+            Column(modifier = Modifier.fillMaxSize().background(Color.Black)) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .weight(1f)
+                        .fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 32.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    if (bytes != null) {
+                        val bitmap = remember(bytes) { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
+                        bitmap?.let { bmp ->
+                            Image(
+                                bitmap = bmp,
+                                contentDescription = null,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(green50)
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            capturedBytes = null
+                            val uri = createBillPhotoUri(context)
+                            photoUri = uri
+                            cameraLauncher.launch(uri)
+                        }
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                capturedBytes = null
-                                val uri = createBillPhotoUri(context)
-                                photoUri = uri
-                                cameraLauncher.launch(uri)
-                            },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                        ) {
-                            Text("🔄 ${s.billRetake}")
-                        }
-                        Button(
-                            onClick = {
-                                phase = BillScanPhase.ANALYZING
-                                scope.launch {
-                                    try {
-                                        result = analyzeBill(capturedBytes!!)
-                                        phase = BillScanPhase.RESULT
-                                    } catch (e: Throwable) {
-                                        error = s.billError
-                                        phase = BillScanPhase.IDLE
-                                    }
+                        Text("🔄 ${s.billRetake}")
+                    }
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            phase = BillScanPhase.ANALYZING
+                            scope.launch {
+                                try {
+                                    val bytes = capturedBytes!!
+                                    val token = com.vodang.greenmind.store.SettingsStore.getAccessToken()
+                                    val analysisDeferred = async { analyzeBill(bytes) }
+                                    val uploadDeferred = if (token != null) async {
+                                        try {
+                                            com.vodang.greenmind.api.upload.requestAndUpload(
+                                                accessToken = token,
+                                                filename = "bill_${System.currentTimeMillis()}.jpg",
+                                                fileBytes = bytes,
+                                                contentType = "image/jpeg",
+                                            ).imageUrl
+                                        } catch (_: Throwable) { null }
+                                    } else null
+                                    result = analysisDeferred.await()
+                                    imageUrl = uploadDeferred?.await()
+                                    phase = BillScanPhase.RESULT
+                                } catch (e: Throwable) {
+                                    error = s.billError
+                                    phase = BillScanPhase.IDLE
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = green800)
-                        ) {
-                            Text("🔍 ${s.billAnalyze}")
-                        }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = green800)
+                    ) {
+                        Text("🔍 ${s.billAnalyze}")
                     }
                 }
             }
@@ -210,129 +232,82 @@ actual fun BillScanScreen(
 
         BillScanPhase.RESULT -> {
             val res = result
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(green50)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Brush.linearGradient(listOf(green800, green600)))
-                        .statusBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    Text(
-                        "🧾 ${s.billScanTitle}",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+            if (res != null) {
+                val color = billRatioColor(res.greenRatio)
+                val feedback = when {
+                    res.greenRatio >= 70 -> s.billRatioGood
+                    res.greenRatio >= 40 -> s.billRatioOk
+                    else                 -> s.billRatioLow
                 }
-                if (res != null) {
-                    val color = billRatioColor(res.greenRatio)
-                    val feedback = when {
-                        res.greenRatio >= 70 -> s.billRatioGood
-                        res.greenRatio >= 40 -> s.billRatioOk
-                        else                 -> s.billRatioLow
-                    }
-                    var storeName by remember(res) { mutableStateOf(res.storeName) }
+                var storeName by remember(res) { mutableStateOf(res.storeName) }
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(green50)
+                        .statusBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    OutlinedTextField(
+                        value = storeName,
+                        onValueChange = { storeName = it },
+                        label = { Text(s.billStoreNameLabel) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = green800,
+                            focusedLabelColor = green800,
+                            cursorColor = green800
+                        )
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Spacer(Modifier.height(8.dp))
-
-                        OutlinedTextField(
-                            value = storeName,
-                            onValueChange = { storeName = it },
-                            label = { Text(s.billStoreNameLabel) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = green800,
-                                focusedLabelColor = green800,
-                                cursorColor = green800
-                            )
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .size(120.dp)
-                                .clip(CircleShape)
-                                .background(color.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "${res.greenRatio}%",
-                                color = color,
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        LinearProgressIndicator(
-                            progress = { res.greenRatio / 100f },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp)),
-                            color = color,
-                            trackColor = color.copy(alpha = 0.2f)
-                        )
-
-                        Text(s.billGreenRatio(res.greenRatio), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = color)
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Card(
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(s.billTotal, fontSize = 11.sp, color = Color.Gray)
-                                    Text(formatAmount(res.totalAmount), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF424242))
-                                }
-                            }
-                            Card(
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = green50),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(s.billGreenSpend, fontSize = 11.sp, color = Color.Gray)
-                                    Text(formatAmount(res.greenAmount), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = green800)
-                                }
-                            }
-                        }
-
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
                             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text(s.billItems, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
-                                HorizontalDivider()
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(s.billTotal, fontSize = 11.sp, color = Color.Gray)
+                                Text(formatAmount(res.totalAmount), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF424242))
+                            }
+                        }
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = green50),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(s.billGreenSpend, fontSize = 11.sp, color = Color.Gray)
+                                Text(formatAmount(res.greenAmount), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = green800)
+                            }
+                        }
+                    }
+
+                    Card(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(s.billItems, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                            HorizontalDivider()
+                            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 res.items.forEach { item ->
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -355,25 +330,31 @@ actual fun BillScanScreen(
                                 }
                             }
                         }
+                    }
 
-                        Text(feedback, fontSize = 14.sp, color = color)
+                    Text(feedback, fontSize = 14.sp, color = color)
 
-                        Spacer(Modifier.height(8.dp))
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            OutlinedButton(onClick = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = {
                                 capturedBytes = null
                                 result = null
+                                imageUrl = null
                                 phase = BillScanPhase.IDLE
-                            }) {
-                                Text("🔄 ${s.billScanAgain}")
                             }
-                            Button(
-                                onClick = { onScanComplete(res, storeName) },
-                                colors = ButtonDefaults.buttonColors(containerColor = green800)
-                            ) {
-                                Text("✅ ${s.billSave}")
-                            }
+                        ) {
+                            Text("🔄 ${s.billScanAgain}")
+                        }
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            onClick = { onScanComplete(res, storeName, imageUrl) },
+                            colors = ButtonDefaults.buttonColors(containerColor = green800)
+                        ) {
+                            Text("✅ ${s.billSave}")
                         }
                     }
                 }

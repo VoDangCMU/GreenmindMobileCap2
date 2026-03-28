@@ -16,60 +16,34 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.home.components.GreenAppBar
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.MealRecord
 import com.vodang.greenmind.store.MealStore
 
 private val green800 = Color(0xFF2E7D32)
-private val green50  = Color(0xFFE8F5E9)
-private val orange   = Color(0xFFE65100)
-private val red      = Color(0xFFC62828)
+private val green50 = Color(0xFFE8F5E9)
 
 private fun ratioColor(ratio: Int): Color = when {
     ratio >= 70 -> green800
-    ratio >= 40 -> orange
-    else        -> red
+    ratio >= 40 -> Color(0xFFFB8C00)
+    else -> Color(0xFFC62828)
 }
 
 @Composable
-fun MealListScreen(onScanClick: () -> Unit, onBack: () -> Unit) {
+fun MealListScreen(onScanClick: () -> Unit) {
     val s = LocalAppStrings.current
     val meals by MealStore.meals.collectAsState()
 
-    Scaffold(
-        topBar = {
-            GreenAppBar(
-                title = "🥦 ${s.mealScreenTitle}",
-                onBack = onBack,
-                trailing = {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(green50)
-                            .clickable { onScanClick() }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text("📷", fontSize = 15.sp)
-                        Text(s.mealScanTitle, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = green800)
-                    }
-                },
-            )
-        },
-        containerColor = green50
-    ) { innerPadding ->
-        if (meals.isEmpty()) {
+    if (meals.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("🌱", fontSize = 48.sp)
+                    Text("??", fontSize = 48.sp)
                     Text(s.mealListEmpty, color = Color.Gray, fontSize = 15.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(
@@ -81,20 +55,19 @@ fun MealListScreen(onScanClick: () -> Unit, onBack: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text("📷", fontSize = 15.sp)
+                        Text("??", fontSize = 15.sp)
                         Text(s.mealScanTitle, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
-            ) {
-                items(meals, key = { it.id }) { meal ->
-                    MealRecordCard(meal)
-                }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
+        ) {
+            items(meals, key = { it.id }) { meal ->
+                MealRecordCard(meal)
             }
         }
     }

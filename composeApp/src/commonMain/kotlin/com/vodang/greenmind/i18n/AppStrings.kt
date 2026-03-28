@@ -2,306 +2,284 @@ package com.vodang.greenmind.i18n
 
 import androidx.compose.runtime.compositionLocalOf
 
-data class AppStrings(
-    val langCode: String,
-
-    // ── App ──────────────────────────────────────────────────────────────
-    val appName: String,
-    val appSubtitle: String,
-
-    // ── Common ───────────────────────────────────────────────────────────
-    val back: String,
-    val cancel: String,
-    val save: String,
-    val close: String,
-    val select: String,
-    val delete: String,
-    val today: String,
-    val or: String,
-    val show: String,
-    val hide: String,
-
-    // ── Login ────────────────────────────────────────────────────────────
-    val signIn: String,
-    val emailAddress: String,
-    val emailPlaceholder: String,
-    val password: String,
-    val rememberMe: String,
-    val forgotPassword: String,
-    val loginError: String,
-    val loginButton: String,
-    val loggingIn: String,
-    val continueWithGoogle: String,
-    val noAccount: String,
-    val signUp: String,
-    val chooseAccount: String,
-    val noSavedAccounts: String,
-    val addAccount: String,
-
-    // ── Register ─────────────────────────────────────────────────────────
-    val createAccount: String,
-    val stepInfo: String,
-    val stepPassword: String,
-    val stepAddress: String,
-    val yourInformation: String,
-    val setPassword: String,
-    val addressAndTerms: String,
-    val fullName: String,
-    val gender: String,
-    val male: String,
-    val female: String,
-    val other: String,
-    val next: String,
-    val confirmPassword: String,
-    val passwordMismatch: String,
-    val address: String,
-    val road: String,
-    val country: String,
-    val selectCountry: String,
-    val searchCountry: String,
-    val city: String,
-    val selectCity: String,
-    val searchCity: String,
-    val acceptTerms: String,
-    val register: String,
-    val alreadyHaveAccount: String,
-
-    // ── Drawer ───────────────────────────────────────────────────────────
-    val home: String,
-    val todos: String,
-    val surveys: String,
-    val settings: String,
-    val editProfile: String,
-    val catalogue: String,
-    val catalogueSubtitle: String,
-    val logout: String,
-
-    // ── Top bar ──────────────────────────────────────────────────────────
-    val greeting: (String) -> String,
-    val welcomeBack: String,
-
-    // ── User type ────────────────────────────────────────────────────────
-    val chooseRole: String,
-    val householdRole: String,
-    val collectorRole: String,
-    val volunteerRole: String,
-
-    // ── Language ─────────────────────────────────────────────────────────
-    val language: String,
-    val langVietnamese: String,
-    val langEnglish: String,
-
-    // ── Household dashboard ──────────────────────────────────────────────
-    val todayOverview: String,
-    val wasteSort: String,
-    val wasteSortValue: String,
-    val garbageDrop: String,
-    val garbageDropStatus: String,
-    val electricityUsage: String,
-    val electricityValue: String,
-    val greenSpending: String,
-    val greenSpendingValue: String,
-    val greenSpendingMonth: String,
-    val greenMealMetric: String,
-    val greenMealPercent: String,
-    val greenMealSubtitle: String,
-    val todosMetric: String,
-    val todosValue: (Int, Int) -> String,
-    val walkDistance: String,
-    val walkValue: String,
-    val features: String,
-    val wasteSortDesc: String,
-    val garbageDropDesc: String,
-    val todosDesc: String,
-    val electricityChartDesc: String,
-    val scanMeal: String,
-    val scanMealDesc: String,
-    val scanBill: String,
-    val scanBillDesc: String,
-    val wasteToday: String,
-    val wasteBagsCount: (Int) -> String,
-    val greenerLabel: String,
-    val greenerUp: String,
-    val greenerDown: String,
-    val noActivityToday: String,
-
-    // ── Electricity card & screen ─────────────────────────────────────────
-    val electricityWeekTitle: String,
-    val electricityWeekSummary: String,
-    val weekDays: List<String>,
-    val energyTodayLabel: String,
-    val energyMonthTotal: String,
-    val energyAvgDaily: String,
-    val energyTips: String,
-    val energyTipsList: List<String>,
-
-    // ── Green meal card ──────────────────────────────────────────────────
-    val greenMealCardTitle: String,
-    val greenMealCardDesc: String,
-
-    // ── Todos screen ─────────────────────────────────────────────────────
-    val todosScreenTitle: String,
-    val todosAddPlaceholder: String,
-    val todosAddSubPlaceholder: String,
-    val todosEmpty: String,
-
-    // ── Todos card ───────────────────────────────────────────────────────
-    val todosCardTitle: String,
-    val todosCardProgress: (Int, Int) -> String,
-
-    // ── OCEAN card ───────────────────────────────────────────────────────
-    val oceanTitle: String,
-    val oceanSubtitle: String,
-
-    // ── Collector dashboard ──────────────────────────────────────────────
-    val collectorTitle: String,
-    val collectorShift: String,
-    val collectorPointsUnit: String,
-    val progressToday: String,
-    val pointsCollected: (Int) -> String,
-    val pointsRemaining: (Int) -> String,
-    val zoneLabel: String,
-    val zoneValue: String,
-    val bagsLabel: String,
-    val bagsEstimated: String,
-    val routeLabel: String,
-    val heatmapFeatureLabel: String,
-    val heatmapFeatureDesc: String,
-    val scheduleLabel: String,
-    val scheduleDesc: String,
-
-    // ── Heatmap card ─────────────────────────────────────────────────────
-    val heatmapCardTitle: String,
-    val heatLow: String,
-    val heatHigh: String,
-
-    // ── Route card ───────────────────────────────────────────────────────
-    val routeCardTitle: String,
-    val bagsUnit: String,
-
-    // ── CheckIn card ─────────────────────────────────────────────────────
-    val checkInCardTitle: String,
-    val checkInButton: String,
-    val checkInDone: String,
-    val checkInDoneDesc: String,
-    val nextPointLabel: String,
-    val bagsEstimatedFmt: (Int) -> String,
-
-    // ── CollectionPointRow ───────────────────────────────────────────────
-    val collectedLabel: String,
-    val notCollectedLabel: String,
-
-    // ── Volunteer dashboard ──────────────────────────────────────────────
-    val volunteerTitle: String,
-    val volunteerWip: String,
-    val volunteerSubtitle: String,
-    val volunteerHoursLabel: String,
-    val volunteerHoursValue: String,
-    val volunteerEventsLabel: String,
-    val volunteerEventsValue: String,
-    val volunteerPointsLabel: String,
-    val volunteerPointsValue: String,
-    val volunteerEventsCardTitle: String,
-    val volunteerUpcomingTitle: String,
-    val volunteerJoinButton: String,
-    val volunteerRegistered: String,
-
-    // ── Profile ──────────────────────────────────────────────────────────
-    val profileName: String,
-    val profileEmail: String,
-    val profileTitle: String,
-    val todayJourney: String,
-    val walkTimeLabel: String,
-    val walkTimeMin: (Int) -> String,
-    val caloriesLabel: String,
-    val caloriesKcal: (Int) -> String,
-    val personalInfo: String,
-    val genderLabel: String,
-    val ageLabel: String,
-    val locationLabel: String,
-    val roleLabel: String,
-    val notSet: String,
-    val ecoToday: String,
-    val mealsToday: (Int) -> String,
-    val billsToday: (Int) -> String,
-
-    // ── Settings screen ───────────────────────────────────────────────────
-    val settingsLocation: String,
-    val settingsTrackingEnabled: String,
-    val settingsTrackingEnabledDesc: String,
-    val settingsInterval: String,
-    val settingsIntervalDesc: String,
-    val settingsMinMove: String,
-    val settingsMinMoveDesc: (Int) -> String,
-    val settingsSpeedFilter: String,
-    val settingsSpeedFilterDesc: (Float) -> String,
-    val settingsSpeedWalk: String,
-    val settingsSpeedRun: String,
-    val settingsSpeedCycle: String,
-    val settingsGeneral: String,
-    val settingsAbout: String,
-    val settingsHowWorks: String,
-    val settingsHowWorksBody: (Int, Int, Float) -> String,
-    val settingsVersion: String,
-
-    // ── Survey ───────────────────────────────────────────────────────────
-    val surveysDesc: String,
-    val surveyMinutes: (Int) -> String,
-    val surveyQuestions: (Int) -> String,
-    val surveyCompleted: String,
-    val surveyStart: String,
-    val surveyRetake: String,
-    val surveyQuestion: (Int, Int) -> String,
-    val surveyNext: String,
-    val surveyPrev: String,
-    val surveySubmit: String,
-    val surveySubmitted: String,
-    val surveySubmittedDesc: String,
-    val surveySelectMultiple: String,
-    val surveyTypeAnswer: String,
-    val surveyBackToList: String,
-
-    // ── Meal scan ────────────────────────────────────────────────────────────────
-    val mealScreenTitle: String,
-    val mealListEmpty: String,
-    val mealScanTitle: String,
-    val mealCapture: String,
-    val mealRetake: String,
-    val mealAnalyze: String,
-    val mealSave: String,
-    val mealNameLabel: String,
-    val mealAnalyzing: String,
-    val mealScanAgain: String,
-    val mealPlantRatio: (Int) -> String,
-    val mealRatioGood: String,
-    val mealRatioOk: String,
-    val mealRatioLow: String,
-    val mealPermissionNeeded: String,
-    val mealGrantPermission: String,
-    val mealError: String,
-
-    // ── Bill scan ─────────────────────────────────────────────────────────────────
-    val billScreenTitle: String,
-    val billListEmpty: String,
-    val billScanTitle: String,
-    val billScanHint: String,
-    val billRetake: String,
-    val billAnalyze: String,
-    val billSave: String,
-    val billStoreNameLabel: String,
-    val billAnalyzing: String,
-    val billScanAgain: String,
-    val billGreenRatio: (Int) -> String,
-    val billGreenAmount: (Double) -> String,
-    val billRatioGood: String,
-    val billRatioOk: String,
-    val billRatioLow: String,
-    val billTotal: String,
-    val billGreenSpend: String,
-    val billItems: String,
-    val billPermissionNeeded: String,
-    val billGrantPermission: String,
-    val billError: String,
-)
+class AppStrings(val langCode: String) {
+    var appName: String = ""
+    var appSubtitle: String = ""
+    var back: String = ""
+    var cancel: String = ""
+    var save: String = ""
+    var close: String = ""
+    var select: String = ""
+    var delete: String = ""
+    var today: String = ""
+    var or: String = ""
+    var show: String = ""
+    var hide: String = ""
+    var signIn: String = ""
+    var emailAddress: String = ""
+    var emailPlaceholder: String = ""
+    var password: String = ""
+    var rememberMe: String = ""
+    var forgotPassword: String = ""
+    var loginError: String = ""
+    var loginButton: String = ""
+    var loggingIn: String = ""
+    var continueWithGoogle: String = ""
+    var noAccount: String = ""
+    var signUp: String = ""
+    var chooseAccount: String = ""
+    var noSavedAccounts: String = ""
+    var addAccount: String = ""
+    var createAccount: String = ""
+    var stepInfo: String = ""
+    var stepPassword: String = ""
+    var stepAddress: String = ""
+    var yourInformation: String = ""
+    var setPassword: String = ""
+    var addressAndTerms: String = ""
+    var fullName: String = ""
+    var gender: String = ""
+    var male: String = ""
+    var female: String = ""
+    var other: String = ""
+    var next: String = ""
+    var confirmPassword: String = ""
+    var passwordMismatch: String = ""
+    var address: String = ""
+    var road: String = ""
+    var country: String = ""
+    var selectCountry: String = ""
+    var searchCountry: String = ""
+    var city: String = ""
+    var selectCity: String = ""
+    var searchCity: String = ""
+    var acceptTerms: String = ""
+    var register: String = ""
+    var alreadyHaveAccount: String = ""
+    var home: String = ""
+    var todos: String = ""
+    var surveys: String = ""
+    var blog: String = ""
+    var settings: String = ""
+    var editProfile: String = ""
+    var catalogue: String = ""
+    var catalogueSubtitle: String = ""
+    var logout: String = ""
+    var greeting: (String) -> String = { it }
+    var welcomeBack: String = ""
+    var chooseRole: String = ""
+    var householdRole: String = ""
+    var collectorRole: String = ""
+    var volunteerRole: String = ""
+    var language: String = ""
+    var langVietnamese: String = ""
+    var langEnglish: String = ""
+    var todayOverview: String = ""
+    var wasteSort: String = ""
+    var wasteSortValue: String = ""
+    var garbageDrop: String = ""
+    var garbageDropStatus: String = ""
+    var electricityUsage: String = ""
+    var electricityValue: String = ""
+    var greenSpending: String = ""
+    var greenSpendingValue: String = ""
+    var greenSpendingMonth: String = ""
+    var greenMealMetric: String = ""
+    var greenMealPercent: String = ""
+    var greenMealSubtitle: String = ""
+    var todosMetric: String = ""
+    var todosValue: (Int, Int) -> String = { p0, p1 -> "" }
+    var walkDistance: String = ""
+    var walkValue: String = ""
+    var features: String = ""
+    var wasteSortDesc: String = ""
+    var garbageDropDesc: String = ""
+    var wasteReport: String = ""
+    var wasteReportDesc: String = ""
+    var todosDesc: String = ""
+    var electricityChartDesc: String = ""
+    var scanMeal: String = ""
+    var scanMealDesc: String = ""
+    var scanBill: String = ""
+    var scanBillDesc: String = ""
+    var wasteToday: String = ""
+    var wasteBagsCount: (Int) -> String = { p0 -> "" }
+    var greenerLabel: String = ""
+    var greenerUp: String = ""
+    var greenerDown: String = ""
+    var noActivityToday: String = ""
+    var electricityWeekTitle: String = ""
+    var electricityWeekSummary: String = ""
+    var weekDays: List<String> = emptyList()
+    var energyTodayLabel: String = ""
+    var energyMonthTotal: String = ""
+    var energyAvgDaily: String = ""
+    var energyTips: String = ""
+    var energyTipsList: List<String> = emptyList()
+    var greenMealCardTitle: String = ""
+    var greenMealCardDesc: String = ""
+    var todosScreenTitle: String = ""
+    var todosAddPlaceholder: String = ""
+    var todosAddSubPlaceholder: String = ""
+    var todosEmpty: String = ""
+    var todosCardTitle: String = ""
+    var todosCardProgress: (Int, Int) -> String = { p0, p1 -> "" }
+    var oceanTitle: String = ""
+    var oceanSubtitle: String = ""
+    var collectorTitle: String = ""
+    var collectorShift: String = ""
+    var collectorPointsUnit: String = ""
+    var progressToday: String = ""
+    var pointsCollected: (Int) -> String = { p0 -> "" }
+    var pointsRemaining: (Int) -> String = { p0 -> "" }
+    var zoneLabel: String = ""
+    var zoneValue: String = ""
+    var bagsLabel: String = ""
+    var bagsEstimated: String = ""
+    var routeLabel: String = ""
+    var heatmapFeatureLabel: String = ""
+    var heatmapFeatureDesc: String = ""
+    var scheduleLabel: String = ""
+    var scheduleDesc: String = ""
+    var heatmapCardTitle: String = ""
+    var heatLow: String = ""
+    var heatHigh: String = ""
+    var routeCardTitle: String = ""
+    var bagsUnit: String = ""
+    var checkInCardTitle: String = ""
+    var checkInButton: String = ""
+    var checkInDone: String = ""
+    var checkInDoneDesc: String = ""
+    var nextPointLabel: String = ""
+    var bagsEstimatedFmt: (Int) -> String = { p0 -> "" }
+    var collectedLabel: String = ""
+    var notCollectedLabel: String = ""
+    var volunteerTitle: String = ""
+    var volunteerWip: String = ""
+    var volunteerSubtitle: String = ""
+    var volunteerHoursLabel: String = ""
+    var volunteerHoursValue: String = ""
+    var volunteerEventsLabel: String = ""
+    var volunteerEventsValue: String = ""
+    var volunteerPointsLabel: String = ""
+    var volunteerPointsValue: String = ""
+    var volunteerEventsCardTitle: String = ""
+    var volunteerUpcomingTitle: String = ""
+    var volunteerJoinButton: String = ""
+    var volunteerRegistered: String = ""
+    var profileName: String = ""
+    var profileEmail: String = ""
+    var profileTitle: String = ""
+    var todayJourney: String = ""
+    var walkTimeLabel: String = ""
+    var walkTimeMin: (Int) -> String = { p0 -> "" }
+    var caloriesLabel: String = ""
+    var caloriesKcal: (Int) -> String = { p0 -> "" }
+    var personalInfo: String = ""
+    var genderLabel: String = ""
+    var ageLabel: String = ""
+    var locationLabel: String = ""
+    var roleLabel: String = ""
+    var notSet: String = ""
+    var ecoToday: String = ""
+    var mealsToday: (Int) -> String = { p0 -> "" }
+    var billsToday: (Int) -> String = { p0 -> "" }
+    var settingsLocation: String = ""
+    var settingsTrackingEnabled: String = ""
+    var settingsTrackingEnabledDesc: String = ""
+    var settingsInterval: String = ""
+    var settingsIntervalDesc: String = ""
+    var settingsMinMove: String = ""
+    var settingsMinMoveDesc: (Int) -> String = { p0 -> "" }
+    var settingsSpeedFilter: String = ""
+    var settingsSpeedFilterDesc: (Float) -> String = { p0 -> "" }
+    var settingsSpeedWalk: String = ""
+    var settingsSpeedRun: String = ""
+    var settingsSpeedCycle: String = ""
+    var settingsGeneral: String = ""
+    var settingsAbout: String = ""
+    var settingsHowWorks: String = ""
+    var settingsHowWorksBody: (Int, Int, Float) -> String = { p0, p1, p2 -> "" }
+    var settingsVersion: String = ""
+    var surveysDesc: String = ""
+    var blogDesc: String = ""
+    var blogSubtitle: String = ""
+    var blogEmpty: String = ""
+    var surveyMinutes: (Int) -> String = { p0 -> "" }
+    var surveyQuestions: (Int) -> String = { p0 -> "" }
+    var surveyCompleted: String = ""
+    var surveyStart: String = ""
+    var surveyRetake: String = ""
+    var surveyQuestion: (Int, Int) -> String = { p0, p1 -> "" }
+    var surveyNext: String = ""
+    var surveyPrev: String = ""
+    var surveySubmit: String = ""
+    var surveySubmitted: String = ""
+    var surveySubmittedDesc: String = ""
+    var surveySelectMultiple: String = ""
+    var surveyTypeAnswer: String = ""
+    var surveyBackToList: String = ""
+    var mealScreenTitle: String = ""
+    var mealListEmpty: String = ""
+    var mealScanTitle: String = ""
+    var mealCapture: String = ""
+    var mealUpload: String = ""
+    var mealRetake: String = ""
+    var mealAnalyze: String = ""
+    var mealSave: String = ""
+    var mealNameLabel: String = ""
+    var mealAnalyzing: String = ""
+    var mealScanAgain: String = ""
+    var mealPlantRatio: (Int) -> String = { p0 -> "" }
+    var mealRatioGood: String = ""
+    var mealRatioOk: String = ""
+    var mealRatioLow: String = ""
+    var mealPermissionNeeded: String = ""
+    var mealGrantPermission: String = ""
+    var mealError: String = ""
+    var wasteReportTitle: String = ""
+    var wasteReportSubtitle: String = ""
+    var wasteReportMyTab: String = ""
+    var wasteReportAllTab: String = ""
+    var wasteReportEmpty: String = ""
+    var wasteReportScanTitle: String = ""
+    var wasteReportCapture: String = ""
+    var wasteReportRetake: String = ""
+    var wasteReportSubmit: String = ""
+    var wasteReportUploading: String = ""
+    var wasteReportNoteLabel: String = ""
+    var wasteReportNoteHint: String = ""
+    var wasteReportUploadError: String = ""
+    var wasteReportPermissionNeeded: String = ""
+    var wasteReportGrantPermission: String = ""
+    var wasteReportAnonymous: String = ""
+    var wasteReportLabel: String = ""
+    var wasteReportWeightLabel: String = ""
+    var wasteReportContinue: String = ""
+    var wasteReportWardLabel: String = ""
+    var billScreenTitle: String = ""
+    var billListEmpty: String = ""
+    var billScanTitle: String = ""
+    var billScanHint: String = ""
+    var billCapture: String = ""
+    var billUpload: String = ""
+    var billRetake: String = ""
+    var billAnalyze: String = ""
+    var billSave: String = ""
+    var billStoreNameLabel: String = ""
+    var billAnalyzing: String = ""
+    var billScanAgain: String = ""
+    var billGreenRatio: (Int) -> String = { p0 -> "" }
+    var billGreenAmount: (Double) -> String = { p0 -> "" }
+    var billRatioGood: String = ""
+    var billRatioOk: String = ""
+    var billRatioLow: String = ""
+    var billTotal: String = ""
+    var billGreenSpend: String = ""
+    var billItems: String = ""
+    var billPermissionNeeded: String = ""
+    var billGrantPermission: String = ""
+    var billError: String = ""
+}
 
 val LocalAppStrings = compositionLocalOf<AppStrings> { EnStrings }

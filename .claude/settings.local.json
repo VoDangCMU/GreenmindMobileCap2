@@ -28,7 +28,8 @@
       "WebFetch(domain:unpkg.com)",
       "Bash(unzip -l composeApp/build/outputs/apk/debug/composeApp-debug.apk)",
       "WebFetch(domain:127.0.0.1)",
-      "WebFetch(domain:countriesnow.space)"
+      "WebFetch(domain:countriesnow.space)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

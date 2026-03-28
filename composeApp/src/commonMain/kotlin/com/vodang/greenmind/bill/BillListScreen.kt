@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.home.components.GreenAppBar
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.BillRecord
 import com.vodang.greenmind.store.BillStore
@@ -35,36 +34,13 @@ private fun ratioColor(ratio: Int): Color = when {
 private fun formatAmount(amount: Double): String = "$${"%.2f".format(amount)}"
 
 @Composable
-fun BillListScreen(onScanClick: () -> Unit, onBack: () -> Unit) {
+fun BillListScreen(onScanClick: () -> Unit) {
     val s = LocalAppStrings.current
     val bills by BillStore.bills.collectAsState()
 
-    Scaffold(
-        topBar = {
-            GreenAppBar(
-                title = "🧾 ${s.billScreenTitle}",
-                onBack = onBack,
-                trailing = {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(green50)
-                            .clickable { onScanClick() }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text("📷", fontSize = 15.sp)
-                        Text(s.billScanTitle, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = green800)
-                    }
-                },
-            )
-        },
-        containerColor = green50
-    ) { innerPadding ->
-        if (bills.isEmpty()) {
+    if (bills.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -88,15 +64,14 @@ fun BillListScreen(onScanClick: () -> Unit, onBack: () -> Unit) {
                     }
                 }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
-            ) {
-                items(bills, key = { it.id }) { bill ->
-                    BillRecordCard(bill)
-                }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
+        ) {
+            items(bills, key = { it.id }) { bill ->
+                BillRecordCard(bill)
             }
         }
     }

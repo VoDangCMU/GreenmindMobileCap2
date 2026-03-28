@@ -8,14 +8,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -27,6 +28,7 @@ import androidx.core.content.FileProvider
 import com.vodang.greenmind.api.meal.MealAnalysisResult
 import com.vodang.greenmind.api.meal.analyzeMeal
 import com.vodang.greenmind.i18n.LocalAppStrings
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -52,7 +54,7 @@ private fun createMealPhotoUri(context: Context): Uri {
 
 @Composable
 actual fun MealScanScreen(
-    onScanComplete: (plantRatio: Int, description: String) -> Unit,
+    onScanComplete: (plantRatio: Int, description: String, imageUrl: String?) -> Unit,
     onBack: () -> Unit,
 ) {
     val s = LocalAppStrings.current
@@ -63,6 +65,7 @@ actual fun MealScanScreen(
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var capturedBytes by remember { mutableStateOf<ByteArray?>(null) }
     var result by remember { mutableStateOf<MealAnalysisResult?>(null) }
+    var imageUrl by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
@@ -78,110 +81,132 @@ actual fun MealScanScreen(
         }
     }
 
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            if (bytes != null) {
+                capturedBytes = bytes
+                phase = MealScanPhase.CAPTURED
+            }
+        }
+    }
+
     when (phase) {
         MealScanPhase.IDLE -> {
             Column(
-                modifier = Modifier.fillMaxSize().background(green50),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(green50)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Brush.linearGradient(listOf(green800, green600)))
-                        .statusBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    TextButton(
-                        onClick = onBack,
-                        modifier = Modifier.align(Alignment.CenterStart)
-                    ) {
-                        Text("←", color = Color.White, fontSize = 24.sp)
-                    }
-                    Text(
-                        "🥦 ${s.mealScanTitle}",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-                error?.let { msg ->
-                    Text(msg, color = red, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp))
-                    Spacer(Modifier.height(16.dp))
-                }
+                Text(s.mealScanTitle, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = green800)
+                Spacer(Modifier.height(8.dp))
+                Text(s.mealCapture, fontSize = 14.sp, color = Color.Gray)
+                Spacer(Modifier.height(32.dp))
                 Button(
+                    modifier = Modifier.fillMaxWidth(),
                     onClick = {
                         error = null
                         val uri = createMealPhotoUri(context)
                         photoUri = uri
                         cameraLauncher.launch(uri)
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = green800),
-                    shape = CircleShape,
-                    modifier = Modifier.size(120.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = green800)
                 ) {
-                    Text("📷", fontSize = 40.sp)
+                    Text("📷 ${s.mealCapture}")
                 }
-                Spacer(Modifier.height(16.dp))
-                Text(s.mealCapture, color = Color.Gray, fontSize = 15.sp)
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { galleryLauncher.launch("image/*") }
+                ) {
+                    Text("🖼 ${s.mealUpload}")
+                }
+                Spacer(Modifier.height(12.dp))
+                TextButton(modifier = Modifier.fillMaxWidth(), onClick = onBack) {
+                    Text(s.back, color = Color.Gray)
+                }
+                if (error != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(error!!, color = red, fontSize = 13.sp)
+                }
             }
         }
 
         MealScanPhase.CAPTURED -> {
             val bytes = capturedBytes
-            Box(modifier = Modifier.fillMaxSize()) {
-                if (bytes != null) {
-                    val bitmap = remember(bytes) { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
-                    bitmap?.let { bmp ->
-                        Image(
-                            bitmap = bmp,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
+            Column(modifier = Modifier.fillMaxSize().background(Color.Black)) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .weight(1f)
+                        .fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 32.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    if (bytes != null) {
+                        val bitmap = remember(bytes) { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
+                        bitmap?.let { bmp ->
+                            Image(
+                                bitmap = bmp,
+                                contentDescription = null,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(green50)
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            capturedBytes = null
+                            val uri = createMealPhotoUri(context)
+                            photoUri = uri
+                            cameraLauncher.launch(uri)
+                        }
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                capturedBytes = null
-                                val uri = createMealPhotoUri(context)
-                                photoUri = uri
-                                cameraLauncher.launch(uri)
-                            },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                        ) {
-                            Text("🔄 ${s.mealRetake}")
-                        }
-                        Button(
-                            onClick = {
-                                phase = MealScanPhase.ANALYZING
-                                scope.launch {
-                                    try {
-                                        result = analyzeMeal(capturedBytes!!)
-                                        phase = MealScanPhase.RESULT
-                                    } catch (e: Throwable) {
-                                        error = s.mealError
-                                        phase = MealScanPhase.IDLE
-                                    }
+                        Text("🔄 ${s.mealRetake}")
+                    }
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            phase = MealScanPhase.ANALYZING
+                            scope.launch {
+                                try {
+                                    val bytes = capturedBytes!!
+                                    val token = com.vodang.greenmind.store.SettingsStore.getAccessToken()
+                                    val analysisDeferred = async { analyzeMeal(bytes) }
+                                    val uploadDeferred = if (token != null) async {
+                                        try {
+                                            com.vodang.greenmind.api.upload.requestAndUpload(
+                                                accessToken = token,
+                                                filename = "meal_${System.currentTimeMillis()}.jpg",
+                                                fileBytes = bytes,
+                                                contentType = "image/jpeg",
+                                            ).imageUrl
+                                        } catch (_: Throwable) { null }
+                                    } else null
+                                    result = analysisDeferred.await()
+                                    imageUrl = uploadDeferred?.await()
+                                    phase = MealScanPhase.RESULT
+                                } catch (e: Throwable) {
+                                    error = s.mealError
+                                    phase = MealScanPhase.IDLE
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = green800)
-                        ) {
-                            Text("🔍 ${s.mealAnalyze}")
-                        }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = green800)
+                    ) {
+                        Text("🔍 ${s.mealAnalyze}")
                     }
                 }
             }
@@ -206,41 +231,26 @@ actual fun MealScanScreen(
 
         MealScanPhase.RESULT -> {
             val res = result
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(green50)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Brush.linearGradient(listOf(green800, green600)))
-                        .statusBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    Text(
-                        "🥦 ${s.mealScanTitle}",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
                 if (res != null) {
                     val color = mealRatioColor(res.plantRatio)
                     val feedback = when {
                         res.plantRatio >= 70 -> s.mealRatioGood
                         res.plantRatio >= 40 -> s.mealRatioOk
-                        else                 -> s.mealRatioLow
+                        else -> s.mealRatioLow
                     }
                     var mealName by remember(res) { mutableStateOf(res.description) }
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .background(green50)
+                            .verticalScroll(rememberScrollState())
                             .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
                         Spacer(Modifier.height(16.dp))
+
                         Box(
                             modifier = Modifier
                                 .size(120.dp)
@@ -255,6 +265,7 @@ actual fun MealScanScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+
                         LinearProgressIndicator(
                             progress = { res.plantRatio / 100f },
                             modifier = Modifier
@@ -264,7 +275,9 @@ actual fun MealScanScreen(
                             color = color,
                             trackColor = color.copy(alpha = 0.2f)
                         )
+
                         Text(s.mealPlantRatio(res.plantRatio), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = color)
+
                         OutlinedTextField(
                             value = mealName,
                             onValueChange = { mealName = it },
@@ -277,18 +290,29 @@ actual fun MealScanScreen(
                                 cursorColor = green800
                             )
                         )
+
                         Text(feedback, fontSize = 14.sp, color = color)
-                        Spacer(Modifier.weight(1f))
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            OutlinedButton(onClick = {
-                                capturedBytes = null
-                                result = null
-                                phase = MealScanPhase.IDLE
-                            }) {
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    capturedBytes = null
+                                    result = null
+                                    imageUrl = null
+                                    phase = MealScanPhase.IDLE
+                                }
+                            ) {
                                 Text("🔄 ${s.mealScanAgain}")
                             }
                             Button(
-                                onClick = { onScanComplete(res.plantRatio, mealName) },
+                                modifier = Modifier.weight(1f),
+                                onClick = { onScanComplete(res.plantRatio, mealName, imageUrl) },
                                 colors = ButtonDefaults.buttonColors(containerColor = green800)
                             ) {
                                 Text("✅ ${s.mealSave}")
@@ -296,7 +320,6 @@ actual fun MealScanScreen(
                         }
                     }
                 }
-            }
         }
     }
 }

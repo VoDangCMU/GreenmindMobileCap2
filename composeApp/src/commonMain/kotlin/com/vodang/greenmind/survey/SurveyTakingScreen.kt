@@ -20,8 +20,10 @@ import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.survey.SurveyAnswerDto
 import com.vodang.greenmind.api.survey.SurveyDetailDto
 import com.vodang.greenmind.api.survey.SurveyQuestionDto
-import com.vodang.greenmind.home.components.GreenAppBar
+import com.vodang.greenmind.home.components.HomeTopBar
+import com.vodang.greenmind.home.components.UserType
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.store.SettingsStore
 
 private val green800 = Color(0xFF2E7D32)
 private val green600 = Color(0xFF388E3C)
@@ -50,16 +52,33 @@ fun SurveyTakingScreen(
     val question = questions[currentIndex]
     val progress = (currentIndex + 1).toFloat() / questions.size
 
+    val user by SettingsStore.user.collectAsState()
+    val userType = UserType.HOUSEHOLD
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(greenBg)
     ) {
         // Top bar
-        GreenAppBar(
-            title = survey.title,
-            subtitle = s.surveyQuestion(currentIndex + 1, questions.size),
-            onBack = onBack,
+        HomeTopBar(
+            onMenuClick = {},
+            onCameraClick = {},
+            user = user,
+            userType = userType,
+            onSwitchClick = {},
+            scrolled = false,
+        )
+
+        // Progress subtitle
+        Text(
+            s.surveyQuestion(currentIndex + 1, questions.size),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            color = Color.Gray,
+            fontSize = 12.sp
         )
 
         // Progress bar

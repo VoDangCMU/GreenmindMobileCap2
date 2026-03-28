@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 actual fun MealScanScreen(
-    onScanComplete: (plantRatio: Int, description: String) -> Unit,
+    onScanComplete: (plantRatio: Int, description: String, imageUrl: String?) -> Unit,
     onBack: () -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

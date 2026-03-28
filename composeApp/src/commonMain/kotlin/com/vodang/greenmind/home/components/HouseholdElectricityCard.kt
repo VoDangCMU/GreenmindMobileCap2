@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.fmt
 import kotlin.math.roundToInt
 
 private val blue600 = Color(0xFF1976D2)
@@ -88,7 +89,7 @@ fun HouseholdElectricityCard() {
                 val xPx = xOf(i)
                 val yPx = yOf(v)
                 Text(
-                    text = "%.1f".format(v),
+                    text = v.fmt(1),
                     modifier = Modifier.offset { IntOffset(x = (xPx - 12.dp.toPx()).roundToInt(), y = (yPx - 20.dp.toPx()).roundToInt()) },
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium,

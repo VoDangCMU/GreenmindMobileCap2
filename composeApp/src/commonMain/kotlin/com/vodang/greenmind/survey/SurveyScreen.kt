@@ -3,6 +3,7 @@ package com.vodang.greenmind.survey
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -112,29 +113,31 @@ fun SurveyScreen() {
         return
     }
 
-    when {
-        isLoading -> Box(
-            modifier = Modifier.fillMaxSize().background(greenBg),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = green800)
-        }
+    Box(modifier = Modifier.fillMaxSize().background(greenBg)) {
+            when {
+                isLoading -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = green800)
+                }
 
-        error != null -> Box(
-            modifier = Modifier.fillMaxSize().background(greenBg).padding(32.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = error!!,
-                color = Color.Gray,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center
-            )
-        }
+                error != null -> Box(
+                    modifier = Modifier.fillMaxSize().padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = error!!,
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
 
-        else -> SurveyListScreen(
-            sets = sets,
-            onSelectSet = { selectedSet = it }
-        )
+                else -> SurveyListScreen(
+                    sets = sets,
+                    onSelectSet = { selectedSet = it }
+                )
+            }
     }
 }

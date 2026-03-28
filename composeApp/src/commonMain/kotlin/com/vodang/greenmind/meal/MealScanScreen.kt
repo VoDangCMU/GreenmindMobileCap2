@@ -4,6 +4,6 @@ import androidx.compose.runtime.Composable
 
 @Composable
 expect fun MealScanScreen(
-    onScanComplete: (plantRatio: Int, description: String) -> Unit,
+    onScanComplete: (plantRatio: Int, description: String, imageUrl: String?) -> Unit,
     onBack: () -> Unit,
 )

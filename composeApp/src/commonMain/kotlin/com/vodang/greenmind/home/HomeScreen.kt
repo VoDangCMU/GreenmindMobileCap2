@@ -40,13 +40,16 @@ import com.vodang.greenmind.bill.BillScreen
 import com.vodang.greenmind.catalogue.CatalogueScreen
 import com.vodang.greenmind.energy.EnergyScreen
 import com.vodang.greenmind.meal.MealScreen
+import com.vodang.greenmind.blog.BlogScreen
 import com.vodang.greenmind.survey.SurveyScreen
 import com.vodang.greenmind.todos.TodoScreen
+import com.vodang.greenmind.wastereport.WasteReportScreen
 import com.vodang.greenmind.wastesort.WasteSortScreen
 import com.vodang.greenmind.platform.BackHandler
 import kotlinx.coroutines.launch
 
-enum class HomeDestination { WASTE_SORT, DASHBOARD, TODOS, SURVEYS }
+enum class HomeDestination { WASTE_SORT, DASHBOARD, TODOS, SURVEYS, BLOG }
+enum class DetailDest { WASTE_REPORT, MEAL, BILL, ENERGY, PROFILE, SETTINGS, CATALOGUE }
 
 @Composable
 fun HomeScreen(onLogout: () -> Unit = {}) {
@@ -61,44 +64,9 @@ fun HomeScreen(onLogout: () -> Unit = {}) {
     val volunteerScrollState  = rememberScrollState()
     var showPicker by remember { mutableStateOf(false) }
     var showLangPicker by remember { mutableStateOf(false) }
-    var showMealScreen by remember { mutableStateOf(false) }
-    var showBillScreen by remember { mutableStateOf(false) }
-    var showCatalogueScreen by remember { mutableStateOf(false) }
-    var showEnergyScreen    by remember { mutableStateOf(false) }
-    var showProfileScreen   by remember { mutableStateOf(false) }
-    var showSettingsScreen  by remember { mutableStateOf(false) }
+    var detailDest by remember { mutableStateOf<DetailDest?>(null) }
 
-    BackHandler(enabled = showMealScreen)      { showMealScreen = false }
-    BackHandler(enabled = showBillScreen)      { showBillScreen = false }
-    BackHandler(enabled = showCatalogueScreen) { showCatalogueScreen = false }
-    BackHandler(enabled = showEnergyScreen)    { showEnergyScreen = false }
-    BackHandler(enabled = showProfileScreen)   { showProfileScreen = false }
-    BackHandler(enabled = showSettingsScreen)  { showSettingsScreen = false }
-
-    if (showMealScreen) {
-        MealScreen(onBack = { showMealScreen = false })
-        return
-    }
-    if (showBillScreen) {
-        BillScreen(onBack = { showBillScreen = false })
-        return
-    }
-    if (showCatalogueScreen) {
-        CatalogueScreen(onBack = { showCatalogueScreen = false })
-        return
-    }
-    if (showEnergyScreen) {
-        EnergyScreen(onBack = { showEnergyScreen = false })
-        return
-    }
-    if (showProfileScreen) {
-        ProfileScreen(onBack = { showProfileScreen = false })
-        return
-    }
-    if (showSettingsScreen) {
-        SettingsScreen(onBack = { showSettingsScreen = false })
-        return
-    }
+    BackHandler(enabled = detailDest != null) { detailDest = null }
 
     LaunchedEffect(Unit) { Geo.service.start() }
 
@@ -114,8 +82,9 @@ fun HomeScreen(onLogout: () -> Unit = {}) {
         userType == UserType.VOLUNTEER           -> volunteerScrollState
         else                                     -> dashboardScrollState
     }
-    // Always opaque on non-dashboard pages; on dashboard, driven by scroll position.
-    val topBarScrolled = activeScrollState?.value?.let { it > 0 } ?: (destination != HomeDestination.DASHBOARD)
+    // Always opaque on detail screens; on dashboard pager, driven by scroll position.
+    val topBarScrolled = detailDest != null ||
+        activeScrollState?.value?.let { it > 0 } ?: (destination != HomeDestination.DASHBOARD)
 
     // Drawer nav → pager
     val navigateTo: (HomeDestination) -> Unit = { dest ->
@@ -124,8 +93,8 @@ fun HomeScreen(onLogout: () -> Unit = {}) {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        // Disable swipe-to-open when a map is on screen — map gestures must take priority.
-        gesturesEnabled = destination == HomeDestination.DASHBOARD && userType != UserType.COLLECTOR,
+        // Disable swipe-to-open on detail screens and when a map is on screen.
+        gesturesEnabled = detailDest == null && destination == HomeDestination.DASHBOARD && userType != UserType.COLLECTOR,
         drawerContent = {
             ModalDrawerSheet {
                 Column(modifier = Modifier.fillMaxHeight().padding(12.dp)) {
@@ -145,7 +114,7 @@ fun HomeScreen(onLogout: () -> Unit = {}) {
                         }
                     }
                     ProfilePlaceholder(user = user, onEditClick = {
-                        showProfileScreen = true
+                        detailDest = DetailDest.PROFILE
                         scope.launch { drawerState.close() }
                     })
                     HorizontalDivider()
@@ -162,12 +131,16 @@ fun HomeScreen(onLogout: () -> Unit = {}) {
                         navigateTo(HomeDestination.SURVEYS)
                         scope.launch { drawerState.close() }
                     })
+                    Text(s.blog, modifier = Modifier.padding(8.dp).clickable {
+                        navigateTo(HomeDestination.BLOG)
+                        scope.launch { drawerState.close() }
+                    })
                     Text(s.catalogue, modifier = Modifier.padding(8.dp).clickable {
-                        showCatalogueScreen = true
+                        detailDest = DetailDest.CATALOGUE
                         scope.launch { drawerState.close() }
                     })
                     Text(s.settings, modifier = Modifier.padding(8.dp).clickable {
-                        showSettingsScreen = true
+                        detailDest = DetailDest.SETTINGS
                         scope.launch { drawerState.close() }
                     })
                     Spacer(Modifier.weight(1f))
@@ -203,43 +176,58 @@ fun HomeScreen(onLogout: () -> Unit = {}) {
             },
             containerColor = Color.Transparent,
         ) { innerPadding ->
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                userScrollEnabled = true
-            ) { page ->
-                when (destinations[page]) {
-                    HomeDestination.DASHBOARD -> when (userType) {
-                        UserType.HOUSEHOLD -> HouseholdDashboard(
-                            scrollState = dashboardScrollState,
-                            onScanMealClick = { showMealScreen = true },
-                            onScanBillClick = { showBillScreen = true },
-                            onWasteSortClick = { navigateTo(HomeDestination.WASTE_SORT) },
-                            onTodosClick = { navigateTo(HomeDestination.TODOS) },
-                            onElectricityClick = { showEnergyScreen = true },
-                        )
-                        UserType.COLLECTOR -> CollectorDashboard(user = user, scrollState = collectorScrollState)
-                        UserType.VOLUNTEER -> VolunteerDashboard(user = user, scrollState = volunteerScrollState)
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                when (detailDest) {
+                    DetailDest.WASTE_REPORT -> WasteReportScreen()
+                    DetailDest.MEAL         -> MealScreen()
+                    DetailDest.BILL         -> BillScreen()
+                    DetailDest.ENERGY       -> EnergyScreen()
+                    DetailDest.PROFILE      -> ProfileScreen()
+                    DetailDest.SETTINGS     -> SettingsScreen()
+                    DetailDest.CATALOGUE    -> CatalogueScreen(
+                        onWasteReport = { detailDest = DetailDest.WASTE_REPORT }
+                    )
+                    null -> HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        userScrollEnabled = true,
+                    ) { page ->
+                        when (destinations[page]) {
+                            HomeDestination.DASHBOARD -> when (userType) {
+                                UserType.HOUSEHOLD -> HouseholdDashboard(
+                                    scrollState = dashboardScrollState,
+                                    onScanMealClick = { detailDest = DetailDest.MEAL },
+                                    onScanBillClick = { detailDest = DetailDest.BILL },
+                                    onWasteSortClick = { navigateTo(HomeDestination.WASTE_SORT) },
+                                    onTodosClick = { navigateTo(HomeDestination.TODOS) },
+                                    onElectricityClick = { detailDest = DetailDest.ENERGY },
+                                    onGarbageDropClick = { detailDest = DetailDest.WASTE_REPORT },
+                                )
+                                UserType.COLLECTOR -> CollectorDashboard(user = user, scrollState = collectorScrollState)
+                                UserType.VOLUNTEER -> VolunteerDashboard(user = user, scrollState = volunteerScrollState)
+                            }
+                            HomeDestination.WASTE_SORT -> WasteSortScreen()
+                            HomeDestination.TODOS      -> TodoScreen()
+                            HomeDestination.SURVEYS    -> SurveyScreen()
+                            HomeDestination.BLOG       -> BlogScreen()
+                        }
                     }
-                    HomeDestination.WASTE_SORT -> WasteSortScreen()
-                    HomeDestination.TODOS -> TodoScreen()
-                    HomeDestination.SURVEYS -> SurveyScreen()
                 }
-            }
 
-            if (showPicker) {
-                UserTypePickerModal(
-                    current = userType,
-                    onSelect = { userType = it },
-                    onDismiss = { showPicker = false }
-                )
-            }
-            if (showLangPicker) {
-                LanguagePickerModal(
-                    currentLang = language,
-                    onSelect = { SettingsStore.setLanguage(it) },
-                    onDismiss = { showLangPicker = false }
-                )
+                if (showPicker) {
+                    UserTypePickerModal(
+                        current = userType,
+                        onSelect = { userType = it },
+                        onDismiss = { showPicker = false }
+                    )
+                }
+                if (showLangPicker) {
+                    LanguagePickerModal(
+                        currentLang = language,
+                        onSelect = { SettingsStore.setLanguage(it) },
+                        onDismiss = { showLangPicker = false }
+                    )
+                }
             }
         }
     }

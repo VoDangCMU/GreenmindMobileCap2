@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.home.components.GreenAppBar
 import com.vodang.greenmind.home.components.OceanScoreCard
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.BillStore
@@ -26,15 +25,17 @@ import com.vodang.greenmind.store.OceanStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WalkDistanceStore
 
-private fun isToday(millis: Long) = (System.currentTimeMillis() - millis) < 86_400_000L
+import com.vodang.greenmind.time.currentTimeMillis
+
+private fun isToday(millis: Long) = (currentTimeMillis() - millis) < 86_400_000L
 
 private fun formatDistance(meters: Int): String = when {
     meters < 1000 -> "${meters} m"
-    else          -> "${"%.2f".format(meters / 1000.0)} km"
+    else          -> "${(meters / 1000.0).fmt(2)} km"
 }
 
 @Composable
-fun ProfileScreen(onBack: () -> Unit) {
+fun ProfileScreen() {
     val s = LocalAppStrings.current
     val user         by SettingsStore.user.collectAsState()
     val distMeters   by WalkDistanceStore.distanceMeters.collectAsState()
@@ -63,9 +64,6 @@ fun ProfileScreen(onBack: () -> Unit) {
             .background(Color(0xFFF1F8E9))
     ) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-
-            // ── Top bar ──────────────────────────────────────────────────────
-            GreenAppBar(title = s.profileTitle, onBack = onBack)
 
             // ── Hero card ────────────────────────────────────────────────────
             Box(

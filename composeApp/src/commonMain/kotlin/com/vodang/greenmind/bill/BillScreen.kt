@@ -4,21 +4,18 @@ import androidx.compose.runtime.*
 import com.vodang.greenmind.store.BillStore
 
 @Composable
-fun BillScreen(onBack: () -> Unit) {
+fun BillScreen() {
     var showScan by remember { mutableStateOf(false) }
 
     if (showScan) {
         BillScanScreen(
-            onScanComplete = { result, storeName ->
-                BillStore.add(storeName, result.totalAmount, result.greenAmount, result.greenRatio)
+            onScanComplete = { result, storeName, imageUrl ->
+                BillStore.add(storeName, result.totalAmount, result.greenAmount, result.greenRatio, imageUrl)
                 showScan = false
             },
             onBack = { showScan = false }
         )
     } else {
-        BillListScreen(
-            onScanClick = { showScan = true },
-            onBack = onBack
-        )
+        BillListScreen(onScanClick = { showScan = true })
     }
 }

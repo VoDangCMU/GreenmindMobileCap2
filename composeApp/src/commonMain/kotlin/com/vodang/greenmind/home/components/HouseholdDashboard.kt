@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.BillStore
 import com.vodang.greenmind.store.MealStore
+import com.vodang.greenmind.time.currentTimeMillis
 
 private val green800h = Color(0xFF2E7D32)
 private val green600h = Color(0xFF388E3C)
@@ -31,7 +32,7 @@ private val orange50h = Color(0xFFFFF3E0)
 private val red600    = Color(0xFFC62828)
 
 private fun isToday(timestampMillis: Long): Boolean =
-    (System.currentTimeMillis() - timestampMillis) < 86_400_000L
+    (currentTimeMillis() - timestampMillis) < 86_400_000L
 
 @Composable
 fun HouseholdDashboard(
@@ -41,6 +42,7 @@ fun HouseholdDashboard(
     onWasteSortClick: () -> Unit = {},
     onTodosClick: () -> Unit = {},
     onElectricityClick: () -> Unit = {},
+    onGarbageDropClick: () -> Unit = {},
 ) {
     val s = LocalAppStrings.current
     val meals by MealStore.meals.collectAsState()
@@ -142,7 +144,7 @@ fun HouseholdDashboard(
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FeatureButton("📷", s.wasteSort, s.wasteSortDesc, green50h, green800h, Modifier.weight(1f)) { }
-                FeatureButton("🗑️", s.garbageDrop, s.garbageDropDesc, orange50h, Color(0xFFE65100), Modifier.weight(1f)) { }
+                FeatureButton("🗑️", s.garbageDrop, s.garbageDropDesc, orange50h, Color(0xFFE65100), Modifier.weight(1f)) { onGarbageDropClick() }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FeatureButton("📋", s.todos, s.todosDesc, Color(0xFFF3E5F5), Color(0xFF6A1B9A), Modifier.weight(1f)) { onTodosClick() }

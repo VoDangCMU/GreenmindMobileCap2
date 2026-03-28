@@ -2,9 +2,11 @@ package com.vodang.greenmind.camera
 
 import kotlinx.coroutines.flow.Flow
 
-data class Photo(val bytes: ByteArray, val timestampMillis: Long = System.currentTimeMillis())
+import com.vodang.greenmind.time.currentTimeMillis
 
-data class Frame(val bytes: ByteArray, val width: Int, val height: Int, val timestampMillis: Long = System.currentTimeMillis())
+data class Photo(val bytes: ByteArray, val timestampMillis: Long = currentTimeMillis())
+
+data class Frame(val bytes: ByteArray, val width: Int, val height: Int, val timestampMillis: Long = currentTimeMillis())
 
 expect class CameraService() {
     val photoFlow: Flow<Photo>

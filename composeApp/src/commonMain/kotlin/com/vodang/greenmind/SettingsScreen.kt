@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.home.components.GreenAppBar
 import com.vodang.greenmind.home.components.LanguagePickerModal
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.GpsTick
@@ -25,9 +24,8 @@ import com.vodang.greenmind.store.SettingsStore
 private val green800 = Color(0xFF2E7D32)
 private val green50  = Color(0xFFE8F5E9)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen() {
     val s = LocalAppStrings.current
 
     val intervalMs      by SettingsStore.locationIntervalMs.collectAsState()
@@ -63,22 +61,12 @@ fun SettingsScreen(onBack: () -> Unit) {
 
     val scrollState = rememberScrollState()
 
-    Scaffold(
-        topBar = {
-            GreenAppBar(
-                title = s.settings,
-                onBack = onBack,
-                scrolled = scrollState.value > 0,
-            )
-        },
-        containerColor = Color(0xFFF1F8E9),
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(innerPadding),
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF1F8E9))
+            .verticalScroll(scrollState),
+    ) {
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -271,7 +259,6 @@ fun SettingsScreen(onBack: () -> Unit) {
 
                 Spacer(Modifier.height(32.dp))
             }
-        }
     }
 
     if (showLangPicker) {
@@ -303,10 +290,10 @@ private fun GpsTickRow(tick: GpsTick) {
     val hh = (totalSec / 3600) % 24
     val mm = (totalSec / 60)   % 60
     val ss = totalSec % 60
-    val timeLabel = "%02d:%02d:%02d".format(hh, mm, ss)
+    val timeLabel = "%02d:%02d:%02d".fmt(hh, mm, ss)
 
     val distLabel = if (tick.distanceMeters < 1.0) "stationary"
-                    else "%.0f m".format(tick.distanceMeters)
+                    else "${tick.distanceMeters.fmt(0)} m"
 
     val addrShort = if (tick.address.length > 40) tick.address.take(37) + "…" else tick.address
 
@@ -330,7 +317,7 @@ private fun GpsTickRow(tick: GpsTick) {
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                "%.5f, %.5f".format(tick.latitude, tick.longitude),
+                "%.5f, %.5f".fmt(tick.latitude, tick.longitude),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF212121),
