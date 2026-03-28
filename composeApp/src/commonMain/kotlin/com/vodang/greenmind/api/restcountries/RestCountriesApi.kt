@@ -1,5 +1,6 @@
 package com.vodang.greenmind.api.restcountries
 
+import com.vodang.greenmind.api.auth.ApiException
 import com.vodang.greenmind.api.httpClient
 import com.vodang.greenmind.util.AppLogger
 import io.ktor.client.call.*
@@ -25,17 +26,25 @@ data class CountryDto(
 
 private var cachedCountries: List<CountryDto>? = null
 
-private suspend inline fun <reified T> checkResponse(resp: HttpResponse): T =
-    if (resp.status.isSuccess()) resp.body()
-    else throw Exception("RestCountries ${resp.status.value}: ${resp.bodyAsText()}")
-
 suspend fun getAllCountries(): List<CountryDto> {
     cachedCountries?.let { return it }
     AppLogger.i("Countries", "getAllCountries")
-    val resp = httpClient.get("$REST_COUNTRIES_BASE/all") {
-        parameter("fields", "name,flag,cca2")
+    try {
+        val resp = httpClient.get("$REST_COUNTRIES_BASE/all") {
+            parameter("fields", "name,flag,cca2")
+        }
+        if (!resp.status.isSuccess()) {
+            val text = resp.bodyAsText()
+            AppLogger.e("Countries", "getAllCountries failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+        val result = resp.body<List<CountryDto>>().sortedBy { it.name.common }
+        cachedCountries = result
+        return result
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Countries", "getAllCountries error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
-    val result = checkResponse<List<CountryDto>>(resp).sortedBy { it.name.common }
-    cachedCountries = result
-    return result
 }

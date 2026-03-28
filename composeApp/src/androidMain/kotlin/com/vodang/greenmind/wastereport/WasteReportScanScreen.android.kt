@@ -27,11 +27,16 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.text.KeyboardOptions
+import com.vodang.greenmind.api.nominatim.ReverseOptions
+import com.vodang.greenmind.api.nominatim.nominatimReverse
 import com.vodang.greenmind.api.upload.requestAndUpload
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.location.Geo
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.util.AppLogger
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 private val green800 = Color(0xFF2E7D32)
@@ -74,6 +79,11 @@ actual fun WasteReportScanScreen(
     var wasteKgText by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var wardName by remember { mutableStateOf("") }
+
+    // GPS + reverse-geocode state
+    var currentLat by remember { mutableStateOf(0.0) }
+    var currentLng by remember { mutableStateOf(0.0) }
+    var isLoadingLocation by remember { mutableStateOf(false) }
 
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -159,6 +169,31 @@ actual fun WasteReportScanScreen(
         // ── Step 3: Fill in report details ───────────────────────────────────
         WasteReportScanPhase.FORM -> {
             val bytes = capturedBytes
+
+            // Auto-fill wardName from GPS on first entry
+            LaunchedEffect(Unit) {
+                isLoadingLocation = true
+                try {
+                    val loc = withTimeoutOrNull(5_000L) { Geo.service.locationUpdates.first() }
+                    if (loc != null) {
+                        currentLat = loc.latitude
+                        currentLng = loc.longitude
+                        val place = nominatimReverse(
+                            loc.latitude, loc.longitude,
+                            ReverseOptions(zoom = 18, addressDetails = true, language = "vi")
+                        )
+                        val suburb = place.address?.suburb ?: place.address?.neighbourhood
+                        if (!suburb.isNullOrBlank() && wardName.isBlank()) {
+                            wardName = suburb
+                        }
+                    }
+                } catch (_: Throwable) {
+                    // silent — user can type manually
+                } finally {
+                    isLoadingLocation = false
+                }
+            }
+
             Column(modifier = Modifier.fillMaxSize().background(green50)) {
                 // In-content back button to return to photo preview
                 TextButton(
@@ -250,14 +285,25 @@ actual fun WasteReportScanScreen(
                         )
                     )
 
-                    // Ward / location name
+                    // Ward / location name (auto-filled from GPS reverse-geocode)
                     OutlinedTextField(
                         value = wardName,
                         onValueChange = { wardName = it },
                         label = { Text(s.wasteReportWardLabel) },
-                        placeholder = { Text("e.g. Hải Châu 1", color = Color.LightGray) },
+                        placeholder = {
+                            // TODO: Move "Đang lấy vị trí…" to i18n AppStrings (wasteReportLocating).
+                            if (isLoadingLocation) Text("Đang lấy vị trí…", color = Color.LightGray)
+                            else Text("e.g. Phường Hải Châu 1", color = Color.LightGray)
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        trailingIcon = {
+                            if (isLoadingLocation) CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = green600,
+                            )
+                        },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = green800,
                             focusedLabelColor = green800,
@@ -307,8 +353,8 @@ actual fun WasteReportScanScreen(
                                         wasteType = selectedWasteType,
                                         wasteKg = kg,
                                         description = description.ifBlank { wasteTypeOptions.find { it.first == selectedWasteType }?.second?.trim() ?: selectedWasteType },
-                                        lat = 0.0,
-                                        lng = 0.0,
+                                        lat = currentLat,
+                                        lng = currentLng,
                                         wardName = wardName.ifBlank { "Unknown" },
                                     )
                                 )

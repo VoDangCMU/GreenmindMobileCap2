@@ -108,89 +108,131 @@ data class BatchTodoResponse(
 /** POST /todos */
 suspend fun createTodo(accessToken: String, request: CreateTodoRequest): CreateTodoResponse {
     AppLogger.i("Todo", "createTodo title=${request.title} parentId=${request.parentId}")
-    val resp = httpClient.post("$BASE_URL/todos") {
-        header("Authorization", "Bearer $accessToken")
-        contentType(ContentType.Application.Json)
-        setBody(request)
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Todo", "createTodo failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.post("$BASE_URL/todos") {
+            header("Authorization", "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Todo", "createTodo failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Todo", "createTodo error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** GET /todos */
 suspend fun getTodos(accessToken: String): GetTodosResponse {
     AppLogger.i("Todo", "getTodos")
-    val resp = httpClient.get("$BASE_URL/todos") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Todo", "getTodos failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.get("$BASE_URL/todos") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Todo", "getTodos failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Todo", "getTodos error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** POST /todos/batch */
 suspend fun batchCreateTodos(accessToken: String, request: BatchTodoRequest): BatchTodoResponse {
     AppLogger.i("Todo", "batchCreateTodos count=${request.todos.size}")
-    val resp = httpClient.post("$BASE_URL/todos/batch") {
-        header("Authorization", "Bearer $accessToken")
-        contentType(ContentType.Application.Json)
-        setBody(request)
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Todo", "batchCreateTodos failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.post("$BASE_URL/todos/batch") {
+            header("Authorization", "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Todo", "batchCreateTodos failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Todo", "batchCreateTodos error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** PUT /todos/{id} */
 suspend fun updateTodo(accessToken: String, id: String, request: UpdateTodoRequest) {
     AppLogger.i("Todo", "updateTodo id=$id")
-    val resp = httpClient.put("$BASE_URL/todos/$id") {
-        header("Authorization", "Bearer $accessToken")
-        contentType(ContentType.Application.Json)
-        setBody(request)
-    }
-    if (!resp.status.isSuccess()) {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Todo", "updateTodo failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.put("$BASE_URL/todos/$id") {
+            header("Authorization", "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (!resp.status.isSuccess()) {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Todo", "updateTodo failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Todo", "updateTodo error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** DELETE /todos/{id} */
 suspend fun deleteTodo(accessToken: String, id: String) {
     AppLogger.i("Todo", "deleteTodo id=$id")
-    val resp = httpClient.delete("$BASE_URL/todos/$id") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    if (!resp.status.isSuccess()) {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Todo", "deleteTodo failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.delete("$BASE_URL/todos/$id") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        if (!resp.status.isSuccess()) {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Todo", "deleteTodo failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Todo", "deleteTodo error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** PATCH /todos/{id}/toggle */
 suspend fun toggleTodo(accessToken: String, id: String) {
     AppLogger.i("Todo", "toggleTodo id=$id")
-    val resp = httpClient.patch("$BASE_URL/todos/$id/toggle") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    if (!resp.status.isSuccess()) {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Todo", "toggleTodo failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.patch("$BASE_URL/todos/$id/toggle") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        if (!resp.status.isSuccess()) {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Todo", "toggleTodo failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Todo", "toggleTodo error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }

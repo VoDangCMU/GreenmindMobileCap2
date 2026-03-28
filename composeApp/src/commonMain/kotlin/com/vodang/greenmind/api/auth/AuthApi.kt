@@ -65,17 +65,23 @@ class ApiException(val code: Int, override val message: String) : Exception(mess
  */
 suspend fun registerWithEmail(request: RegisterEmailRequest): RegisterEmailResponse {
     AppLogger.i("Auth", "registerWithEmail email=${request.email}")
-    val resp = httpClient.post("$BASE_URL/auth/register/email") {
-        contentType(ContentType.Application.Json)
-        setBody(request)
-    }
-
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Auth", "registerWithEmail failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.post("$BASE_URL/auth/register/email") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Auth", "registerWithEmail failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Auth", "registerWithEmail error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
@@ -97,16 +103,22 @@ data class LoginEmailResponse(
 
 suspend fun loginWithEmail(request: LoginEmailRequest): LoginEmailResponse {
     AppLogger.i("Auth", "loginWithEmail email=${request.email}")
-    val resp = httpClient.post("$BASE_URL/auth/login/email") {
-        contentType(ContentType.Application.Json)
-        setBody(request)
-    }
-
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Auth", "loginWithEmail failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.post("$BASE_URL/auth/login/email") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Auth", "loginWithEmail failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Auth", "loginWithEmail error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }

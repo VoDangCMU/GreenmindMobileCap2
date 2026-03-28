@@ -130,28 +130,40 @@ data class SubmitUserAnswersResponse(
 
 /** POST /user-answers/submit */
 suspend fun submitUserAnswers(accessToken: String, request: SubmitUserAnswersRequest): SubmitUserAnswersResponse {
-    val resp = httpClient.post("$BASE_URL/user-answers/submit") {
-        header("Authorization", "Bearer $accessToken")
-        contentType(ContentType.Application.Json)
-        setBody(request)
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.post("$BASE_URL/user-answers/submit") {
+            header("Authorization", "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** GET /question-sets/my-sets */
 suspend fun getQuestionSets(accessToken: String): GetQuestionSetsResponse {
-    val resp = httpClient.get("$BASE_URL/question-sets/my-sets") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.get("$BASE_URL/question-sets/my-sets") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        throw ApiException(0, e.message ?: "Network error")
     }
 }

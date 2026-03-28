@@ -47,6 +47,10 @@ fun BlogScreen() {
                 }
             }
 
+            // TODO: Implement blog post list.
+            //       Expected source: GET /blog/posts  → List<BlogPostDto> (title, summary, imageUrl, publishedAt)
+            //       Replace the empty-state box below with a LazyColumn of BlogPostCard composables.
+            //       Add a detail screen (BlogPostScreen) navigated to on card tap.
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,

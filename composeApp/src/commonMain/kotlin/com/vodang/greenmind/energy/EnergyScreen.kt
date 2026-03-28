@@ -39,7 +39,10 @@ private val bgGray   = Color(0xFFF5F5F5)
 fun EnergyScreen() {
     val s = LocalAppStrings.current
 
-    // Static data — replace with real API data when available
+    // TODO: Replace hardcoded energy data with real readings from the API.
+    //       Expected source: GET /energy/readings?range=week  → List<Float> (kWh per day)
+    //                        GET /energy/readings?range=month → monthTotal: Float
+    //       Wire into an EnergyStore with StateFlow so EnergyScreen stays stateless.
     val weekValues = listOf(3.8f, 4.1f, 3.5f, 5.2f, 4.8f, 6.1f, 4.2f)
     val todayKwh   = weekValues.last()
     val weekTotal  = weekValues.sum()
@@ -99,7 +102,8 @@ fun EnergyScreen() {
                                 .background(Color.White.copy(alpha = 0.15f))
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
-                            Text("▲5% vs yesterday", fontSize = 12.sp, color = Color.White)
+                            // TODO: Calculate real delta vs yesterday from the API data. Move string to i18n.
+                        Text("▲5% vs yesterday", fontSize = 12.sp, color = Color.White)
                         }
                     }
                     Text(

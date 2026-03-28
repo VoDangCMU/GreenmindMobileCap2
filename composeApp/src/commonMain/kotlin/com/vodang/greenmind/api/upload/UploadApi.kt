@@ -6,11 +6,9 @@ import com.vodang.greenmind.api.auth.ErrorResponse
 import com.vodang.greenmind.util.AppLogger
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 private const val BUCKET_URL = "https://greenmind-bucket.khoav4.com"
 private const val WORKER_URL = "https://upload-worker.nbk2124-z.workers.dev"
@@ -39,12 +37,6 @@ data class RequestUploadUrlResponse(
     val contentType: String,
 )
 
-@Serializable
-data class UploadApiResponse(
-    val success: Boolean,
-    val key: String,
-)
-
 // ── API calls ─────────────────────────────────────────────────────────────────
 
 /**
@@ -60,6 +52,7 @@ suspend fun requestAndUpload(
     contentType: String,
 ): UploadResult {
     AppLogger.i("Upload", "requestAndUpload filename=$filename bytes=${fileBytes.size}")
+    try {
 
     // Step 1: get upload URL from worker
     val urlResp = httpClient.post("$WORKER_URL/upload-url") {
@@ -75,22 +68,25 @@ suspend fun requestAndUpload(
     val uploadUrlResp = urlResp.body<RequestUploadUrlResponse>()
     AppLogger.i("Upload", "got uploadUrl key=${uploadUrlResp.key}")
 
-    // Step 2: upload file to the returned endpoint
-    val uploadResp = httpClient.post(uploadUrlResp.uploadUrl) {
-        setBody(MultiPartFormDataContent(formData {
-            append("file", fileBytes, Headers.build {
-                append(HttpHeaders.ContentType, uploadUrlResp.contentType)
-                append(HttpHeaders.ContentDisposition, "filename=\"$filename\"")
-            })
-        }))
+    // Step 2: PUT raw bytes directly to the pre-signed R2 URL
+    val uploadResp = httpClient.put(uploadUrlResp.uploadUrl) {
+        header(HttpHeaders.ContentType, uploadUrlResp.contentType)
+        setBody(fileBytes)
     }
     if (!uploadResp.status.isSuccess()) {
         val text = try { uploadResp.bodyAsText() } catch (_: Throwable) { "Upload failed" }
         AppLogger.e("Upload", "uploadFile failed: ${uploadResp.status.value} $text")
         throw ApiException(uploadResp.status.value, text)
     }
-    val body = Json.decodeFromString<UploadApiResponse>(uploadResp.bodyAsText())
-    val imageUrl = "$BUCKET_URL/${body.key}"
-    AppLogger.i("Upload", "upload success key=${body.key}")
-    return UploadResult(key = body.key, imageUrl = imageUrl)
+    val key = uploadUrlResp.key
+    val imageUrl = "$BUCKET_URL/$key"
+    AppLogger.i("Upload", "upload success key=$key")
+    return UploadResult(key = key, imageUrl = imageUrl)
+
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Upload", "requestAndUpload error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
 }

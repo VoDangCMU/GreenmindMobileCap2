@@ -50,6 +50,7 @@ fun OceanScoreCard() {
                     Text(s.oceanTitle, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.DarkGray)
                     Text(s.oceanSubtitle, fontSize = 11.sp, color = Color.Gray)
                 }
+                // TODO: Add a total OCEAN score badge or trend indicator here (e.g. circular score dial).
                 Box(modifier = Modifier.size(52.dp), contentAlignment = Alignment.Center) { }
             }
             Spacer(Modifier.height(12.dp))

@@ -242,6 +242,9 @@ private fun TodoItemContent(item: TodoItem, depth: Int) {
                 contentAlignment = Alignment.Center
             ) {
                 TextButton(
+                    // TODO: Call AI endpoint to auto-generate subtasks for this todo item.
+                    //       Expected: POST /todos/{item.id}/ai-expand  → List<TodoItem>
+                    //       On success call TodoStore.addChildren(item.id, generatedChildren).
                     onClick = { /* TODO: AI auto-generate subtasks */ },
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier.size(28.dp)

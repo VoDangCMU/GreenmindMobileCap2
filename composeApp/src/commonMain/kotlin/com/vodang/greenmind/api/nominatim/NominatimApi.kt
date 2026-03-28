@@ -170,20 +170,27 @@ suspend fun nominatimSearch(
     options: SearchOptions = SearchOptions(),
 ): List<NominatimPlace> {
     AppLogger.i("Nominatim", "search q=$query")
-    val resp = httpClient.get("$NOMINATIM_BASE/search") {
-        nominatimDefaults(options.language)
-        parameter("q", query)
-        parameter("limit", options.limit)
-        parameter("addressdetails", boolParam(options.addressDetails))
-        parameter("namedetails", boolParam(options.nameDetails))
-        parameter("extratags", boolParam(options.extraTags))
-        if (!options.countryCodes.isNullOrBlank()) parameter("countrycodes", options.countryCodes)
-        if (!options.viewbox.isNullOrBlank()) parameter("viewbox", options.viewbox)
-        if (options.bounded) parameter("bounded", 1)
-        if (!options.layer.isNullOrBlank()) parameter("layer", options.layer)
-        if (!options.featureType.isNullOrBlank()) parameter("featureType", options.featureType)
+    try {
+        val resp = httpClient.get("$NOMINATIM_BASE/search") {
+            nominatimDefaults(options.language)
+            parameter("q", query)
+            parameter("limit", options.limit)
+            parameter("addressdetails", boolParam(options.addressDetails))
+            parameter("namedetails", boolParam(options.nameDetails))
+            parameter("extratags", boolParam(options.extraTags))
+            if (!options.countryCodes.isNullOrBlank()) parameter("countrycodes", options.countryCodes)
+            if (!options.viewbox.isNullOrBlank()) parameter("viewbox", options.viewbox)
+            if (options.bounded) parameter("bounded", 1)
+            if (!options.layer.isNullOrBlank()) parameter("layer", options.layer)
+            if (!options.featureType.isNullOrBlank()) parameter("featureType", options.featureType)
+        }
+        return checkResponse(resp)
+    } catch (e: NominatimException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Nominatim", "nominatimSearch error: ${e.message}")
+        throw NominatimException(0, e.message ?: "Network error")
     }
-    return checkResponse(resp)
 }
 
 /**
@@ -200,23 +207,30 @@ suspend fun nominatimSearchStructured(
     options: SearchOptions = SearchOptions(),
 ): List<NominatimPlace> {
     AppLogger.i("Nominatim", "searchStructured city=$city country=$country")
-    val resp = httpClient.get("$NOMINATIM_BASE/search") {
-        nominatimDefaults(options.language)
-        if (!street.isNullOrBlank()) parameter("street", street)
-        if (!city.isNullOrBlank()) parameter("city", city)
-        if (!county.isNullOrBlank()) parameter("county", county)
-        if (!state.isNullOrBlank()) parameter("state", state)
-        if (!country.isNullOrBlank()) parameter("country", country)
-        if (!postalCode.isNullOrBlank()) parameter("postalcode", postalCode)
-        parameter("limit", options.limit)
-        parameter("addressdetails", boolParam(options.addressDetails))
-        parameter("namedetails", boolParam(options.nameDetails))
-        parameter("extratags", boolParam(options.extraTags))
-        if (!options.countryCodes.isNullOrBlank()) parameter("countrycodes", options.countryCodes)
-        if (!options.viewbox.isNullOrBlank()) parameter("viewbox", options.viewbox)
-        if (options.bounded) parameter("bounded", 1)
+    try {
+        val resp = httpClient.get("$NOMINATIM_BASE/search") {
+            nominatimDefaults(options.language)
+            if (!street.isNullOrBlank()) parameter("street", street)
+            if (!city.isNullOrBlank()) parameter("city", city)
+            if (!county.isNullOrBlank()) parameter("county", county)
+            if (!state.isNullOrBlank()) parameter("state", state)
+            if (!country.isNullOrBlank()) parameter("country", country)
+            if (!postalCode.isNullOrBlank()) parameter("postalcode", postalCode)
+            parameter("limit", options.limit)
+            parameter("addressdetails", boolParam(options.addressDetails))
+            parameter("namedetails", boolParam(options.nameDetails))
+            parameter("extratags", boolParam(options.extraTags))
+            if (!options.countryCodes.isNullOrBlank()) parameter("countrycodes", options.countryCodes)
+            if (!options.viewbox.isNullOrBlank()) parameter("viewbox", options.viewbox)
+            if (options.bounded) parameter("bounded", 1)
+        }
+        return checkResponse(resp)
+    } catch (e: NominatimException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Nominatim", "nominatimSearchStructured error: ${e.message}")
+        throw NominatimException(0, e.message ?: "Network error")
     }
-    return checkResponse(resp)
 }
 
 /**
@@ -231,16 +245,23 @@ suspend fun nominatimReverse(
     options: ReverseOptions = ReverseOptions(),
 ): NominatimPlace {
     AppLogger.i("Nominatim", "reverse lat=$lat lon=$lon")
-    val resp = httpClient.get("$NOMINATIM_BASE/reverse") {
-        nominatimDefaults(options.language)
-        parameter("lat", lat)
-        parameter("lon", lon)
-        parameter("zoom", options.zoom)
-        parameter("addressdetails", boolParam(options.addressDetails))
-        parameter("namedetails", boolParam(options.nameDetails))
-        parameter("extratags", boolParam(options.extraTags))
+    try {
+        val resp = httpClient.get("$NOMINATIM_BASE/reverse") {
+            nominatimDefaults(options.language)
+            parameter("lat", lat)
+            parameter("lon", lon)
+            parameter("zoom", options.zoom)
+            parameter("addressdetails", boolParam(options.addressDetails))
+            parameter("namedetails", boolParam(options.nameDetails))
+            parameter("extratags", boolParam(options.extraTags))
+        }
+        return checkResponse(resp)
+    } catch (e: NominatimException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Nominatim", "nominatimReverse error: ${e.message}")
+        throw NominatimException(0, e.message ?: "Network error")
     }
-    return checkResponse(resp)
 }
 
 /**
@@ -256,14 +277,21 @@ suspend fun nominatimLookup(
     options: LookupOptions = LookupOptions(),
 ): List<NominatimPlace> {
     AppLogger.i("Nominatim", "lookup osmIds=$osmIds")
-    val resp = httpClient.get("$NOMINATIM_BASE/lookup") {
-        nominatimDefaults(options.language)
-        parameter("osm_ids", osmIds.joinToString(","))
-        parameter("addressdetails", boolParam(options.addressDetails))
-        parameter("namedetails", boolParam(options.nameDetails))
-        parameter("extratags", boolParam(options.extraTags))
+    try {
+        val resp = httpClient.get("$NOMINATIM_BASE/lookup") {
+            nominatimDefaults(options.language)
+            parameter("osm_ids", osmIds.joinToString(","))
+            parameter("addressdetails", boolParam(options.addressDetails))
+            parameter("namedetails", boolParam(options.nameDetails))
+            parameter("extratags", boolParam(options.extraTags))
+        }
+        return checkResponse(resp)
+    } catch (e: NominatimException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Nominatim", "nominatimLookup error: ${e.message}")
+        throw NominatimException(0, e.message ?: "Network error")
     }
-    return checkResponse(resp)
 }
 
 /**
@@ -275,19 +303,26 @@ suspend fun nominatimDetailsByPlaceId(
     options: DetailsOptions = DetailsOptions(),
 ): NominatimDetails {
     AppLogger.i("Nominatim", "detailsByPlaceId placeId=$placeId")
-    val resp = httpClient.get("$NOMINATIM_BASE/details") {
-        header("User-Agent", USER_AGENT)
-        if (options.language != null) header("Accept-Language", options.language)
-        parameter("format", "json")
-        parameter("place_id", placeId)
-        parameter("addressdetails", boolParam(options.addressDetails))
-        parameter("keywords", boolParam(options.keywords))
-        parameter("linkedplaces", boolParam(options.linkedPlaces))
-        parameter("hierarchy", boolParam(options.hierarchy))
-        parameter("group_hierarchy", boolParam(options.groupHierarchy))
-        parameter("polygon_geojson", boolParam(options.polygonGeojson))
+    try {
+        val resp = httpClient.get("$NOMINATIM_BASE/details") {
+            header("User-Agent", USER_AGENT)
+            if (options.language != null) header("Accept-Language", options.language)
+            parameter("format", "json")
+            parameter("place_id", placeId)
+            parameter("addressdetails", boolParam(options.addressDetails))
+            parameter("keywords", boolParam(options.keywords))
+            parameter("linkedplaces", boolParam(options.linkedPlaces))
+            parameter("hierarchy", boolParam(options.hierarchy))
+            parameter("group_hierarchy", boolParam(options.groupHierarchy))
+            parameter("polygon_geojson", boolParam(options.polygonGeojson))
+        }
+        return checkResponse(resp)
+    } catch (e: NominatimException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Nominatim", "nominatimDetailsByPlaceId error: ${e.message}")
+        throw NominatimException(0, e.message ?: "Network error")
     }
-    return checkResponse(resp)
 }
 
 /**
@@ -303,20 +338,27 @@ suspend fun nominatimDetailsByOsmId(
     options: DetailsOptions = DetailsOptions(),
 ): NominatimDetails {
     AppLogger.i("Nominatim", "detailsByOsmId type=$osmType id=$osmId")
-    val resp = httpClient.get("$NOMINATIM_BASE/details") {
-        header("User-Agent", USER_AGENT)
-        if (options.language != null) header("Accept-Language", options.language)
-        parameter("format", "json")
-        parameter("osmtype", osmType.uppercase().take(1))
-        parameter("osmid", osmId)
-        parameter("addressdetails", boolParam(options.addressDetails))
-        parameter("keywords", boolParam(options.keywords))
-        parameter("linkedplaces", boolParam(options.linkedPlaces))
-        parameter("hierarchy", boolParam(options.hierarchy))
-        parameter("group_hierarchy", boolParam(options.groupHierarchy))
-        parameter("polygon_geojson", boolParam(options.polygonGeojson))
+    try {
+        val resp = httpClient.get("$NOMINATIM_BASE/details") {
+            header("User-Agent", USER_AGENT)
+            if (options.language != null) header("Accept-Language", options.language)
+            parameter("format", "json")
+            parameter("osmtype", osmType.uppercase().take(1))
+            parameter("osmid", osmId)
+            parameter("addressdetails", boolParam(options.addressDetails))
+            parameter("keywords", boolParam(options.keywords))
+            parameter("linkedplaces", boolParam(options.linkedPlaces))
+            parameter("hierarchy", boolParam(options.hierarchy))
+            parameter("group_hierarchy", boolParam(options.groupHierarchy))
+            parameter("polygon_geojson", boolParam(options.polygonGeojson))
+        }
+        return checkResponse(resp)
+    } catch (e: NominatimException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Nominatim", "nominatimDetailsByOsmId error: ${e.message}")
+        throw NominatimException(0, e.message ?: "Network error")
     }
-    return checkResponse(resp)
 }
 
 /**
@@ -325,9 +367,16 @@ suspend fun nominatimDetailsByOsmId(
  */
 suspend fun nominatimStatus(): NominatimStatus {
     AppLogger.i("Nominatim", "status")
-    val resp = httpClient.get("$NOMINATIM_BASE/status") {
-        header("User-Agent", USER_AGENT)
-        parameter("format", "json")
+    try {
+        val resp = httpClient.get("$NOMINATIM_BASE/status") {
+            header("User-Agent", USER_AGENT)
+            parameter("format", "json")
+        }
+        return checkResponse(resp)
+    } catch (e: NominatimException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Nominatim", "nominatimStatus error: ${e.message}")
+        throw NominatimException(0, e.message ?: "Network error")
     }
-    return checkResponse(resp)
 }

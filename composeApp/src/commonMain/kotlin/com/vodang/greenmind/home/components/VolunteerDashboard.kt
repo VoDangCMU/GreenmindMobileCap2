@@ -43,6 +43,9 @@ data class VolunteerEvent(
 fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = rememberScrollState()) {
     val s = LocalAppStrings.current
 
+    // TODO: Replace with live volunteer event data from the API.
+    //       Expected source: GET /volunteer/events?status=active  and  ?status=upcoming
+    //       Move into a VolunteerStore with a StateFlow so the list updates reactively.
     val activeEvents = listOf(
         VolunteerEvent(1, "Dọn rác bãi biển Mỹ Khê", "Bãi biển Mỹ Khê, Sơn Trà", "19/03/2026 · 07:00", 34, true, true),
         VolunteerEvent(2, "Trồng cây xanh Hải Châu", "Công viên 29/3, Hải Châu", "19/03/2026 · 14:00", 18, false, true),
@@ -85,7 +88,10 @@ fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
             modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            MetricCard("⏱️", s.volunteerHoursLabel, s.volunteerHoursValue, "", teal50v, teal600v, Modifier.weight(1f).aspectRatio(1f))
+            // TODO: Replace hardcoded metric values (volunteerHoursValue, volunteerEventsValue,
+        //       volunteerPointsValue) in i18n strings with real data from the user profile API.
+        //       Expected source: GET /volunteer/stats  (hours, events joined, points)
+        MetricCard("⏱️", s.volunteerHoursLabel, s.volunteerHoursValue, "", teal50v, teal600v, Modifier.weight(1f).aspectRatio(1f))
             MetricCard("🗓️", s.volunteerEventsLabel, s.volunteerEventsValue, "", green50v, green800v, Modifier.weight(1f).aspectRatio(1f))
             MetricCard("⭐", s.volunteerPointsLabel, s.volunteerPointsValue, "", blue50v, blue600v, Modifier.weight(1f).aspectRatio(1f))
         }
@@ -148,6 +154,9 @@ private fun VolunteerEventRow(event: VolunteerEvent, joinLabel: String, register
             }
         } else {
             Button(
+                // TODO: Call event registration API instead of toggling local state.
+                //       Expected: POST /volunteer/events/{event.id}/register
+                //       On success update the event list from the store, not local mutableState.
                 onClick = { registered = true },
                 colors = ButtonDefaults.buttonColors(containerColor = green800v),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),

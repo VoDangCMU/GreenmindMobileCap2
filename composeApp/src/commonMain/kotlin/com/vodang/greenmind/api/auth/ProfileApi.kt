@@ -52,15 +52,21 @@ fun ProfileDto.toUserDto() = UserDto(
  */
 suspend fun getProfile(accessToken: String): ProfileDto {
     AppLogger.i("Profile", "getProfile")
-    val resp = httpClient.get("$BASE_URL/auth/profile") {
-        header("Authorization", "Bearer $accessToken")
-    }
-
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Profile", "getProfile failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.get("$BASE_URL/auth/profile") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Profile", "getProfile failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Profile", "getProfile error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }

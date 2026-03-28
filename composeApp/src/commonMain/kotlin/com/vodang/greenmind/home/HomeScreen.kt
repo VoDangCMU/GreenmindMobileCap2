@@ -167,6 +167,8 @@ fun HomeScreen(onLogout: () -> Unit = {}) {
             topBar = {
                 HomeTopBar(
                     onMenuClick = { scope.launch { drawerState.open() } },
+                    // TODO: Implement quick-scan camera shortcut from the top bar.
+                    //       Options: open WasteSortScreen, or a dedicated quick-capture flow.
                     onCameraClick = { /*TODO*/ },
                     user = user,
                     userType = userType,

@@ -47,7 +47,23 @@ val httpClient: HttpClient = HttpClient {
 
         val reqBody = try {
             when (val b = request.body) {
-                is OutgoingContent.ByteArrayContent -> b.bytes().decodeToString()
+                is OutgoingContent.ByteArrayContent -> {
+                    val ct = b.contentType?.toString() ?: ""
+                    if (ct.startsWith("image/") || ct.startsWith("application/octet")) {
+                        "[binary ${b.bytes().size} bytes — $ct]"
+                    } else {
+                        b.bytes().decodeToString()
+                    }
+                }
+                is OutgoingContent.WriteChannelContent -> {
+                    val ct = b.contentType?.toString() ?: "stream"
+                    "[${ct}]"
+                }
+                is OutgoingContent.ReadChannelContent -> {
+                    val ct = b.contentType?.toString() ?: "stream"
+                    "[${ct}]"
+                }
+                is OutgoingContent.NoContent -> ""
                 else -> ""
             }
         } catch (_: Throwable) { "" }

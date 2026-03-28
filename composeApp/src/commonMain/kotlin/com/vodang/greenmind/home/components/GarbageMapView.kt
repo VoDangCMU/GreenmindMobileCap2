@@ -6,6 +6,10 @@ import com.vodang.greenmind.location.Location
 
 data class GarbageMapPoint(val lat: Double, val lng: Double, val intensity: Int)
 
+// TODO: Replace with real garbage-report coordinates fetched from the API.
+//       Expected source: GET /waste-reports  (or a dedicated heatmap endpoint)
+//       Each point needs { lat, lng, intensity } — intensity can be derived from report weight (wasteKg).
+//       Remove sampleGarbageMapPoints once GarbageHeatmapCard fetches live data.
 // Sample heatmap data around Da Nang, Viet Nam
 val sampleGarbageMapPoints = listOf(
     GarbageMapPoint(16.0678, 108.2208, 4),  // Hải Châu — Trần Phú

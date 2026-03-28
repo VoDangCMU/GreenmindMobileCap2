@@ -154,6 +154,9 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
                             Text(s.rememberMe, fontSize = 14.sp, color = Color(0xFF424242), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            // TODO: Implement forgot-password flow.
+                            //       Expected: navigate to a ForgotPasswordScreen or open a dialog
+                            //       that calls POST /auth/forgot-password  { email }.
                             TextButton(onClick = { }) {
                                 Text(s.forgotPassword, fontSize = 13.sp, color = green500, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
@@ -208,6 +211,10 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
                     HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFBDBDBD))
                 }
                 Spacer(Modifier.height(12.dp))
+                // TODO: Implement real Google Sign-In.
+                //       Currently calls onLoginSuccess() directly, bypassing all auth.
+                //       Expected: integrate Google Identity SDK, get idToken, call
+                //       POST /auth/login/google  { idToken }  → LoginEmailResponse.
                 OutlinedButton(
                     onClick = { onLoginSuccess() },
                     modifier = Modifier.fillMaxWidth().height(52.dp),

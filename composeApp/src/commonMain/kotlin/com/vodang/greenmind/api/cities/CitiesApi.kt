@@ -1,5 +1,6 @@
 package com.vodang.greenmind.api.cities
 
+import com.vodang.greenmind.api.auth.ApiException
 import com.vodang.greenmind.api.httpClient
 import com.vodang.greenmind.util.AppLogger
 import io.ktor.client.call.*
@@ -25,15 +26,25 @@ suspend fun getCitiesByCountry(countryName: String): List<String> {
     citiesCache[key]?.let { return it }
 
     AppLogger.i("Cities", "getCitiesByCountry country=$countryName")
-    val resp = httpClient.get("$CITIES_BASE/countries/cities/q") {
-        parameter("country", countryName)
+    try {
+        val resp = httpClient.get("$CITIES_BASE/countries/cities/q") {
+            parameter("country", countryName)
+        }
+        if (!resp.status.isSuccess()) {
+            val text = resp.bodyAsText()
+            AppLogger.e("Cities", "getCitiesByCountry failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+        val body = resp.body<CitiesResponse>()
+        if (body.error) throw ApiException(0, body.msg)
+
+        val result = body.data.sorted()
+        citiesCache[key] = result
+        return result
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Cities", "getCitiesByCountry error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
-    if (!resp.status.isSuccess()) throw Exception("Cities API ${resp.status.value}: ${resp.bodyAsText()}")
-
-    val body = resp.body<CitiesResponse>()
-    if (body.error) throw Exception("Cities API error: ${body.msg}")
-
-    val result = body.data.sorted()
-    citiesCache[key] = result
-    return result
 }

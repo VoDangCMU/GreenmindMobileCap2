@@ -70,6 +70,9 @@ fun HouseholdDashboard(
     ) {
         OceanScoreCard()
 
+        // TODO: Replace with real scan result once YoloScanResult DTO is wired in.
+        EnvImpactCard()
+
         Text(s.todayOverview, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
 
         Row(
@@ -143,6 +146,7 @@ fun HouseholdDashboard(
         Text(s.features, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // TODO: Wire up navigation to WasteSortScreen (same as onWasteSortClick param).
                 FeatureButton("📷", s.wasteSort, s.wasteSortDesc, green50h, green800h, Modifier.weight(1f)) { }
                 FeatureButton("🗑️", s.garbageDrop, s.garbageDropDesc, orange50h, Color(0xFFE65100), Modifier.weight(1f)) { onGarbageDropClick() }
             }

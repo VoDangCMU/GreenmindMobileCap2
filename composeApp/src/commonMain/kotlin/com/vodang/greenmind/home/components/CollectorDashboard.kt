@@ -32,6 +32,9 @@ data class WastePoint(val id: Int, val address: String, val zone: String, val co
 @Composable
 fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = rememberScrollState()) {
     val s = LocalAppStrings.current
+    // TODO: Replace with live collection route data from the API.
+    //       Expected source: GET /collector/route  (returns assigned WastePoints for today's shift)
+    //       WastePoint should eventually come from a RouteStore/CollectorStore that fetches on login.
     val points = listOf(
         WastePoint(1, "12 Trần Phú, Hải Châu",         "Khu A", true,  3),
         WastePoint(2, "45 Lê Duẩn, Hải Châu",          "Khu A", true,  5),
@@ -85,6 +88,7 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
         Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricCard("🗺️", s.zoneLabel, s.zoneValue, s.today, Color(0xFFFFF8E1), amber600, Modifier.weight(1f).aspectRatio(1f))
             MetricCard("🛍️", s.bagsLabel, "${points.sumOf { it.bags }} ${s.bagsUnit}", s.bagsEstimated, green50, green800, Modifier.weight(1f).aspectRatio(1f))
+            // TODO: Replace "8.2 km" with real route distance calculated from the assigned WastePoints.
             MetricCard("📍", s.routeLabel, "8.2 km", s.today, blue50, blue600, Modifier.weight(1f).aspectRatio(1f))
         }
 
@@ -95,7 +99,9 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
         Text(s.features, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // TODO: Navigate to full-screen garbage heatmap view.
                 FeatureButton("🗺️", s.heatmapFeatureLabel, s.heatmapFeatureDesc, Color(0xFFFFF8E1), amber600, Modifier.weight(1f)) { }
+                // TODO: Navigate to collection schedule / shift calendar screen.
                 FeatureButton("📅", s.scheduleLabel, s.scheduleDesc, blue50, blue600, Modifier.weight(1f)) { }
             }
         }

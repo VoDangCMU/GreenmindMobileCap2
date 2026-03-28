@@ -59,6 +59,7 @@ fun CatalogueScreen(onWasteReport: () -> Unit) {
         FeatureEntry("🍽️", s.scanMeal,        s.scanMealDesc),
         FeatureEntry("🧾", s.scanBill,         s.scanBillDesc),
         FeatureEntry("🚶", s.walkDistance,     s.walkValue),
+        FeatureEntry("☣️", "Environmental Impact", "Shows CO₂, microplastic, and pollution scores from waste scans"),
     )
     val collectorFeatures = listOf(
         FeatureEntry("🗺️", s.heatmapFeatureLabel,  s.heatmapFeatureDesc),

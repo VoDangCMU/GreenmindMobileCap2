@@ -110,61 +110,89 @@ data class GetDistanceTodayResponse(
 /** POST /locations */
 suspend fun createLocation(accessToken: String, request: CreateLocationRequest): CreateLocationResponse {
     AppLogger.i("Location", "createLocation lat=${request.latitude} lon=${request.longitude}")
-    val resp = httpClient.post("$BASE_URL/locations") {
-        header("Authorization", "Bearer $accessToken")
-        contentType(ContentType.Application.Json)
-        setBody(request)
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Location", "createLocation failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.post("$BASE_URL/locations") {
+            header("Authorization", "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Location", "createLocation failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Location", "createLocation error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** GET /locations — returns the latest location for the authenticated user. */
 suspend fun getLocationsByUser(accessToken: String): GetLocationsResponse {
     AppLogger.i("Location", "getLocationsByUser")
-    val resp = httpClient.get("$BASE_URL/locations") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Location", "getLocationsByUser failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.get("$BASE_URL/locations") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Location", "getLocationsByUser failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Location", "getLocationsByUser error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** GET /locations/latest */
 suspend fun getLatestLocation(accessToken: String): GetLatestLocationResponse {
     AppLogger.i("Location", "getLatestLocation")
-    val resp = httpClient.get("$BASE_URL/locations/latest") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Location", "getLatestLocation failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.get("$BASE_URL/locations/latest") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Location", "getLatestLocation failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Location", "getLatestLocation error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** GET /locations/distanceToday */
 suspend fun getDistanceToday(accessToken: String): GetDistanceTodayResponse {
     AppLogger.i("Location", "getDistanceToday")
-    val resp = httpClient.get("$BASE_URL/locations/distanceToday") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("Location", "getDistanceToday failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.get("$BASE_URL/locations/distanceToday") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Location", "getDistanceToday failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("Location", "getDistanceToday error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }

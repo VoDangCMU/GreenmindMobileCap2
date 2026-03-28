@@ -28,6 +28,7 @@ fun GarbageHeatmapCard() {
     SectionCard {
         Text(s.heatmapCardTitle, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Spacer(Modifier.height(8.dp))
+        // TODO: Replace sampleGarbageMapPoints with live data from the API (see GarbageMapView.kt).
         HeatMap(points = sampleGarbageMapPoints)
         Spacer(Modifier.height(10.dp))
         Row(

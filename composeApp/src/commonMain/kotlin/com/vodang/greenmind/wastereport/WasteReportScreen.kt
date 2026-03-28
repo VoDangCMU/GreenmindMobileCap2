@@ -1,11 +1,14 @@
 package com.vodang.greenmind.wastereport
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,9 +31,14 @@ import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.launch
 
 private val green800 = Color(0xFF2E7D32)
+private val green600 = Color(0xFF388E3C)
 private val green50  = Color(0xFFE8F5E9)
 private val orange50 = Color(0xFFFFF3E0)
 private val orange   = Color(0xFFE65100)
+private val red50    = Color(0xFFFFEBEE)
+private val red700   = Color(0xFFC62828)
+private val blue50   = Color(0xFFE3F2FD)
+private val blue700  = Color(0xFF1565C0)
 
 @Composable
 fun WasteReportScreen() {
@@ -39,6 +47,7 @@ fun WasteReportScreen() {
 
     var showScan by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedReport by remember { mutableStateOf<WasteReportDto?>(null) }
 
     var myReports by remember { mutableStateOf<List<WasteReportDto>>(emptyList()) }
     var allReports by remember { mutableStateOf<List<WasteReportDto>>(emptyList()) }
@@ -173,7 +182,7 @@ fun WasteReportScreen() {
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     items(items, key = { it.id }) { report ->
-                        WasteReportCard(report)
+                        WasteReportCard(report, onClick = { selectedReport = report })
                     }
                     item { Spacer(Modifier.height(72.dp)) } // FAB clearance
                 }
@@ -193,14 +202,18 @@ fun WasteReportScreen() {
             Text("+", fontSize = 28.sp, fontWeight = FontWeight.Light)
         }
     }
+
+    selectedReport?.let { report ->
+        WasteReportDetailSheet(report = report, onDismiss = { selectedReport = null })
+    }
 }
 
 @Composable
-private fun WasteReportCard(report: WasteReportDto) {
+private fun WasteReportCard(report: WasteReportDto, onClick: () -> Unit) {
     val s = LocalAppStrings.current
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -264,6 +277,134 @@ private fun WasteReportCard(report: WasteReportDto) {
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WasteReportDetailSheet(report: WasteReportDto, onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // Header row: code + status chip
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    report.code,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1B1B1B),
+                )
+                StatusChip(report.status)
+            }
+
+            // Report image
+            if (!report.imageUrl.isNullOrBlank()) {
+                NetworkImage(
+                    url = report.imageUrl,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                )
+            }
+
+            // Details grid
+            DetailRow("🗑️  Type", report.wasteType.replaceFirstChar { it.uppercase() })
+            DetailRow("⚖️  Weight", "${report.wasteKg} kg")
+            DetailRow("📍  Ward", report.wardName)
+            DetailRow("🗓️  Reported", formatReportDate(report.createdAt))
+            if (!report.resolvedAt.isNullOrBlank()) {
+                DetailRow("✅  Resolved", formatReportDate(report.resolvedAt))
+            }
+            if (!report.assignedTo.isNullOrBlank()) {
+                DetailRow("👷  Assigned to", report.assignedTo)
+            }
+            if (report.description.isNotBlank()) {
+                DetailRow("📝  Note", report.description)
+            }
+
+            // Evidence image
+            if (!report.imageEvidenceUrl.isNullOrBlank()) {
+                HorizontalDivider(color = Color(0xFFEEEEEE))
+                Text(
+                    "Collection Evidence",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF616161),
+                )
+                NetworkImage(
+                    url = report.imageEvidenceUrl,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusChip(status: String) {
+    val (bg, fg) = when (status.lowercase()) {
+        "pending"    -> orange50 to orange
+        "assigned"   -> blue50   to blue700
+        "resolved",
+        "completed"  -> green50  to green600
+        "rejected"   -> red50    to red700
+        else         -> Color(0xFFF5F5F5) to Color(0xFF616161)
+    }
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bg)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    ) {
+        Text(
+            status.replaceFirstChar { it.uppercase() },
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = fg,
+        )
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            label,
+            fontSize = 13.sp,
+            color = Color(0xFF9E9E9E),
+            modifier = Modifier.width(130.dp),
+        )
+        Text(
+            value,
+            fontSize = 13.sp,
+            color = Color(0xFF1B1B1B),
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 

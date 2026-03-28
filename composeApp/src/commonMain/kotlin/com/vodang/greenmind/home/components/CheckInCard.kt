@@ -39,6 +39,9 @@ fun CheckInCard(points: List<WastePoint>) {
                 }
             }
             Spacer(Modifier.height(10.dp))
+            // TODO: Implement GPS check-in for the next waste collection point.
+            //       Expected: POST /collector/checkin  { pointId, lat, lng, timestamp }
+            //       On success mark the WastePoint as collected in the store and refresh route.
             Surface(shape = RoundedCornerShape(10.dp), color = green800c, modifier = Modifier.fillMaxWidth(), onClick = { }) {
                 Text(s.checkInButton, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 14.dp))
             }

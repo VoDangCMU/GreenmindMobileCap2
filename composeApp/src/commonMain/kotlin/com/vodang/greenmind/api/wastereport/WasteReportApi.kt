@@ -27,14 +27,16 @@ data class WasteReportDto(
     val wardName: String,
     val lat: Double,
     val lng: Double,
-    val wasteKg: Double,
+    val wasteKg: Int,
     val description: String,
     val status: String,
     val createdAt: String,
     val imageKey: String? = null,
     val imageUrl: String? = null,
+    val reportedByUserId: String? = null,
     val assignedCollectorId: String? = null,
     val assignedTo: String? = null,
+    val imageEvidenceUrl: String? = null,
     val resolvedAt: String? = null,
 )
 
@@ -77,63 +79,123 @@ suspend fun createWasteReport(
     accessToken: String,
     request: CreateWasteReportRequest,
 ): WasteReportDto {
-    AppLogger.i("WasteReport", "createWasteReport wasteType=${request.wasteType} ward=${request.wardName}")
-    val resp = httpClient.post("$BASE_URL/waste-reports") {
-        header("Authorization", "Bearer $accessToken")
-        contentType(ContentType.Application.Json)
-        setBody(request)
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("WasteReport", "createWasteReport failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    AppLogger.i("WasteReport", "createWasteReport wasteType=${request.wasteType} ward=${request.wardName} kg=${request.wasteKg} imageKey=${request.imageKey}")
+    try {
+        val resp = httpClient.post("$BASE_URL/waste-reports") {
+            header("Authorization", "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        AppLogger.d("WasteReport", "createWasteReport → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            val raw = resp.bodyAsText()
+            AppLogger.d("WasteReport", "createWasteReport raw body (${raw.length} chars): ${raw.take(500)}")
+            try {
+                resp.body()
+            } catch (e: Throwable) {
+                AppLogger.e("WasteReport", "createWasteReport parse error on: $raw")
+                throw e
+            }
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("WasteReport", "createWasteReport failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("WasteReport", "createWasteReport error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** GET /waste-reports/ — all reports (admin) */
 suspend fun getAllWasteReports(accessToken: String): WasteReportPageResponse {
     AppLogger.i("WasteReport", "getAllWasteReports")
-    val resp = httpClient.get("$BASE_URL/waste-reports/") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("WasteReport", "getAllWasteReports failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.get("$BASE_URL/waste-reports/") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("WasteReport", "getAllWasteReports → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            val raw = resp.bodyAsText()
+            AppLogger.d("WasteReport", "getAllWasteReports raw body (${raw.length} chars): ${raw.take(500)}")
+            try {
+                resp.body()
+            } catch (e: Throwable) {
+                AppLogger.e("WasteReport", "getAllWasteReports parse error on: $raw")
+                throw e
+            }
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("WasteReport", "getAllWasteReports failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("WasteReport", "getAllWasteReports error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** GET /waste-reports/my — current user's reports */
 suspend fun getMyWasteReports(accessToken: String): WasteReportPageResponse {
     AppLogger.i("WasteReport", "getMyWasteReports")
-    val resp = httpClient.get("$BASE_URL/waste-reports/my") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("WasteReport", "getMyWasteReports failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.get("$BASE_URL/waste-reports/my") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("WasteReport", "getMyWasteReports → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            val raw = resp.bodyAsText()
+            AppLogger.d("WasteReport", "getMyWasteReports raw body (${raw.length} chars): ${raw.take(500)}")
+            try {
+                resp.body()
+            } catch (e: Throwable) {
+                AppLogger.e("WasteReport", "getMyWasteReports parse error on: $raw")
+                throw e
+            }
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("WasteReport", "getMyWasteReports failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("WasteReport", "getMyWasteReports error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** GET /waste-reports/{id} */
 suspend fun getWasteReportById(accessToken: String, id: String): WasteReportDto {
     AppLogger.i("WasteReport", "getWasteReportById id=$id")
-    val resp = httpClient.get("$BASE_URL/waste-reports/$id") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("WasteReport", "getWasteReportById failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.get("$BASE_URL/waste-reports/$id") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("WasteReport", "getWasteReportById → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            val raw = resp.bodyAsText()
+            AppLogger.d("WasteReport", "getWasteReportById raw body (${raw.length} chars): ${raw.take(500)}")
+            try {
+                resp.body()
+            } catch (e: Throwable) {
+                AppLogger.e("WasteReport", "getWasteReportById parse error on: $raw")
+                throw e
+            }
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("WasteReport", "getWasteReportById failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("WasteReport", "getWasteReportById error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
@@ -143,32 +205,62 @@ suspend fun updateWasteReport(
     id: String,
     request: UpdateWasteReportRequest,
 ): WasteReportDto {
-    AppLogger.i("WasteReport", "updateWasteReport id=$id")
-    val resp = httpClient.patch("$BASE_URL/waste-reports/$id") {
-        header("Authorization", "Bearer $accessToken")
-        contentType(ContentType.Application.Json)
-        setBody(request)
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("WasteReport", "updateWasteReport failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    AppLogger.i("WasteReport", "updateWasteReport id=$id wasteType=${request.wasteType} kg=${request.wasteKg}")
+    try {
+        val resp = httpClient.patch("$BASE_URL/waste-reports/$id") {
+            header("Authorization", "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        AppLogger.d("WasteReport", "updateWasteReport → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            val raw = resp.bodyAsText()
+            AppLogger.d("WasteReport", "updateWasteReport raw body (${raw.length} chars): ${raw.take(500)}")
+            try {
+                resp.body()
+            } catch (e: Throwable) {
+                AppLogger.e("WasteReport", "updateWasteReport parse error on: $raw")
+                throw e
+            }
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("WasteReport", "updateWasteReport failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("WasteReport", "updateWasteReport error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
 
 /** DELETE /waste-reports/{id} */
 suspend fun deleteWasteReport(accessToken: String, id: String): WasteReportDto {
     AppLogger.i("WasteReport", "deleteWasteReport id=$id")
-    val resp = httpClient.delete("$BASE_URL/waste-reports/$id") {
-        header("Authorization", "Bearer $accessToken")
-    }
-    return if (resp.status.isSuccess()) {
-        resp.body()
-    } else {
-        val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
-        AppLogger.e("WasteReport", "deleteWasteReport failed: ${resp.status.value} $text")
-        throw ApiException(resp.status.value, text)
+    try {
+        val resp = httpClient.delete("$BASE_URL/waste-reports/$id") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("WasteReport", "deleteWasteReport → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            val raw = resp.bodyAsText()
+            AppLogger.d("WasteReport", "deleteWasteReport raw body (${raw.length} chars): ${raw.take(500)}")
+            try {
+                resp.body()
+            } catch (e: Throwable) {
+                AppLogger.e("WasteReport", "deleteWasteReport parse error on: $raw")
+                throw e
+            }
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("WasteReport", "deleteWasteReport failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("WasteReport", "deleteWasteReport error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
     }
 }
