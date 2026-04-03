@@ -31,7 +31,7 @@ actual fun NetworkImage(url: String, modifier: Modifier) {
     LaunchedEffect(url) {
         state = ImageState.Loading
         state = try {
-            val bytes = httpClient.get(url).readBytes()
+            val bytes = httpClient.get(url).readRawBytes()
             val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             if (bmp != null) ImageState.Success(bmp.asImageBitmap()) else ImageState.Error
         } catch (_: Throwable) {

@@ -18,7 +18,7 @@ private val green800c = Color(0xFF2E7D32)
 private val green50c  = Color(0xFFE8F5E9)
 
 @Composable
-fun CheckInCard(points: List<WastePoint>) {
+fun CheckInCard(points: List<WastePoint>, onCheckInClick: (reportId: String) -> Unit) {
     val s = LocalAppStrings.current
     val nextPoint = points.firstOrNull { !it.collected }
     SectionCard {
@@ -39,10 +39,7 @@ fun CheckInCard(points: List<WastePoint>) {
                 }
             }
             Spacer(Modifier.height(10.dp))
-            // TODO: Implement GPS check-in for the next waste collection point.
-            //       Expected: POST /collector/checkin  { pointId, lat, lng, timestamp }
-            //       On success mark the WastePoint as collected in the store and refresh route.
-            Surface(shape = RoundedCornerShape(10.dp), color = green800c, modifier = Modifier.fillMaxWidth(), onClick = { }) {
+            Surface(shape = RoundedCornerShape(10.dp), color = green800c, modifier = Modifier.fillMaxWidth(), onClick = { onCheckInClick(nextPoint.reportId) }) {
                 Text(s.checkInButton, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 14.dp))
             }
         }

@@ -34,6 +34,95 @@ expect fun GarbageHeatMapView(
     modifier: Modifier = Modifier,
 )
 
+data class RouteMapPoint(val lat: Double, val lng: Double, val label: String = "")
+
+@Composable
+expect fun RouteMapView(
+    points: List<RouteMapPoint>,
+    center: Location?,
+    zoomLevel: Float,
+    modifier: Modifier = Modifier,
+)
+
+fun buildRoutingHtml(
+    points: List<RouteMapPoint>,
+    lat: Double,
+    lng: Double,
+    zoom: Double,
+    localLeaflet: Boolean = false,
+): String {
+    val leafletCss = if (localLeaflet) "leaflet.css" else "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    val leafletJs  = if (localLeaflet) "leaflet.js"  else "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    val lrmCss = "https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
+    val lrmJs  = "https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"
+    val waypoints = points.joinToString(",") { "L.latLng(${it.lat},${it.lng})" }
+    return """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <link rel="stylesheet" href="$leafletCss"/>
+  <link rel="stylesheet" href="$lrmCss"/>
+  <script src="$leafletJs"></script>
+  <script src="$lrmJs"></script>
+  <style>
+    html,body{margin:0;padding:0;width:100%;height:100%;}
+    #map{width:100%;height:100%;}
+    .leaflet-routing-container{display:none!important;}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map=L.map('map',{zoomControl:false}).setView([$lat,$lng],$zoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      maxZoom:19,attribution:'© OSM contributors'
+    }).addTo(map);
+    var routeControl=null;
+    function buildRoute(wp){
+      if(routeControl){map.removeControl(routeControl);}
+      if(wp.length<2) return;
+      routeControl=L.Routing.control({
+        waypoints:wp,
+        routeWhileDragging:false,
+        showAlternatives:false,
+        fitSelectedRoutes:true,
+        lineOptions:{styles:[{color:'#2E7D32',weight:5,opacity:0.85}]},
+        createMarker:function(i,w,n){
+          var big=i===0||i===n-1;
+          var color=i===0?'#1976D2':(i===n-1?'#D32F2F':'#388E3C');
+          var sz=big?16:12;
+          var icon=L.divIcon({
+            className:'',
+            html:'<div style="background:'+color+';width:'+sz+'px;height:'+sz+'px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:bold;">'+(i+1)+'</div>',
+            iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]
+          });
+          return L.marker(w.latLng,{icon:icon,draggable:false});
+        }
+      }).addTo(map);
+    }
+    // allWp[0] is always the user's current position; the rest are fixed collection stops
+    var allWp=[$waypoints];
+    buildRoute(allWp);
+    var userDot=null;
+    var routeRebuildTimer=null;
+    function updateView(lat,lng,zoom){
+      map.setView([lat,lng],zoom,{animate:true});
+      // Move / create the user location dot
+      if(userDot){userDot.setLatLng([lat,lng]);}
+      else{userDot=L.circleMarker([lat,lng],{radius:8,color:'#fff',weight:2,fillColor:'#1976D2',fillOpacity:1}).addTo(map);}
+      // Debounce route rebuild so we don't spam OSRM on every GPS tick
+      clearTimeout(routeRebuildTimer);
+      routeRebuildTimer=setTimeout(function(){
+        allWp[0]=L.latLng(lat,lng);
+        buildRoute(allWp);
+      },2500);
+    }
+  </script>
+</body>
+</html>"""
+}
+
 fun buildLeafletHtml(
     points: List<GarbageMapPoint>,
     lat: Double,

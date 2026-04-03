@@ -174,6 +174,46 @@ suspend fun ocrBill(
     }
 }
 
+private const val AI_OCR_BASE_URL = "https://ai-greenmind.khoav4.com"
+
+/**
+ * POST /ocr_text — AI bill OCR endpoint (no auth required).
+ * Returns the same [OcrResponse] shape as [ocrBill] but runs on the AI server.
+ *
+ * @param imageBytes  Raw bytes of the captured image (JPEG).
+ * @param filename    File name sent in the multipart form (default: "bill.jpg").
+ */
+suspend fun aiOcrBill(
+    imageBytes: ByteArray,
+    filename: String = "bill.jpg",
+): OcrResponse {
+    AppLogger.i("OCR", "aiOcrBill filename=$filename bytes=${imageBytes.size}")
+    try {
+        val response = ocrHttpClient.post("$AI_OCR_BASE_URL/ocr_text") {
+            setBody(MultiPartFormDataContent(formData {
+                append("file", imageBytes, Headers.build {
+                    append(HttpHeaders.ContentType, "image/jpeg")
+                    append(HttpHeaders.ContentDisposition, "filename=\"$filename\"")
+                })
+            }))
+        }
+        if (!response.status.isSuccess()) {
+            val msg = try { response.body<ErrorResponse>().message }
+                      catch (_: Throwable) { response.bodyAsText() }
+            AppLogger.e("OCR", "aiOcrBill failed: ${response.status.value} $msg")
+            throw ApiException(response.status.value, msg)
+        }
+        return response.body<OcrResponse>().also {
+            AppLogger.i("OCR", "aiOcrBill success vendor=${it.vendor?.name} items=${it.items?.size}")
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("OCR", "aiOcrBill error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
 /**
  * GET /ocr/invoices — fetches the user's full bill-scan history from the server.
  * Uses the standard [httpClient] (normal timeout; this is just a JSON list fetch).
@@ -197,6 +237,67 @@ suspend fun getInvoices(accessToken: String): List<InvoiceDto> {
         throw e
     } catch (e: Throwable) {
         AppLogger.e("OCR", "getInvoices error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
+// ── Invoice Pollution (OCR & Pollutant Analyst) ──────────────────────────────
+
+@Serializable
+data class InvoicePollutionItem(
+    @SerialName("raw_name") val rawName: String,
+    val quantity: Int,
+    @SerialName("class_id") val classId: Int,
+    @SerialName("class_name") val className: String,
+)
+
+@Serializable
+data class InvoicePollutionImpact(
+    val air: Int,
+    val water: Int,
+    val soil: Int,
+)
+
+@Serializable
+data class InvoicePollutionResponse(
+    val items: List<InvoicePollutionItem>,
+    val pollution: Map<String, Int>,
+    val impact: InvoicePollutionImpact,
+)
+
+/**
+ * POST /invoice-pollution — OCR Bill & Pollutant Analyst endpoint.
+ *
+ * @param imageBytes  Raw bytes of the captured image (JPEG).
+ * @param filename    File name sent in the multipart form (default: "bill.jpg").
+ */
+suspend fun analyzeInvoicePollution(
+    imageBytes: ByteArray,
+    filename: String = "bill.jpg",
+): InvoicePollutionResponse {
+    AppLogger.i("OCR", "analyzeInvoicePollution filename=$filename bytes=${imageBytes.size}")
+    try {
+        val response = ocrHttpClient.post("$AI_OCR_BASE_URL/invoice-pollution") {
+            setBody(MultiPartFormDataContent(formData {
+                append("file", imageBytes, Headers.build {
+                    append(HttpHeaders.ContentType, "image/jpeg")
+                    append(HttpHeaders.ContentDisposition, "filename=\"$filename\"")
+                })
+            }))
+        }
+        if (!response.status.isSuccess()) {
+            val msg = try { response.body<ErrorResponse>().message }
+                      catch (_: Throwable) { response.bodyAsText() }
+            AppLogger.e("OCR", "analyzeInvoicePollution failed: ${response.status.value} $msg")
+            throw ApiException(response.status.value, msg)
+        }
+        return response.body<InvoicePollutionResponse>().also {
+            AppLogger.i("OCR", "analyzeInvoicePollution success items=${it.items.size}")
+        }
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("OCR", "analyzeInvoicePollution error: ${e.message}")
         throw ApiException(0, e.message ?: "Network error")
     }
 }

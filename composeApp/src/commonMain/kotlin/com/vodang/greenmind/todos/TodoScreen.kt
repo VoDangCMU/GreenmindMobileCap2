@@ -41,7 +41,9 @@ fun TodoScreen() {
     val todos by TodoStore.todos.collectAsState()
     val isLoading by TodoStore.isLoading.collectAsState()
     val error by TodoStore.error.collectAsState()
+    val generatingIds by TodoStore.generatingIds.collectAsState()
     var newTodoText by remember { mutableStateOf("") }
+    var selectedId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { TodoStore.load() }
 
@@ -158,7 +160,12 @@ fun TodoScreen() {
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 items(todos, key = { it.id }) { todo ->
-                    TodoRootCard(todo)
+                    TodoRootCard(
+                        item = todo,
+                        generatingIds = generatingIds,
+                        selectedId = selectedId,
+                        onSelect = { id -> selectedId = if (selectedId == id) null else id },
+                    )
                 }
             }
         }
@@ -166,7 +173,12 @@ fun TodoScreen() {
 }
 
 @Composable
-private fun TodoRootCard(item: TodoItem) {
+private fun TodoRootCard(
+    item: TodoItem,
+    generatingIds: Set<String>,
+    selectedId: String?,
+    onSelect: (String) -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -174,27 +186,51 @@ private fun TodoRootCard(item: TodoItem) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            TodoItemContent(item = item, depth = 0)
+            TodoItemContent(
+                item = item,
+                depth = 0,
+                generatingIds = generatingIds,
+                selectedId = selectedId,
+                onSelect = onSelect,
+            )
         }
     }
 }
 
 @Composable
-private fun TodoItemContent(item: TodoItem, depth: Int) {
+private fun TodoItemContent(
+    item: TodoItem,
+    depth: Int,
+    generatingIds: Set<String>,
+    selectedId: String?,
+    onSelect: (String) -> Unit,
+) {
     val s = LocalAppStrings.current
+    val isGenerating = item.id in generatingIds
+    val isSelected = item.id == selectedId
     var expanded by remember(item.id) { mutableStateOf(false) }
     var newChildText by remember(item.id) { mutableStateOf("") }
+
+    // Auto-expand only when AI generation just finished (not on initial load)
+    var wasGenerating by remember(item.id) { mutableStateOf(false) }
+    LaunchedEffect(isGenerating) {
+        if (wasGenerating && !isGenerating && item.children.isNotEmpty()) expanded = true
+        wasGenerating = isGenerating
+    }
 
     val indentStart = (depth * 20).dp
     val hasChildren = item.children.isNotEmpty()
 
     Column(modifier = Modifier.padding(start = indentStart)) {
-        // ── Item row — clicking anywhere on the row expands if children exist ──
+        // ── Item row ──────────────────────────────────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded }
+                .clickable {
+                    onSelect(item.id)
+                    if (item.children.isNotEmpty()) expanded = !expanded
+                }
         ) {
             Checkbox(
                 checked = item.done,
@@ -233,26 +269,36 @@ private fun TodoItemContent(item: TodoItem, depth: Int) {
                 }
                 Spacer(Modifier.width(2.dp))
             }
-            // AI wand
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFF3E5F5)),
-                contentAlignment = Alignment.Center
-            ) {
-                TextButton(
-                    // TODO: Call AI endpoint to auto-generate subtasks for this todo item.
-                    //       Expected: POST /todos/{item.id}/ai-expand  → List<TodoItem>
-                    //       On success call TodoStore.addChildren(item.id, generatedChildren).
-                    onClick = { /* TODO: AI auto-generate subtasks */ },
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.size(28.dp)
+            // AI wand — only visible when this item is selected
+            if (isSelected || isGenerating) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isGenerating) Color(0xFFEDE7F6) else Color(0xFFF3E5F5)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text("✨", fontSize = 13.sp)
+                    if (isGenerating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color(0xFF7B1FA2),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        TextButton(
+                            onClick = { TodoStore.generateSubtasks(item.id, item.title) },
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.size(28.dp),
+                            enabled = !isGenerating,
+                        ) {
+                            Text("✨", fontSize = 13.sp)
+                        }
+                    }
                 }
+                Spacer(Modifier.width(2.dp))
             }
-            Spacer(Modifier.width(2.dp))
             // Delete
             TextButton(
                 onClick = { TodoStore.deleteItem(item.id) },
@@ -263,70 +309,78 @@ private fun TodoItemContent(item: TodoItem, depth: Int) {
             }
         }
 
-        // ── Children ──────────────────────────────────────────────────────────
+        // ── Children (only when expanded) ─────────────────────────────────────
         AnimatedVisibility(
             visible = expanded,
             enter = expandVertically(),
             exit = shrinkVertically()
         ) {
-            Column {
-                if (item.children.isNotEmpty()) {
-                    // Vertical tree line + children
-                    Row(modifier = Modifier.padding(start = 16.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .width(2.dp)
-                                .fillMaxHeight()
-                                .background(green100, RoundedCornerShape(1.dp))
+            Row(modifier = Modifier.padding(start = 16.dp)) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .fillMaxHeight()
+                        .background(green100, RoundedCornerShape(1.dp))
+                )
+                Column(modifier = Modifier.padding(start = 4.dp)) {
+                    item.children.forEach { child ->
+                        TodoItemContent(
+                            item = child,
+                            depth = depth + 1,
+                            generatingIds = generatingIds,
+                            selectedId = selectedId,
+                            onSelect = onSelect,
                         )
-                        Column(modifier = Modifier.padding(start = 4.dp)) {
-                            item.children.forEach { child ->
-                                TodoItemContent(item = child, depth = depth + 1)
-                            }
-                        }
                     }
                 }
+            }
+        }
 
-                // Add child row
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(start = 16.dp, top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    OutlinedTextField(
-                        value = newChildText,
-                        onValueChange = { newChildText = it },
-                        placeholder = { Text(s.todosAddSubPlaceholder, fontSize = 11.sp) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = green600,
-                            unfocusedBorderColor = green100,
-                            focusedContainerColor = green50,
-                            unfocusedContainerColor = green50
-                        )
+        // ── Add child row (only when this item is selected) ───────────────────
+        AnimatedVisibility(
+            visible = isSelected,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                OutlinedTextField(
+                    value = newChildText,
+                    onValueChange = { newChildText = it },
+                    placeholder = { Text(s.todosAddSubPlaceholder, fontSize = 11.sp) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = green600,
+                        unfocusedBorderColor = green100,
+                        focusedContainerColor = green50,
+                        unfocusedContainerColor = green50
                     )
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(green50),
-                        contentAlignment = Alignment.Center
+                )
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(green50),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TextButton(
+                        onClick = {
+                            if (newChildText.isNotBlank()) {
+                                TodoStore.addItem(item.id, newChildText.trim())
+                                newChildText = ""
+                                expanded = true
+                            }
+                        },
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(34.dp)
                     ) {
-                        TextButton(
-                            onClick = {
-                                if (newChildText.isNotBlank()) {
-                                    TodoStore.addItem(item.id, newChildText.trim())
-                                    newChildText = ""
-                                }
-                            },
-                            contentPadding = PaddingValues(0.dp),
-                            modifier = Modifier.size(34.dp)
-                        ) {
-                            Text("+", fontSize = 18.sp, color = green800, fontWeight = FontWeight.Bold)
-                        }
+                        Text("+", fontSize = 18.sp, color = green800, fontWeight = FontWeight.Bold)
                     }
                 }
             }

@@ -14,6 +14,33 @@ import platform.WebKit.WKWebViewConfiguration
 
 @OptIn(ExperimentalForeignApi::class)
 @Composable
+actual fun RouteMapView(
+    points: List<RouteMapPoint>,
+    center: Location?,
+    zoomLevel: Float,
+    modifier: Modifier,
+) {
+    val initLat = center?.latitude ?: 16.0544
+    val initLng = center?.longitude ?: 108.2022
+    val html = remember(points) { buildRoutingHtml(points, initLat, initLng, zoomLevel.toDouble()) }
+
+    UIKitView(
+        modifier = modifier,
+        factory = {
+            WKWebView(frame = CGRectZero.readValue(), configuration = WKWebViewConfiguration()).apply {
+                loadHTMLString(html, baseURL = NSURL.URLWithString("https://localhost/"))
+            }
+        },
+        update = { webView ->
+            val lat = center?.latitude ?: 16.0544
+            val lng = center?.longitude ?: 108.2022
+            webView.evaluateJavaScript("updateView($lat,$lng,$zoomLevel);", completionHandler = null)
+        }
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+@Composable
 actual fun GarbageHeatMapView(
     points: List<GarbageMapPoint>,
     center: Location?,

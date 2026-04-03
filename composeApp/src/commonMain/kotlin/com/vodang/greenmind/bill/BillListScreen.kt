@@ -244,13 +244,13 @@ private fun InvoiceDetailSheet(invoice: InvoiceDto, onDismiss: () -> Unit) {
             // Meta
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (!invoice.vendor?.address.isNullOrBlank())
-                    SheetRow("📍", invoice.vendor!!.address!!)
+                    SheetRow("📍", invoice.vendor.address)
                 val dateLine = listOfNotNull(invoice.datetime?.date, invoice.datetime?.time).joinToString("  ·  ")
                 if (dateLine.isNotBlank()) SheetRow("🗓", dateLine)
                 if (!invoice.doc?.paymentMethod.isNullOrBlank())
-                    SheetRow("💳", invoice.doc!!.paymentMethod!!)
+                    SheetRow("💳", invoice.doc.paymentMethod)
                 if (!invoice.doc?.notes.isNullOrBlank())
-                    SheetRow("📝", invoice.doc!!.notes!!)
+                    SheetRow("📝", invoice.doc.notes)
             }
 
             // Items

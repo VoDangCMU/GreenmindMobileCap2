@@ -1,26 +1,107 @@
 package com.vodang.greenmind.api.meal
 
-import kotlinx.coroutines.delay
+import com.vodang.greenmind.api.auth.ApiException
+import com.vodang.greenmind.api.auth.ErrorResponse
+import com.vodang.greenmind.util.AppLogger
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
-data class MealAnalysisResult(val plantRatio: Int, val description: String)
+private const val AI_BASE_URL = "https://ai-greenmind.khoav4.com"
 
-// TODO: Replace with real API call to the meal-analysis endpoint.
-//       Expected request: POST /scan/meal  { image: base64 | multipart }
-//       Expected response: MealAnalysisResult (plantRatio: Int 0-100, description: String)
-//       Remove mockMeals and the random() call in analyzeMeal() once the endpoint is ready.
-private val mockMeals = listOf(
-    MealAnalysisResult(82, "Salad with mixed greens, tomatoes, and cucumber"),
-    MealAnalysisResult(74, "Stir-fried vegetables with tofu and rice"),
-    MealAnalysisResult(65, "Vegetable soup with bread"),
-    MealAnalysisResult(55, "Rice bowl with grilled chicken and steamed broccoli"),
-    MealAnalysisResult(48, "Pasta with marinara sauce and side salad"),
-    MealAnalysisResult(38, "Grilled salmon with roasted potatoes and green beans"),
-    MealAnalysisResult(30, "Beef stir-fry with a small portion of vegetables"),
-    MealAnalysisResult(71, "Buddha bowl with quinoa, avocado, and roasted vegetables"),
+// ── DTOs ─────────────────────────────────────────────────────────────────────
+
+@Serializable
+data class PlantAnalysisResponse(
+    @SerialName("vegetable_area")           val vegetableArea: Int,
+    @SerialName("dish_area")               val dishArea: Double,
+    @SerialName("vegetable_ratio_percent") val vegetableRatioPercent: Double,
+    @SerialName("plant_image_base64")      val plantImageBase64: String,
+    @SerialName("dish_image_base64")       val dishImageBase64: String,
 )
 
-suspend fun analyzeMeal(imageBytes: ByteArray): MealAnalysisResult {
-    // TODO: Replace mock with real HTTP call. Remove delay() too.
-    delay(1_500) // simulate network latency
-    return mockMeals.random()
+// ── App-facing data model ─────────────────────────────────────────────────────
+
+data class MealAnalysisResult(
+    val plantRatio: Int,
+    val description: String,
+    val plantImageBase64: String? = null,
+    val dishImageBase64: String? = null,
+)
+
+// ── Dedicated HTTP client ─────────────────────────────────────────────────────
+// AI inference can be slow — use a longer timeout than the default client.
+
+private val mealAiHttpClient = HttpClient {
+    install(ContentNegotiation) {
+        json(Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        })
+    }
+    install(HttpTimeout) {
+        requestTimeoutMillis = 120_000  // 2 min — model warm-up + inference
+        connectTimeoutMillis = 30_000
+        socketTimeoutMillis  = 120_000
+    }
+    install(Logging) {
+        logger = object : Logger {
+            override fun log(message: String) { AppLogger.d("MealAI", message) }
+        }
+        level = LogLevel.INFO
+    }
+}
+
+// ── API call ──────────────────────────────────────────────────────────────────
+
+/**
+ * POST /analyze-image-plant — uploads a meal image and returns the plant ratio analysis.
+ *
+ * @param imageBytes  Raw bytes of the captured image (JPEG).
+ * @param filename    File name sent in the multipart form (default: "meal.jpg").
+ */
+suspend fun analyzeMeal(
+    imageBytes: ByteArray,
+    filename: String = "meal.jpg",
+): MealAnalysisResult {
+    AppLogger.i("MealAI", "analyzeMeal filename=$filename bytes=${imageBytes.size}")
+    try {
+        val response = mealAiHttpClient.post("$AI_BASE_URL/analyze-image-plant") {
+            setBody(MultiPartFormDataContent(formData {
+                append("file", imageBytes, Headers.build {
+                    append(HttpHeaders.ContentType, "image/jpeg")
+                    append(HttpHeaders.ContentDisposition, "filename=\"$filename\"")
+                })
+            }))
+        }
+        if (!response.status.isSuccess()) {
+            val msg = try { response.body<ErrorResponse>().message }
+                      catch (_: Throwable) { response.bodyAsText() }
+            AppLogger.e("MealAI", "analyzeMeal failed: ${response.status.value} $msg")
+            throw ApiException(response.status.value, msg)
+        }
+        val dto = response.body<PlantAnalysisResponse>()
+        AppLogger.i("MealAI", "analyzeMeal success ratio=${dto.vegetableRatioPercent}")
+        return MealAnalysisResult(
+            plantRatio       = dto.vegetableRatioPercent.toInt().coerceIn(0, 100),
+            description      = "",
+            plantImageBase64 = dto.plantImageBase64,
+            dishImageBase64  = dto.dishImageBase64,
+        )
+    } catch (e: ApiException) {
+        throw e
+    } catch (e: Throwable) {
+        AppLogger.e("MealAI", "analyzeMeal error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
 }

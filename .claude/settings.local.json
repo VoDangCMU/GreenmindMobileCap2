@@ -29,7 +29,22 @@
       "Bash(unzip -l composeApp/build/outputs/apk/debug/composeApp-debug.apk)",
       "WebFetch(domain:127.0.0.1)",
       "WebFetch(domain:countriesnow.space)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(./gradlew :composeApp:compileKotlinAndroid)",
+      "Bash(./gradlew :composeApp:compileDebugKotlinAndroid --rerun-tasks)",
+      "Bash(find /c/Users/khoan/IdeaProjects/GreenMind -type f -name *WasteReport*)",
+      "Bash(./gradlew :composeApp:compileDebugKotlinAndroid --info)",
+      "Bash(./gradlew :composeApp:compileDebugKotlinAndroid --stacktrace)",
+      "Bash(grep -v \"^$\")",
+      "WebFetch(domain:koalaplot.github.io)",
+      "WebFetch(domain:alexzh.com)",
+      "WebFetch(domain:johnoreilly.dev)",
+      "Read(//c/tmp/**)",
+      "Bash(javap -p io/github/koalaplot/core/xygraph/AxisStyle.class io/github/koalaplot/core/xygraph/AxisContent.class)",
+      "Bash(xargs javap:*)",
+      "Bash(xargs wc:*)",
+      "Bash(grep -E \"\\\\.\\(kt|kts\\)$\")",
+      "Bash(find:*)"
     ]
   }
 }

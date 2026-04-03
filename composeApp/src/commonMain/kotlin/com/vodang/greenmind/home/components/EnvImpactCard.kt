@@ -2,6 +2,7 @@ package com.vodang.greenmind.home.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -12,60 +13,43 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-// ── EnvImpactCard ─────────────────────────────────────────────────────────────
-//
-// Displays the environmental pollution impact from a plastic-waste scan result.
-// Currently renders mock data matching the API response shape.
-//
-// TODO: Replace mock data with real DTO from the YOLO-detect API endpoint.
-//       API response shape (see api/wastereport/WasteReportApi.kt or similar):
-//         items          : List<DetectedItem>  (name, quantity, area)
-//         total_objects  : Int
-//         image_url      : String
-//         pollution      : Map<String, Double>  (CO2, microplastic, dioxin, …)
-//         impact         : ImpactSummary        (air_pollution, water_pollution, soil_pollution)
-//
-// TODO: Pass the scan result as a parameter once the API model is wired in.
-//       Suggested signature:
-//         fun EnvImpactCard(result: YoloScanResult, modifier: Modifier = Modifier)
-//
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ── Mock data ─────────────────────────────────────────────────────────────────
-// TODO: Remove once real data flows in from the API.
-private data class MockDetectedItem(val name: String, val quantity: Int, val area: Int)
-
-private val mockItems = listOf(
-    MockDetectedItem("Plastic film", 9, 147757),
-    MockDetectedItem("Single-use carrier bag", 2, 18706),
-)
-private val mockTotalObjects = 11
-
-// Impact values from the API's `impact` object — range roughly 0..2+
-// TODO: Replace with real ImpactSummary fields from the API DTO.
-private val mockAirPollution    = 1.23f   // air_pollution
-private val mockWaterPollution  = 0.69f   // water_pollution
-private val mockSoilPollution   = 1.39f   // soil_pollution
-
-// Active pollutants (non-zero values) from the API's `pollution` object.
-// TODO: Filter these dynamically from the real pollution map.
-private val mockActivePollutants = listOf("CO₂", "Microplastic", "Dioxin", "Non-biodegradable")
-// ─────────────────────────────────────────────────────────────────────────────
+import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
+import kotlin.math.roundToInt
 
 private val red700   = Color(0xFFC62828)
 private val red50    = Color(0xFFFFEBEE)
 private val orange50 = Color(0xFFFFF3E0)
+private val orange600 = Color(0xFFF4511E)
 private val amber    = Color(0xFFF57F17)
 private val green800 = Color(0xFF2E7D32)
 private val green50  = Color(0xFFE8F5E9)
+private val blue600  = Color(0xFF1976D2)
 
 /** Maximum impact value used to normalise the progress bars. */
-private const val IMPACT_MAX = 2.0f
+private const val IMPACT_MAX = 1.0f
+
+/** Friendly display names for raw pollution keys. */
+private val pollutantLabel = mapOf(
+    "CO2"              to "CO₂",
+    "dioxin"           to "Dioxin",
+    "microplastic"     to "Microplastic",
+    "toxic_chemicals"  to "Toxic chemicals",
+    "non_biodegradable" to "Non-biodegradable",
+    "NOx"              to "NOₓ",
+    "SO2"              to "SO₂",
+    "CH4"              to "CH₄",
+    "PM2.5"            to "PM2.5",
+    "Pb"               to "Lead (Pb)",
+    "Hg"               to "Mercury (Hg)",
+    "Cd"               to "Cadmium (Cd)",
+    "nitrate"          to "Nitrate",
+    "chemical_residue" to "Chemical residue",
+    "styrene"          to "Styrene",
+)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun EnvImpactCard(modifier: Modifier = Modifier) {
+fun EnvImpactCard(result: WasteDetectResponse, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -90,7 +74,7 @@ fun EnvImpactCard(modifier: Modifier = Modifier) {
                 ) {
                     Text("☣️", fontSize = 20.sp)
                 }
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         "Environmental Impact",
                         fontSize = 15.sp,
@@ -98,10 +82,24 @@ fun EnvImpactCard(modifier: Modifier = Modifier) {
                         color = Color(0xFF1B1B1B),
                     )
                     Text(
-                        // TODO: Replace with last-scan timestamp from the DTO.
-                        "Last scan · $mockTotalObjects objects detected",
+                        "${result.totalItems} item${if (result.totalItems != 1) "s" else ""} detected · eco score ${result.ecoScore}%",
                         fontSize = 11.sp,
                         color = Color.Gray,
+                    )
+                }
+                // Eco score badge
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(ecoScoreColor(result.ecoScore).copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "${result.ecoScore}%",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ecoScoreColor(result.ecoScore),
                     )
                 }
             }
@@ -115,10 +113,51 @@ fun EnvImpactCard(modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF616161),
             )
-            // TODO: Replace mockItems with real items list from the DTO.
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                mockItems.forEach { item ->
-                    DetectedItemRow(item)
+                result.items.forEach { item ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(orange50),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("🗑️", fontSize = 14.sp)
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                item.name.replaceFirstChar { it.uppercase() },
+                                fontSize = 13.sp,
+                                color = Color(0xFF1B1B1B),
+                                fontWeight = FontWeight.Medium,
+                            )
+                            if (item.className.isNotBlank()) {
+                                Text(
+                                    item.className,
+                                    fontSize = 11.sp,
+                                    color = Color.Gray,
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(red50)
+                                .padding(horizontal = 10.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                "×${item.quantity}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = red700,
+                            )
+                        }
+                    }
                 }
             }
 
@@ -131,52 +170,32 @@ fun EnvImpactCard(modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF616161),
             )
-            // TODO: Replace mock values with real impact fields from the DTO.
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ImpactMeter(
-                    icon = "💨",
-                    label = "Air pollution",
-                    value = mockAirPollution,
-                    max = IMPACT_MAX,
-                    barColor = red700,
-                )
-                ImpactMeter(
-                    icon = "💧",
-                    label = "Water pollution",
-                    value = mockWaterPollution,
-                    max = IMPACT_MAX,
-                    barColor = Color(0xFF1565C0),
-                )
-                ImpactMeter(
-                    icon = "🌱",
-                    label = "Soil pollution",
-                    value = mockSoilPollution,
-                    max = IMPACT_MAX,
-                    barColor = amber,
-                )
+                ImpactMeter(icon = "💨", label = "Air pollution",   value = result.impact.airPollution.toFloat(),   barColor = red700)
+                ImpactMeter(icon = "💧", label = "Water pollution", value = result.impact.waterPollution.toFloat(), barColor = blue600)
+                ImpactMeter(icon = "🌱", label = "Soil pollution",  value = result.impact.soilPollution.toFloat(),  barColor = amber)
             }
 
-            HorizontalDivider(color = Color(0xFFEEEEEE))
-
             // ── Active pollutant chips ────────────────────────────────────────
-            Text(
-                "Active pollutants",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF616161),
-            )
-            // TODO: Filter from real pollution map — only show keys with value > 0.
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                mockActivePollutants.forEach { name ->
-                    PollutantChip(name)
+            if (result.activePollutants.isNotEmpty()) {
+                HorizontalDivider(color = Color(0xFFEEEEEE))
+                Text(
+                    "Active pollutants",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF616161),
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    result.activePollutants.forEach { (key, _) ->
+                        PollutantChip(pollutantLabel[key] ?: key)
+                    }
                 }
             }
 
             // ── Tip footer ────────────────────────────────────────────────────
-            // TODO: Surface a tip string from i18n / LocalAppStrings once added.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -195,58 +214,16 @@ fun EnvImpactCard(modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-private fun DetectedItemRow(item: MockDetectedItem) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(orange50),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("🗑️", fontSize = 14.sp)
-            }
-            Text(item.name, fontSize = 13.sp, color = Color(0xFF1B1B1B))
-        }
-        // Quantity badge
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(red50)
-                .padding(horizontal = 10.dp, vertical = 3.dp),
-        ) {
-            Text(
-                "×${item.quantity}",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = red700,
-            )
-        }
-    }
+private fun ecoScoreColor(score: Int): Color = when {
+    score >= 60 -> Color(0xFF2E7D32)
+    score >= 35 -> Color(0xFFE65100)
+    else        -> Color(0xFFC62828)
 }
 
 @Composable
-private fun ImpactMeter(
-    icon: String,
-    label: String,
-    value: Float,
-    max: Float,
-    barColor: Color,
-) {
-    val progress = (value / max).coerceIn(0f, 1f)
-    val whole = value.toInt()
-    val frac = ((value - whole) * 100).toInt()
-    val displayValue = "$whole.${frac.toString().padStart(2, '0')}"
-
+private fun ImpactMeter(icon: String, label: String, value: Float, barColor: Color) {
+    val progress = (value / IMPACT_MAX).coerceIn(0f, 1f)
+    val pct = (value * 100).roundToInt()
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -261,7 +238,7 @@ private fun ImpactMeter(
                 Text(label, fontSize = 12.sp, color = Color(0xFF424242))
             }
             Text(
-                displayValue,
+                "$pct%",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = barColor,
@@ -287,11 +264,6 @@ private fun PollutantChip(name: String) {
             .background(red50)
             .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
-        Text(
-            name,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            color = red700,
-        )
+        Text(name, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = red700)
     }
 }

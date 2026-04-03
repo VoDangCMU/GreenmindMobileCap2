@@ -6,6 +6,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.vodang.greenmind.api.auth.ApiException
 import com.vodang.greenmind.api.auth.getProfile
 import com.vodang.greenmind.api.auth.toUserDto
+import com.vodang.greenmind.api.preappsurvey.getPreAppSurveyByUser
 import com.vodang.greenmind.home.HomeScreen
 import com.vodang.greenmind.i18n.EnStrings
 import com.vodang.greenmind.i18n.LocalAppStrings
@@ -28,6 +29,7 @@ fun App() {
         MaterialTheme {
             var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
             var isCheckingAuth by remember { mutableStateOf(true) }
+            var hasPreAppSurvey by remember { mutableStateOf(true) }
 
             LaunchedEffect(Unit) {
                 Geo.service.start()
@@ -39,6 +41,15 @@ fun App() {
                         val profile = getProfile(token)
                         SettingsStore.setUser(profile.toUserDto())
                         currentScreen = AppScreen.HOME
+                        // Check if user has completed the pre-app survey
+                        hasPreAppSurvey = try {
+                            getPreAppSurveyByUser(token, profile.id)
+                            true
+                        } catch (e: ApiException) {
+                            false // 404 = survey not yet completed
+                        } catch (_: Throwable) {
+                            true // network error → don't nag the user
+                        }
                     } catch (e: ApiException) {
                         // 401 = token expired/invalid → force re-login
                         SettingsStore.setAccessToken(null)
@@ -64,7 +75,11 @@ fun App() {
                         onRegisterSuccess = { currentScreen = AppScreen.HOME },
                         onCancel = { currentScreen = AppScreen.LOGIN }
                     )
-                    AppScreen.HOME -> HomeScreen(onLogout = { currentScreen = AppScreen.LOGIN })
+                    AppScreen.HOME -> HomeScreen(
+                        onLogout = { currentScreen = AppScreen.LOGIN },
+                        hasPreAppSurvey = hasPreAppSurvey,
+                        onPreAppSurveyCompleted = { hasPreAppSurvey = true },
+                    )
                 }
             }
         }

@@ -30,7 +30,7 @@ private fun ratioColor(ratio: Int): Color = when {
 }
 
 @Composable
-fun MealListScreen(onScanClick: () -> Unit) {
+fun MealListScreen(onScanClick: () -> Unit, onCardClick: (MealRecord) -> Unit = {}) {
     val s = LocalAppStrings.current
     val meals by MealStore.meals.collectAsState()
 
@@ -67,19 +67,19 @@ fun MealListScreen(onScanClick: () -> Unit) {
             contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
         ) {
             items(meals, key = { it.id }) { meal ->
-                MealRecordCard(meal)
+                MealRecordCard(meal, onClick = { onCardClick(meal) })
             }
         }
     }
 }
 
 @Composable
-private fun MealRecordCard(meal: MealRecord) {
+private fun MealRecordCard(meal: MealRecord, onClick: () -> Unit) {
     val s = LocalAppStrings.current
     val color = ratioColor(meal.plantRatio)
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)

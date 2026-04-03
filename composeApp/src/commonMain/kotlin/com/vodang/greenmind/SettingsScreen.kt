@@ -15,11 +15,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.vodang.greenmind.home.components.LanguagePickerModal
+import com.vodang.greenmind.home.components.OceanScoreCard
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.GpsTick
 import com.vodang.greenmind.store.LocationTrackingStore
 import com.vodang.greenmind.store.SettingsStore
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val green800 = Color(0xFF2E7D32)
 private val green50  = Color(0xFFE8F5E9)
@@ -38,6 +42,14 @@ fun SettingsScreen() {
     // Local slider state — committed to store only on finger-lift to avoid excessive writes
     var sliderMove by remember(minMove) { mutableStateOf(minMove) }
     var showLangPicker by remember { mutableStateOf(false) }
+
+    // Metrics auto-update state
+    var metricsAutoEnabled  by remember { mutableStateOf(true) }
+    var metricsUpdateHour   by remember { mutableStateOf(21) }
+    var metricsUpdateMinute by remember { mutableStateOf(0) }
+    var showTimePicker      by remember { mutableStateOf(false) }
+    var refreshingMetrics   by remember { mutableStateOf(emptySet<String>()) }
+    val metricsScope = rememberCoroutineScope()
 
     val intervalOptions = listOf(
         15_000L  to "15s",
@@ -176,6 +188,153 @@ fun SettingsScreen() {
                     }
                 }
 
+                OceanScoreCard()
+
+                // ── Metrics Auto Update ───────────────────────────────────────
+                SettingsSectionHeader("📊  Metrics Auto Update")
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+
+                        // Enable toggle
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Auto Update Metrics", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                                Text("Automatically refresh all metrics daily", fontSize = 12.sp, color = Color.Gray)
+                            }
+                            Switch(
+                                checked = metricsAutoEnabled,
+                                onCheckedChange = { metricsAutoEnabled = it },
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = green800),
+                            )
+                        }
+
+                        // Time picker row (only when enabled)
+                        if (metricsAutoEnabled) {
+                            HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { showTimePicker = true }
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Update time", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                                    Text("Daily refresh will run at this time", fontSize = 12.sp, color = Color.Gray)
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = green50,
+                                ) {
+                                    Text(
+                                        text = "%02d:%02d".fmt(metricsUpdateHour, metricsUpdateMinute),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = green800,
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
+
+                        // Update All button
+                        val metrics = listOf(
+                            Triple("daily_spending",         "💸", "Daily Spending"),
+                            Triple("night_out",              "🌙", "Night Out"),
+                            Triple("spend_variability",      "📊", "Spend Variability"),
+                            Triple("brand_novelty",          "🛍️", "Brand Novelty"),
+                            Triple("list_adherence",         "📋", "List Adherence"),
+                            Triple("daily_distance",         "🚶", "Daily Distance"),
+                            Triple("novel_location_ratio",   "📍", "Novel Location Ratio"),
+                            Triple("public_transit_ratio",   "🚌", "Public Transit Ratio"),
+                        )
+                        val allKeys = metrics.map { it.first }.toSet()
+                        val isRefreshingAll = allKeys.all { it in refreshingMetrics }
+                        Button(
+                            onClick = {
+                                if (!isRefreshingAll) {
+                                    metricsScope.launch {
+                                        refreshingMetrics = allKeys
+                                        delay(1500) // TODO: replace with actual API call
+                                        refreshingMetrics = emptySet()
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = green800),
+                            enabled = !isRefreshingAll,
+                        ) {
+                            if (isRefreshingAll) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Updating…", fontSize = 13.sp)
+                            } else {
+                                Text("↺  Update All", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 4.dp))
+
+                        // Metric rows
+                        metrics.forEachIndexed { idx, (key, emoji, label) ->
+                            if (idx > 0) HorizontalDivider(color = Color(0xFFF5F5F5))
+                            val isRefreshing = key in refreshingMetrics
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Text(emoji, fontSize = 18.sp)
+                                Text(
+                                    text = label,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF212121),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                if (isRefreshing) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = green800,
+                                        strokeWidth = 2.dp,
+                                    )
+                                } else {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = green50,
+                                        modifier = Modifier.clickable {
+                                            metricsScope.launch {
+                                                refreshingMetrics = refreshingMetrics + key
+                                                delay(1500) // TODO: replace with actual API call
+                                                refreshingMetrics = refreshingMetrics - key
+                                            }
+                                        },
+                                    ) {
+                                        Text(
+                                            text = "↺",
+                                            fontSize = 16.sp,
+                                            color = green800,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // ── Recent GPS ticks ──────────────────────────────────────────
                 SettingsSectionHeader("📡  Recent GPS records")
                 Card(
@@ -261,6 +420,19 @@ fun SettingsScreen() {
             }
     }
 
+    if (showTimePicker) {
+        MetricsTimePickerDialog(
+            hour = metricsUpdateHour,
+            minute = metricsUpdateMinute,
+            onConfirm = { h, m ->
+                metricsUpdateHour = h
+                metricsUpdateMinute = m
+                showTimePicker = false
+            },
+            onDismiss = { showTimePicker = false },
+        )
+    }
+
     if (showLangPicker) {
         LanguagePickerModal(
             currentLang = language,
@@ -332,6 +504,93 @@ private fun GpsTickRow(tick: GpsTick) {
             color = if (tick.distanceMeters < 1.0) Color(0xFF9E9E9E) else green800,
             fontWeight = FontWeight.Medium,
         )
+    }
+}
+
+@Composable
+private fun MetricsTimePickerDialog(
+    hour: Int,
+    minute: Int,
+    onConfirm: (Int, Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var h by remember { mutableStateOf(hour) }
+    var m by remember { mutableStateOf(minute) }
+    val minuteOptions = listOf(0, 15, 30, 45)
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        ) {
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Update Time", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF212121))
+
+                // Hour selector
+                Text("Hour", fontSize = 13.sp, color = Color.Gray)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = green50,
+                        modifier = Modifier.clickable { h = (h - 1 + 24) % 24 }
+                    ) {
+                        Text("−", fontSize = 20.sp, color = green800, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
+                    }
+                    Text(
+                        text = "%02d".fmt(h),
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = green800,
+                        modifier = Modifier.width(52.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = green50,
+                        modifier = Modifier.clickable { h = (h + 1) % 24 }
+                    ) {
+                        Text("+", fontSize = 20.sp, color = green800, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
+                    }
+                }
+
+                // Minute selector
+                Text("Minute", fontSize = 13.sp, color = Color.Gray)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    minuteOptions.forEach { opt ->
+                        val selected = m == opt
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (selected) green800 else green50,
+                            modifier = Modifier.clickable { m = opt },
+                        ) {
+                            Text(
+                                text = "%02d".fmt(opt),
+                                fontSize = 14.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selected) Color.White else green800,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            )
+                        }
+                    }
+                }
+
+                // Confirm / Cancel
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cancel", color = Color.Gray) }
+                    Button(
+                        onClick = { onConfirm(h, m) },
+                        colors = ButtonDefaults.buttonColors(containerColor = green800),
+                        shape = RoundedCornerShape(10.dp),
+                    ) { Text("Set") }
+                }
+            }
+        }
     }
 }
 

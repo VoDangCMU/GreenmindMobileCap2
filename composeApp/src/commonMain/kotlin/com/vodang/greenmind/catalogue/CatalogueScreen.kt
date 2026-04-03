@@ -41,7 +41,7 @@ private val green800 = Color(0xFF2E7D32)
 private val green50  = Color(0xFFE8F5E9)
 
 @Composable
-fun CatalogueScreen(onWasteReport: () -> Unit) {
+fun CatalogueScreen(onWasteReport: () -> Unit, onPreAppSurvey: () -> Unit = {}) {
     val s = LocalAppStrings.current
 
     // ── Feature lists ──────────────────────────────────────────────────────
@@ -50,6 +50,7 @@ fun CatalogueScreen(onWasteReport: () -> Unit) {
         FeatureEntry("📊", s.surveys,  s.surveysDesc),
         FeatureEntry("📰", s.blog,     s.blogDesc),
         FeatureEntry("🌊", s.oceanTitle, s.oceanSubtitle),
+        FeatureEntry("📝", s.preAppSurveyTitle, s.preAppSurveySubtitle, onClick = onPreAppSurvey),
     )
     val householdFeatures = listOf(
         FeatureEntry("♻️", s.wasteSort,       s.wasteSortDesc),

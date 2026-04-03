@@ -17,6 +17,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.api.auth.ApiException
+import com.vodang.greenmind.api.preappsurvey.PreAppSurveyDto
+import com.vodang.greenmind.api.preappsurvey.getPreAppSurveyByUser
 import com.vodang.greenmind.home.components.OceanScoreCard
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.BillStore
@@ -24,7 +27,6 @@ import com.vodang.greenmind.store.MealStore
 import com.vodang.greenmind.store.OceanStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WalkDistanceStore
-
 import com.vodang.greenmind.time.currentTimeMillis
 
 private fun isToday(millis: Long) = (currentTimeMillis() - millis) < 86_400_000L
@@ -54,6 +56,18 @@ fun ProfileScreen() {
     val todayBills   = bills.filter { isToday(it.timestampMillis) }
     val avgPlant     = if (todayMeals.isEmpty()) 0 else todayMeals.map { it.plantRatio }.average().toInt()
     val avgGreen     = if (todayBills.isEmpty()) 0 else todayBills.map { it.greenRatio }.average().toInt()
+
+    var survey by remember { mutableStateOf<PreAppSurveyDto?>(null) }
+
+    LaunchedEffect(user?.id) {
+        val token = SettingsStore.getAccessToken() ?: return@LaunchedEffect
+        val userId = user?.id ?: return@LaunchedEffect
+        try {
+            survey = getPreAppSurveyByUser(token, userId)
+        } catch (_: ApiException) {
+            // not completed yet — no section shown
+        } catch (_: Throwable) { }
+    }
 
     val green800 = Color(0xFF2E7D32)
     val green700 = Color(0xFF388E3C)
@@ -219,6 +233,13 @@ fun ProfileScreen() {
                     )
                 }
 
+                // Habit Profile (pre-app survey)
+                val sv = survey
+                if (sv != null) {
+                    val isVi = s.langCode == "vi"
+                    HabitProfileSection(sv = sv, isVi = isVi, green800 = green800)
+                }
+
                 Spacer(Modifier.height(32.dp))
             }
         }
@@ -271,6 +292,88 @@ private fun ProfileInfoRow(icon: String, label: String, value: String) {
             color = Color(0xFF212121),
             modifier = Modifier.weight(1f),
         )
+    }
+}
+
+// ── Habit profile section ─────────────────────────────────────────────────────
+
+private data class HabitRow(val emoji: String, val labelEn: String, val labelVi: String, val display: String)
+
+private fun scaleDisplay(value: Int, max: Int = 5): String = "●".repeat(value) + "○".repeat(max - value)
+
+@Composable
+private fun HabitProfileSection(sv: com.vodang.greenmind.api.preappsurvey.PreAppSurveyDto, isVi: Boolean, green800: Color) {
+    val rows = buildList {
+        add(HabitRow("💸", "Daily Spending",     "Chi tiêu hàng ngày",
+            "${sv.dailySpending} ${if (isVi) "đ/ngày" else "VND/day"}"))
+        add(HabitRow("🚶", "Daily Distance",     "Quãng đường hàng ngày",
+            "${sv.dailyDistance} km"))
+        add(HabitRow("📊", "Spending Variation", "Biến động chi tiêu",
+            scaleDisplay(sv.spendingVariation)))
+        add(HabitRow("🛍️", "Brand Trial",        "Thử thương hiệu mới",
+            scaleDisplay(sv.brandTrial)))
+        add(HabitRow("📋", "Shopping List",      "Mua sắm theo danh sách",
+            scaleDisplay(sv.shoppingList)))
+        add(HabitRow("🗺️", "Explores New Places","Khám phá nơi mới",
+            scaleDisplay(sv.newPlaces)))
+        add(HabitRow("🚌", "Public Transport",   "Giao thông công cộng",
+            scaleDisplay(sv.publicTransport)))
+        add(HabitRow("🗓️", "Stable Schedule",    "Lịch trình ổn định",
+            scaleDisplay(sv.stableSchedule)))
+        add(HabitRow("🌙", "Night Outings",      "Ra ngoài buổi tối",
+            "${sv.nightOutings} ${if (isVi) "đêm/tuần" else "nights/week"}"))
+        add(HabitRow("🥗", "Healthy Eating",     "Ăn uống lành mạnh",
+            scaleDisplay(sv.healthyEating)))
+        add(HabitRow("📱", "Social Media",       "Mạng xã hội",
+            scaleDisplay(sv.socialMedia)))
+        add(HabitRow("🎯", "Goal Setting",       "Đặt mục tiêu",
+            scaleDisplay(sv.goalSetting)))
+        add(HabitRow("🎭", "Mood Swings",        "Thay đổi tâm trạng",
+            scaleDisplay(sv.moodSwings)))
+    }
+
+    Text(
+        text = if (isVi) "Hồ sơ thói quen" else "Habit Profile",
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = Color.Gray,
+    )
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            rows.forEachIndexed { i, row ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(row.emoji, fontSize = 16.sp, modifier = Modifier.width(28.dp))
+                    Text(
+                        text = if (isVi) row.labelVi else row.labelEn,
+                        fontSize = 13.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = row.display,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = green800,
+                    )
+                }
+                if (i < rows.lastIndex) {
+                    HorizontalDivider(
+                        color = Color(0xFFF5F5F5),
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
+        }
     }
 }
 

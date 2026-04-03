@@ -1,121 +1,112 @@
 package com.vodang.greenmind.wastesort
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
+import com.vodang.greenmind.api.wastesort.DetectTrashResponse
+import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.store.WasteSortStore
+import com.vodang.greenmind.time.nowIso8601
+import com.vodang.greenmind.wastesort.components.ScanDetailScreen
+import com.vodang.greenmind.wastesort.components.WasteSortListScreen
 
-private val green800 = Color(0xFF2E7D32)
-private val green600 = Color(0xFF388E3C)
-private val green50  = Color(0xFFE8F5E9)
+// ── Palette ───────────────────────────────────────────────────────────────────
+
+val green800 = Color(0xFF2E7D32)
+val green600 = Color(0xFF388E3C)
+val green50  = Color(0xFFE8F5E9)
+
+// ── Data model ────────────────────────────────────────────────────────────────
+
+data class WasteSortEntry(
+    val id: String,
+    val imageUrl: String,
+    val totalObjects: Int,
+    val grouped: Map<String, List<String>>,
+    val createdAt: String,   // display string e.g. "Apr 2, 2026"
+    val scannedBy: String,
+    val pollutantResult: WasteDetectResponse? = null,
+)
+
+// ── Category helpers ──────────────────────────────────────────────────────────
+
+fun categoryColor(cat: String) = when (cat.lowercase()) {
+    "recyclable" -> Color(0xFF1565C0)
+    "organic"    -> Color(0xFF2E7D32)
+    "hazardous"  -> Color(0xFFD32F2F)
+    else         -> Color(0xFF616161)
+}
+
+fun categoryBg(cat: String) = when (cat.lowercase()) {
+    "recyclable" -> Color(0xFFE3F2FD)
+    "organic"    -> Color(0xFFE8F5E9)
+    "hazardous"  -> Color(0xFFFFEBEE)
+    else         -> Color(0xFFF5F5F5)
+}
+
+fun categoryEmoji(cat: String) = when (cat.lowercase()) {
+    "recyclable" -> "♻️"
+    "organic"    -> "🌿"
+    "hazardous"  -> "⚠️"
+    else         -> "🗑️"
+}
+
+fun categoryLabel(cat: String) = cat.replaceFirstChar { it.uppercase() }
+
+
+fun DetectTrashResponse.toEntry(scannedBy: String): WasteSortEntry {
+    val date = nowIso8601().take(10) // "YYYY-MM-DD"
+    return WasteSortEntry(
+        id           = imageUrl.substringAfterLast("/").substringBeforeLast("."),
+        imageUrl     = imageUrl,
+        totalObjects = totalObjects,
+        grouped      = grouped,
+        createdAt    = date,
+        scannedBy    = scannedBy,
+    )
+}
+
+// ── Screen root ───────────────────────────────────────────────────────────────
 
 @Composable
 fun WasteSortScreen(onScanClick: () -> Unit = {}) {
-    val s = LocalAppStrings.current
+    val entries by WasteSortStore.entries.collectAsState()
+    var selectedEntry by remember { mutableStateOf<WasteSortEntry?>(null) }
+    var showScan      by remember { mutableStateOf(false) }
+    var useGallery    by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        // Header
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(green50),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("♻️", fontSize = 40.sp)
-            }
-            Text(
-                text = s.wasteSort,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = green800
-            )
-            Text(
-                text = s.wasteSortDesc,
-                fontSize = 14.sp,
-                color = Color.Gray,
-                textAlign = TextAlign.Center
+    val user by SettingsStore.user.collectAsState()
+
+    BackHandler(enabled = selectedEntry != null) { selectedEntry = null }
+    BackHandler(enabled = showScan) { showScan = false }
+
+    when {
+        showScan -> {
+            WasteSortScanScreen(
+                onResult = { response ->
+                    val entry = response.toEntry(user?.fullName ?: user?.username ?: "Me")
+                    WasteSortStore.add(entry)
+                    selectedEntry = entry
+                    showScan = false
+                },
+                onBack = { showScan = false },
+                useGallery = useGallery,
             )
         }
-
-        // Scan button
-        Button(
-            onClick = onScanClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = green600)
-        ) {
-            Text("📷  ${s.wasteSort}", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        }
-
-        // Waste type guide
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(green50)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Waste types",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Gray
+        selectedEntry != null -> {
+            ScanDetailScreen(
+                entry = selectedEntry!!,
+                onBack = { selectedEntry = null },
             )
-            WasteTypeRow("🟢", "Organic", "Food scraps, leaves", Color(0xFF388E3C))
-            WasteTypeRow("🔵", "Recyclable", "Paper, plastic, glass", Color(0xFF1976D2))
-            WasteTypeRow("🔴", "Hazardous", "Batteries, chemicals", Color(0xFFD32F2F))
-            WasteTypeRow("⚫", "General", "Non-recyclable waste", Color(0xFF424242))
         }
-    }
-}
-
-@Composable
-private fun WasteTypeRow(dot: String, name: String, desc: String, color: Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(dot, fontSize = 16.sp)
-        }
-        Column {
-            Text(name, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1B1B1B))
-            Text(desc, fontSize = 12.sp, color = Color.Gray)
+        else -> {
+            WasteSortListScreen(
+                entries = entries,
+                onCameraClick = { useGallery = false; showScan = true },
+                onGalleryClick = { useGallery = true; showScan = true },
+                onCardClick = { selectedEntry = it },
+            )
         }
     }
 }

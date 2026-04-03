@@ -3,6 +3,7 @@ package com.vodang.greenmind.meal
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -29,6 +30,7 @@ import com.vodang.greenmind.api.meal.MealAnalysisResult
 import com.vodang.greenmind.api.meal.analyzeMeal
 import com.vodang.greenmind.i18n.LocalAppStrings
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -54,7 +56,7 @@ private fun createMealPhotoUri(context: Context): Uri {
 
 @Composable
 actual fun MealScanScreen(
-    onScanComplete: (plantRatio: Int, description: String, imageUrl: String?) -> Unit,
+    onScanComplete: (plantRatio: Int, description: String, imageUrl: String?, plantImageBase64: String?, dishImageBase64: String?) -> Unit,
     onBack: () -> Unit,
 ) {
     val s = LocalAppStrings.current
@@ -184,19 +186,24 @@ actual fun MealScanScreen(
                                 try {
                                     val bytes = capturedBytes!!
                                     val token = com.vodang.greenmind.store.SettingsStore.getAccessToken()
-                                    val analysisDeferred = async { analyzeMeal(bytes) }
-                                    val uploadDeferred = if (token != null) async {
-                                        try {
-                                            com.vodang.greenmind.api.upload.requestAndUpload(
-                                                accessToken = token,
-                                                filename = "meal_${System.currentTimeMillis()}.jpg",
-                                                fileBytes = bytes,
-                                                contentType = "image/jpeg",
-                                            ).imageUrl
-                                        } catch (_: Throwable) { null }
-                                    } else null
-                                    result = analysisDeferred.await()
-                                    imageUrl = uploadDeferred?.await()
+                                    val (analysisResult, uploadedUrl) = coroutineScope {
+                                        val analysisDeferred = async {
+                                            analyzeMeal(bytes, "meal_${System.currentTimeMillis()}.jpg")
+                                        }
+                                        val uploadDeferred = if (token != null) async {
+                                            try {
+                                                com.vodang.greenmind.api.upload.requestAndUpload(
+                                                    accessToken = token,
+                                                    filename = "meal_${System.currentTimeMillis()}.jpg",
+                                                    fileBytes = bytes,
+                                                    contentType = "image/jpeg",
+                                                ).imageUrl
+                                            } catch (_: Throwable) { null }
+                                        } else null
+                                        analysisDeferred.await() to uploadDeferred?.await()
+                                    }
+                                    result = analysisResult
+                                    imageUrl = uploadedUrl
                                     phase = MealScanPhase.RESULT
                                 } catch (e: Throwable) {
                                     error = s.mealError
@@ -240,6 +247,17 @@ actual fun MealScanScreen(
                     }
                     var mealName by remember(res) { mutableStateOf(res.description) }
 
+                    fun decodeBase64Bitmap(b64: String?) = b64?.let {
+                        runCatching {
+                            // Strip data URI prefix if present (e.g. "data:image/png;base64,")
+                            val clean = if (it.contains(',')) it.substringAfter(',') else it
+                            val bytes = Base64.decode(clean, Base64.DEFAULT)
+                            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                        }.getOrNull()
+                    }
+
+                    val plantBitmap = remember(res.plantImageBase64) { decodeBase64Bitmap(res.plantImageBase64) }
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -250,6 +268,19 @@ actual fun MealScanScreen(
                         verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
                         Spacer(Modifier.height(16.dp))
+
+                        // Plant overlay — highlighted vegetable segments
+                        if (plantBitmap != null) {
+                            Image(
+                                bitmap = plantBitmap,
+                                contentDescription = null,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                        }
 
                         Box(
                             modifier = Modifier
@@ -312,7 +343,7 @@ actual fun MealScanScreen(
                             }
                             Button(
                                 modifier = Modifier.weight(1f),
-                                onClick = { onScanComplete(res.plantRatio, mealName, imageUrl) },
+                                onClick = { onScanComplete(res.plantRatio, mealName, imageUrl, res.plantImageBase64, res.dishImageBase64) },
                                 colors = ButtonDefaults.buttonColors(containerColor = green800)
                             ) {
                                 Text("✅ ${s.mealSave}")

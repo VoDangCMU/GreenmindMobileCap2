@@ -6,6 +6,7 @@ import com.vodang.greenmind.api.todo.TodoWithSubtasksDto
 import com.vodang.greenmind.api.todo.createTodo
 import com.vodang.greenmind.api.todo.deleteTodo
 import com.vodang.greenmind.api.todo.getTodos
+import com.vodang.greenmind.api.todo.splitTask
 import com.vodang.greenmind.api.todo.toggleTodo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -53,10 +54,13 @@ object TodoStore {
     private val _todos = MutableStateFlow<List<TodoItem>>(emptyList())
     private val _isLoading = MutableStateFlow(false)
     private val _error = MutableStateFlow<String?>(null)
+    private val _generatingIds = MutableStateFlow<Set<String>>(emptySet())
 
     val todos: StateFlow<List<TodoItem>> = _todos.asStateFlow()
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     val error: StateFlow<String?> = _error.asStateFlow()
+    /** IDs of todo items currently being AI-expanded. */
+    val generatingIds: StateFlow<Set<String>> = _generatingIds.asStateFlow()
 
     private suspend fun reload(token: String) {
         _isLoading.value = true
@@ -139,6 +143,31 @@ object TodoStore {
                 // Revert on failure
                 _todos.value = snapshot
                 _error.value = e.message
+            }
+        }
+    }
+
+    /**
+     * Calls the AI task-splitter for [itemId], then batch-creates all returned
+     * subtasks as children of that item and reloads the list.
+     */
+    fun generateSubtasks(itemId: String, title: String) {
+        val token = SettingsStore.getAccessToken() ?: return
+        scope.launch {
+            _generatingIds.value = _generatingIds.value + itemId
+            _error.value = null
+            try {
+                val resp = splitTask(task = title, accessToken = token)
+                if (resp.success && resp.result.subtasks.isNotEmpty()) {
+                    for (subtask in resp.result.subtasks) {
+                        createTodo(token, CreateTodoRequest(title = subtask, parentId = itemId))
+                    }
+                    reload(token)
+                }
+            } catch (e: Throwable) {
+                _error.value = e.message
+            } finally {
+                _generatingIds.value = _generatingIds.value - itemId
             }
         }
     }

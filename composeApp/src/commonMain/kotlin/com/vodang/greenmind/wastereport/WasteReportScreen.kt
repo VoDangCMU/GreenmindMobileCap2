@@ -3,6 +3,8 @@ package com.vodang.greenmind.wastereport
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -116,7 +118,7 @@ fun WasteReportScreen() {
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
         Column(modifier = Modifier.fillMaxSize()) {
-            TabRow(
+            PrimaryTabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.White,
                 contentColor = green800,
@@ -284,6 +286,7 @@ private fun WasteReportCard(report: WasteReportDto, onClick: () -> Unit) {
 @Composable
 private fun WasteReportDetailSheet(report: WasteReportDto, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var previewImageUrl by remember { mutableStateOf<String?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -321,7 +324,8 @@ private fun WasteReportDetailSheet(report: WasteReportDto, onDismiss: () -> Unit
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { previewImageUrl = report.imageUrl },
                 )
             }
 
@@ -354,7 +358,30 @@ private fun WasteReportDetailSheet(report: WasteReportDto, onDismiss: () -> Unit
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(180.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { previewImageUrl = report.imageEvidenceUrl },
+                )
+            }
+        }
+    }
+
+    previewImageUrl?.let { url ->
+        Dialog(
+            onDismissRequest = { previewImageUrl = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { previewImageUrl = null },
+                contentAlignment = Alignment.Center,
+            ) {
+                NetworkImage(
+                    url = url,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
                 )
             }
         }

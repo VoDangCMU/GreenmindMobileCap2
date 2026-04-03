@@ -1,24 +1,28 @@
 package com.vodang.greenmind.home.components
 
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.auth.UserDto
+import com.vodang.greenmind.api.wastecollector.WasteCollectorReportDto
+import com.vodang.greenmind.api.wastecollector.getAssignedReports
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.store.SettingsStore
+import kotlinx.coroutines.launch
 
 private val green800 = Color(0xFF2E7D32)
 private val green600 = Color(0xFF388E3C)
@@ -27,24 +31,57 @@ private val amber600 = Color(0xFFFFB300)
 private val blue600 = Color(0xFF1976D2)
 private val blue50 = Color(0xFFE3F2FD)
 
-data class WastePoint(val id: Int, val address: String, val zone: String, val collected: Boolean, val bags: Int)
+data class WastePoint(val id: Int, val reportId: String, val address: String, val zone: String, val collected: Boolean, val bags: Int)
+
+private fun WasteCollectorReportDto.toWastePoint(index: Int) = WastePoint(
+    id = index,
+    reportId = id,
+    address = description.ifBlank { code },
+    zone = wasteType,
+    collected = status == "done" || status == "resolved" || status == "completed",
+    bags = wasteKg.toInt(),
+)
 
 @Composable
 fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = rememberScrollState()) {
     val s = LocalAppStrings.current
-    // TODO: Replace with live collection route data from the API.
-    //       Expected source: GET /collector/route  (returns assigned WastePoints for today's shift)
-    //       WastePoint should eventually come from a RouteStore/CollectorStore that fetches on login.
-    val points = listOf(
-        WastePoint(1, "12 Trần Phú, Hải Châu",         "Khu A", true,  3),
-        WastePoint(2, "45 Lê Duẩn, Hải Châu",          "Khu A", true,  5),
-        WastePoint(3, "7 Điện Biên Phủ, Thanh Khê",    "Khu B", false, 2),
-        WastePoint(4, "88 Hùng Vương, Thanh Khê",      "Khu B", false, 4),
-        WastePoint(5, "23 Phạm Văn Đồng, Sơn Trà",    "Khu C", false, 6),
-        WastePoint(6, "101 Hoàng Sa, Sơn Trà",         "Khu C", true,  2),
-    )
+
+    val scope = rememberCoroutineScope()
+    var reports by remember { mutableStateOf<List<WasteCollectorReportDto>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+    var checkInReportId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val token = SettingsStore.getAccessToken() ?: run { isLoading = false; return@LaunchedEffect }
+        try {
+            reports = getAssignedReports(token).data
+            errorMsg = null
+        } catch (e: Throwable) {
+            errorMsg = e.message
+        } finally {
+            isLoading = false
+        }
+    }
+
+    val points = reports.mapIndexed { i, dto -> dto.toWastePoint(i) }
+    val routePoints = reports.map { RouteMapPoint(lat = it.lat, lng = it.lng, label = it.code) }
     val collectedCount = points.count { it.collected }
     val totalCount = points.size
+
+    val token = SettingsStore.getAccessToken() ?: ""
+    // Always composed so the activity-result launcher stays registered.
+    CheckInScanFlow(
+        reportId = checkInReportId,
+        accessToken = token,
+        onSuccess = {
+            checkInReportId = null
+            scope.launch {
+                runCatching { reports = getAssignedReports(token).data }
+            }
+        },
+        onDismiss = { checkInReportId = null },
+    )
 
     Column(
         modifier = Modifier
@@ -53,55 +90,57 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Row(verticalAlignment = Alignment.CenterVertically) {
-        //     // Column(modifier = Modifier.weight(1f)) {
-        //     //     Text(
-        //     //         "${user?.fullName ?: s.collectorTitle} 🚛",
-        //     //         fontSize = 20.sp, fontWeight = FontWeight.Bold, color = green800
-        //     //     )
-        //     //     Text(s.collectorShift, fontSize = 12.sp, color = Color.Gray)
-        //     // }
-        //     Box(modifier = Modifier.size(56.dp).background(amber600, CircleShape), contentAlignment = Alignment.Center) {
-        //         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        //             Text("$collectedCount/$totalCount", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        //             Text(s.collectorPointsUnit, fontSize = 9.sp, color = Color.White.copy(alpha = 0.85f))
-        //         }
-        //     }
-        // }
+        when {
+            isLoading -> {
+                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = amber600)
+                }
+            }
+            errorMsg != null -> {
+                SectionCard {
+                    Text(
+                        "⚠️  $errorMsg",
+                        fontSize = 13.sp,
+                        color = Color(0xFFC62828),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    )
+                }
+            }
+            else -> {
+                SectionCard {
+                    Text(s.progressToday, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Spacer(Modifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = { if (totalCount == 0) 0f else collectedCount.toFloat() / totalCount },
+                        modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(6.dp)),
+                        color = amber600,
+                        trackColor = Color(0xFFFFF8E1),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(s.pointsCollected(collectedCount), fontSize = 12.sp, color = green600, fontWeight = FontWeight.Medium)
+                        Text(s.pointsRemaining(totalCount - collectedCount), fontSize = 12.sp, color = Color(0xFFE65100))
+                    }
+                }
 
-        SectionCard {
-            Text(s.progressToday, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Spacer(Modifier.height(10.dp))
-            LinearProgressIndicator(
-                progress = { collectedCount.toFloat() / totalCount },
-                modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(6.dp)),
-                color = amber600,
-                trackColor = Color(0xFFFFF8E1)
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(s.pointsCollected(collectedCount), fontSize = 12.sp, color = green600, fontWeight = FontWeight.Medium)
-                Text(s.pointsRemaining(totalCount - collectedCount), fontSize = 12.sp, color = Color(0xFFE65100))
+                Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MetricCard("🗺️", s.zoneLabel, s.zoneValue, s.today, Color(0xFFFFF8E1), amber600, Modifier.weight(1f).aspectRatio(1f))
+                    MetricCard("⚖️", s.bagsLabel, "${points.sumOf { it.bags }} kg", s.bagsEstimated, green50, green800, Modifier.weight(1f).aspectRatio(1f))
+                    MetricCard("📋", s.routeLabel, "$totalCount", s.today, blue50, blue600, Modifier.weight(1f).aspectRatio(1f))
+                }
+
+                CheckInCard(points, onCheckInClick = { reportId -> checkInReportId = reportId })
+                CollectionRouteCard(points)
+                CollectionRouteMapCard(points = routePoints)
+                // GarbageHeatmapCard()
             }
         }
 
-        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricCard("🗺️", s.zoneLabel, s.zoneValue, s.today, Color(0xFFFFF8E1), amber600, Modifier.weight(1f).aspectRatio(1f))
-            MetricCard("🛍️", s.bagsLabel, "${points.sumOf { it.bags }} ${s.bagsUnit}", s.bagsEstimated, green50, green800, Modifier.weight(1f).aspectRatio(1f))
-            // TODO: Replace "8.2 km" with real route distance calculated from the assigned WastePoints.
-            MetricCard("📍", s.routeLabel, "8.2 km", s.today, blue50, blue600, Modifier.weight(1f).aspectRatio(1f))
-        }
-
-        
-        CheckInCard(points)
-        CollectionRouteCard(points)
-        GarbageHeatmapCard()
         Text(s.features, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                // TODO: Navigate to full-screen garbage heatmap view.
                 FeatureButton("🗺️", s.heatmapFeatureLabel, s.heatmapFeatureDesc, Color(0xFFFFF8E1), amber600, Modifier.weight(1f)) { }
-                // TODO: Navigate to collection schedule / shift calendar screen.
                 FeatureButton("📅", s.scheduleLabel, s.scheduleDesc, blue50, blue600, Modifier.weight(1f)) { }
             }
         }

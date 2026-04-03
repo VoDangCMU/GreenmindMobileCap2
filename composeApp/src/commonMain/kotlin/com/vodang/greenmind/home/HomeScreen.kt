@@ -44,15 +44,23 @@ import com.vodang.greenmind.blog.BlogScreen
 import com.vodang.greenmind.survey.SurveyScreen
 import com.vodang.greenmind.todos.TodoScreen
 import com.vodang.greenmind.wastereport.WasteReportScreen
+import com.vodang.greenmind.wasteimpact.WasteImpactScreen
+import com.vodang.greenmind.householdwaste.HouseholdWasteScreen
+import com.vodang.greenmind.wasteanalytics.WasteAnalyticsScreen
 import com.vodang.greenmind.wastesort.WasteSortScreen
 import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.preappsurvey.PreAppSurveyScreen
 import kotlinx.coroutines.launch
 
 enum class HomeDestination { WASTE_SORT, DASHBOARD, TODOS, SURVEYS, BLOG }
-enum class DetailDest { WASTE_REPORT, MEAL, BILL, ENERGY, PROFILE, SETTINGS, CATALOGUE }
+enum class DetailDest { WASTE_REPORT, WASTE_IMPACT, HOUSEHOLD_WASTE, WASTE_ANALYTICS, MEAL, BILL, ENERGY, PROFILE, SETTINGS, CATALOGUE, PRE_APP_SURVEY }
 
 @Composable
-fun HomeScreen(onLogout: () -> Unit = {}) {
+fun HomeScreen(
+    onLogout: () -> Unit = {},
+    hasPreAppSurvey: Boolean = true,
+    onPreAppSurveyCompleted: () -> Unit = {},
+) {
     val s = LocalAppStrings.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -180,14 +188,24 @@ fun HomeScreen(onLogout: () -> Unit = {}) {
         ) { innerPadding ->
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                 when (detailDest) {
-                    DetailDest.WASTE_REPORT -> WasteReportScreen()
+                    DetailDest.WASTE_REPORT    -> WasteReportScreen()
+                    DetailDest.WASTE_IMPACT    -> WasteImpactScreen()
+                    DetailDest.HOUSEHOLD_WASTE  -> HouseholdWasteScreen()
+                    DetailDest.WASTE_ANALYTICS  -> WasteAnalyticsScreen()
                     DetailDest.MEAL         -> MealScreen()
                     DetailDest.BILL         -> BillScreen()
                     DetailDest.ENERGY       -> EnergyScreen()
                     DetailDest.PROFILE      -> ProfileScreen()
                     DetailDest.SETTINGS     -> SettingsScreen()
                     DetailDest.CATALOGUE    -> CatalogueScreen(
-                        onWasteReport = { detailDest = DetailDest.WASTE_REPORT }
+                        onWasteReport = { detailDest = DetailDest.WASTE_REPORT },
+                        onPreAppSurvey = { detailDest = DetailDest.PRE_APP_SURVEY },
+                    )
+                    DetailDest.PRE_APP_SURVEY -> PreAppSurveyScreen(
+                        onCompleted = {
+                            onPreAppSurveyCompleted()
+                            detailDest = null
+                        }
                     )
                     null -> HorizontalPager(
                         state = pagerState,
@@ -198,12 +216,15 @@ fun HomeScreen(onLogout: () -> Unit = {}) {
                             HomeDestination.DASHBOARD -> when (userType) {
                                 UserType.HOUSEHOLD -> HouseholdDashboard(
                                     scrollState = dashboardScrollState,
+                                    onWasteSortClick = { navigateTo(HomeDestination.WASTE_SORT) },
+                                    onWasteImpactClick = { detailDest = DetailDest.WASTE_IMPACT },
+                                    onHouseholdWasteClick = { detailDest = DetailDest.HOUSEHOLD_WASTE },
+                                    onWasteStatClick = { detailDest = DetailDest.WASTE_ANALYTICS },
                                     onScanMealClick = { detailDest = DetailDest.MEAL },
                                     onScanBillClick = { detailDest = DetailDest.BILL },
-                                    onWasteSortClick = { navigateTo(HomeDestination.WASTE_SORT) },
-                                    onTodosClick = { navigateTo(HomeDestination.TODOS) },
-                                    onElectricityClick = { detailDest = DetailDest.ENERGY },
-                                    onGarbageDropClick = { detailDest = DetailDest.WASTE_REPORT },
+                                    onBlogClick = { navigateTo(HomeDestination.BLOG) },
+                                    showPreAppSurveyBadge = !hasPreAppSurvey,
+                                    onPreAppSurveyClick = { detailDest = DetailDest.PRE_APP_SURVEY },
                                 )
                                 UserType.COLLECTOR -> CollectorDashboard(user = user, scrollState = collectorScrollState)
                                 UserType.VOLUNTEER -> VolunteerDashboard(user = user, scrollState = volunteerScrollState)

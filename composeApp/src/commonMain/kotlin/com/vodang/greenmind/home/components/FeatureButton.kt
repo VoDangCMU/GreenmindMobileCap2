@@ -27,13 +27,13 @@ fun FeatureButton(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier.clickable { onClick() },
+        modifier = modifier.height(84.dp).clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.fillMaxSize().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -41,9 +41,23 @@ fun FeatureButton(
                 contentAlignment = Alignment.Center
             ) { Text(icon, fontSize = 20.sp) }
             Spacer(Modifier.width(10.dp))
-            Column {
-                Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
-                Text(subtitle, fontSize = 10.sp, color = Color.Gray, maxLines = 1)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                Text(
+                    text = title, 
+                    fontSize = 13.sp, 
+                    fontWeight = FontWeight.SemiBold, 
+                    color = Color.DarkGray,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    lineHeight = 16.sp
+                )
+                Text(
+                    text = subtitle, 
+                    fontSize = 10.sp, 
+                    color = Color.Gray, 
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
             }
         }
     }
