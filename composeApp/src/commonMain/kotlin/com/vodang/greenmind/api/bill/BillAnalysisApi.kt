@@ -1,5 +1,6 @@
 package com.vodang.greenmind.api.bill
 
+import com.vodang.greenmind.api.invoicepollution.InvoicePollutionResponse
 import com.vodang.greenmind.api.ocr.OcrResponse
 import com.vodang.greenmind.api.ocr.ocrBill
 
@@ -14,6 +15,7 @@ data class BillAnalysisResult(
     val greenAmount: Double,
     val greenRatio: Int,
     val items: List<BillItem>,
+    val pollutionResult: InvoicePollutionResponse? = null,
 )
 
 // ── Mapping ───────────────────────────────────────────────────────────────────

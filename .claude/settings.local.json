@@ -44,7 +44,8 @@
       "Bash(xargs javap:*)",
       "Bash(xargs wc:*)",
       "Bash(grep -E \"\\\\.\\(kt|kts\\)$\")",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(grep -E \"\\\\.kt$\")"
     ]
   }
 }

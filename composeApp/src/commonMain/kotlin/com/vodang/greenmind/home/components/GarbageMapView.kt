@@ -79,6 +79,10 @@ fun buildRoutingHtml(
       maxZoom:19,attribution:'© OSM contributors'
     }).addTo(map);
     var routeControl=null;
+    function setWaypoints(wps){
+      allWp=wps.map(function(p){return L.latLng(p[0],p[1]);});
+      buildRoute(allWp);
+    }
     function buildRoute(wp){
       if(routeControl){map.removeControl(routeControl);}
       if(wp.length<2) return;

@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import kotlin.math.roundToInt
 
+
 private val red700   = Color(0xFFC62828)
 private val red50    = Color(0xFFFFEBEE)
 private val orange50 = Color(0xFFFFF3E0)
@@ -47,7 +48,6 @@ private val pollutantLabel = mapOf(
     "styrene"          to "Styrene",
 )
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EnvImpactCard(result: WasteDetectResponse, modifier: Modifier = Modifier) {
     Card(
@@ -176,21 +176,23 @@ fun EnvImpactCard(result: WasteDetectResponse, modifier: Modifier = Modifier) {
                 ImpactMeter(icon = "🌱", label = "Soil pollution",  value = result.impact.soilPollution.toFloat(),  barColor = amber)
             }
 
-            // ── Active pollutant chips ────────────────────────────────────────
-            if (result.activePollutants.isNotEmpty()) {
+            // ── Pollutant breakdown ───────────────────────────────────────────
+            if (result.pollution.isNotEmpty()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
                 Text(
-                    "Active pollutants",
+                    "Pollutant breakdown",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF616161),
                 )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    result.activePollutants.forEach { (key, _) ->
-                        PollutantChip(pollutantLabel[key] ?: key)
+                val sortedPollutants = result.pollution.entries
+                    .sortedByDescending { it.value }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    sortedPollutants.forEach { (key, value) ->
+                        PollutantRow(
+                            name  = pollutantLabel[key] ?: key,
+                            value = value,
+                        )
                     }
                 }
             }
@@ -257,13 +259,34 @@ private fun ImpactMeter(icon: String, label: String, value: Float, barColor: Col
 }
 
 @Composable
-private fun PollutantChip(name: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(red50)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+private fun PollutantRow(name: String, value: Double) {
+    val progress = value.toFloat().coerceIn(0f, 1f)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(name, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = red700)
+        Text(
+            name,
+            fontSize = 11.sp,
+            color = Color(0xFF424242),
+            modifier = Modifier.width(120.dp),
+        )
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .weight(1f)
+                .height(5.dp)
+                .clip(RoundedCornerShape(4.dp)),
+            color = red700,
+            trackColor = red50,
+        )
+        Text(
+            "%.3f".format(value),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = red700,
+            modifier = Modifier.width(42.dp),
+        )
     }
 }

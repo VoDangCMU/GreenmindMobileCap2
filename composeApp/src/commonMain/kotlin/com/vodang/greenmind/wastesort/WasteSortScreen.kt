@@ -5,7 +5,9 @@ import androidx.compose.ui.graphics.Color
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.api.wastesort.DetectTrashResponse
 import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.store.HouseholdWasteStore
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.store.WasteScanRecord
 import com.vodang.greenmind.store.WasteSortStore
 import com.vodang.greenmind.time.nowIso8601
 import com.vodang.greenmind.wastesort.components.ScanDetailScreen
@@ -87,6 +89,18 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
                 onResult = { response ->
                     val entry = response.toEntry(user?.fullName ?: user?.username ?: "Me")
                     WasteSortStore.add(entry)
+                    HouseholdWasteStore.add(
+                        WasteScanRecord(
+                            id            = entry.id,
+                            totalObjects  = entry.totalObjects,
+                            imageUrl      = entry.imageUrl,
+                            segments      = entry.grouped.values.flatten(),
+                            wasteCategory = entry.grouped.keys.firstOrNull()?.let { categoryLabel(it) } ?: "Mixed",
+                            status        = "SCANNED_RAW",
+                            scannedAt     = entry.createdAt,
+                            co2AvoidedKg  = 0.0,
+                        )
+                    )
                     selectedEntry = entry
                     showScan = false
                 },

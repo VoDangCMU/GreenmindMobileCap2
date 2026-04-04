@@ -153,19 +153,19 @@ fun WasteAnalyticsScreen() {
 
                 // ── Metric filter ─────────────────────────────────────────────
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("All", "Waste (kg)", "Impact", "Pollutants").forEach { m ->
+                    listOf("All", "Impact", "Pollutants").forEach { m ->
                         MetricChip(label = m, selected = selectedMetric == m) { selectedMetric = m }
                     }
                 }
 
                 // ── Summary chips ─────────────────────────────────────────────
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SummaryChip(
-                        "Total Waste",
-                        "${totalWaste.fmt(1)} kg",
-                        blue600,
-                        Modifier.weight(1f)
-                    )
+                    // SummaryChip(
+                    //     "Total Waste",
+                    //     "${totalWaste.fmt(1)} kg",
+                    //     blue600,
+                    //     Modifier.weight(1f)
+                    // )
                     SummaryChip(
                         "Peak ($peakLabel)",
                         "${peakKg.fmt(1)} kg",
@@ -181,9 +181,9 @@ fun WasteAnalyticsScreen() {
                 }
 
                 // ── Waste volume chart ────────────────────────────────────────
-                if (showWaste) {
-                    WasteVolumeCard(data = data)
-                }
+                // if (showWaste) {
+                //     WasteVolumeCard(data = data)
+                // }
 
                 // ── Impact trends chart ───────────────────────────────────────
                 if (showImpact) {

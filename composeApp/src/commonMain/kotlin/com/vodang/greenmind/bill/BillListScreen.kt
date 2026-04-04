@@ -19,11 +19,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.api.invoicepollution.toWasteDetectResponse
 import com.vodang.greenmind.api.ocr.InvoiceDto
 import com.vodang.greenmind.api.ocr.getInvoices
+import com.vodang.greenmind.home.components.EnvImpactCard
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.store.BillRecord
+import com.vodang.greenmind.store.BillStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.util.AppLogger
+import com.vodang.greenmind.wastereport.NetworkImage
 
 private val green800 = Color(0xFF2E7D32)
 private val green600 = Color(0xFF388E3C)
@@ -53,10 +58,12 @@ private fun formatAmount(amount: Double, symbol: String = "$"): String =
 fun BillListScreen(onScanClick: () -> Unit) {
     val s = LocalAppStrings.current
 
+    val localBills by BillStore.bills.collectAsState()
     var invoices by remember { mutableStateOf<List<InvoiceDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var selectedInvoice by remember { mutableStateOf<InvoiceDto?>(null) }
+    var selectedLocalBill by remember { mutableStateOf<BillRecord?>(null) }
 
     LaunchedEffect(Unit) {
         val token = SettingsStore.getAccessToken()
@@ -76,7 +83,7 @@ fun BillListScreen(onScanClick: () -> Unit) {
                 CircularProgressIndicator(color = green800)
             }
 
-            invoices.isEmpty() && errorMsg == null -> Box(
+            invoices.isEmpty() && localBills.isEmpty() && errorMsg == null -> Box(
                 Modifier.fillMaxSize().padding(32.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -107,6 +114,19 @@ fun BillListScreen(onScanClick: () -> Unit) {
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                if (localBills.isNotEmpty()) {
+                    item {
+                        Text("Recent Scans", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
+                    }
+                    items(localBills, key = { "local_${it.id}" }) { bill ->
+                        LocalBillCard(bill, onClick = { selectedLocalBill = bill })
+                    }
+                    if (invoices.isNotEmpty()) {
+                        item {
+                            Text("History", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
+                        }
+                    }
+                }
                 if (errorMsg != null) {
                     item {
                         Row(
@@ -144,9 +164,12 @@ fun BillListScreen(onScanClick: () -> Unit) {
         }
     }
 
-    // ── Detail bottom sheet ───────────────────────────────────────────────────
+    // ── Detail bottom sheets ──────────────────────────────────────────────────
     selectedInvoice?.let { invoice ->
         InvoiceDetailSheet(invoice = invoice, onDismiss = { selectedInvoice = null })
+    }
+    selectedLocalBill?.let { bill ->
+        LocalBillDetailSheet(bill = bill, onDismiss = { selectedLocalBill = null })
     }
 }
 
@@ -329,6 +352,193 @@ private fun SheetRow(icon: String, text: String) {
         Text(icon, fontSize = 13.sp)
         Text(text, fontSize = 13.sp, color = Color(0xFF616161), lineHeight = 18.sp, modifier = Modifier.weight(1f))
     }
+}
+
+// ── Local scan card ───────────────────────────────────────────────────────────
+
+@Composable
+private fun LocalBillCard(bill: BillRecord, onClick: () -> Unit) {
+    val color  = ratioColor(bill.greenRatio)
+    val date   = formatMillis(bill.timestampMillis)
+
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            if (!bill.imageUrl.isNullOrBlank()) {
+                NetworkImage(
+                    url = bill.imageUrl,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(10.dp)),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(color.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("${bill.greenRatio}%", color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    bill.storeName.ifBlank { "Unknown vendor" },
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1B5E20),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(date, fontSize = 12.sp, color = Color.Gray)
+                Text("🌿 ${bill.greenRatio}% green", fontSize = 11.sp, color = green600)
+            }
+
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(formatAmount(bill.totalAmount), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF424242))
+                Text(formatAmount(bill.greenAmount), fontSize = 11.sp, color = green600)
+            }
+        }
+    }
+}
+
+// ── Local bill detail sheet ───────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LocalBillDetailSheet(bill: BillRecord, onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val color      = ratioColor(bill.greenRatio)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    bill.storeName.ifBlank { "Unknown vendor" },
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1B1B1B),
+                    modifier = Modifier.weight(1f),
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(color.copy(alpha = 0.12f))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                ) {
+                    Text("${bill.greenRatio}% green", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color)
+                }
+            }
+
+            SheetRow("🗓", formatMillis(bill.timestampMillis))
+
+            // Scan image
+            if (!bill.imageUrl.isNullOrBlank()) {
+                NetworkImage(
+                    url = bill.imageUrl,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                )
+            }
+
+            // Environmental impact
+            bill.pollutionResult?.let { pollution ->
+                EnvImpactCard(result = pollution.toWasteDetectResponse())
+            }
+
+            // Items
+            if (bill.items.isNotEmpty()) {
+                HorizontalDivider(color = Color(0xFFEEEEEE))
+                Text("Items", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text("Item", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.weight(1f))
+                        Text("Total", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.width(72.dp))
+                    }
+                    HorizontalDivider(color = Color(0xFFF0F0F0))
+                    bill.items.forEach { item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(if (item.isGreen) "🌿" else "·", fontSize = 12.sp)
+                                Text(
+                                    item.name,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF212121),
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            Text(
+                                formatAmount(item.amount),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (item.isGreen) green600 else Color(0xFF424242),
+                                modifier = Modifier.width(72.dp),
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Totals
+            HorizontalDivider(color = Color(0xFFEEEEEE))
+            Text("Totals", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                TotalsRow("Green items", formatAmount(bill.greenAmount), green600)
+                HorizontalDivider(color = Color(0xFFF0F0F0))
+                TotalsRow("Grand Total", formatAmount(bill.totalAmount), green800, bold = true)
+            }
+        }
+    }
+}
+
+private fun formatMillis(millis: Long): String {
+    val totalSeconds = millis / 1000
+    val minutes = (totalSeconds / 60) % 60
+    val hours   = (totalSeconds / 3600) % 24
+    // Approximate date from epoch — good enough for display
+    val days    = (totalSeconds / 86400).toInt()
+    val year    = 1970 + days / 365
+    val dayOfYear = days % 365
+    val month   = dayOfYear / 30 + 1
+    val day     = dayOfYear % 30 + 1
+    return "%02d/%02d/%d  %02d:%02d".format(day, month, year, hours, minutes)
 }
 
 @Composable

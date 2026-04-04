@@ -220,6 +220,7 @@ fun HomeScreen(
                                     onWasteImpactClick = { detailDest = DetailDest.WASTE_IMPACT },
                                     onHouseholdWasteClick = { detailDest = DetailDest.HOUSEHOLD_WASTE },
                                     onWasteStatClick = { detailDest = DetailDest.WASTE_ANALYTICS },
+                                    onWasteReportClick = { detailDest = DetailDest.WASTE_REPORT },
                                     onScanMealClick = { detailDest = DetailDest.MEAL },
                                     onScanBillClick = { detailDest = DetailDest.BILL },
                                     onBlogClick = { navigateTo(HomeDestination.BLOG) },

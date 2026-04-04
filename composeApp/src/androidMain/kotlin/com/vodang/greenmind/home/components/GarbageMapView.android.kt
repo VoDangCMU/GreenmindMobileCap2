@@ -110,6 +110,14 @@ actual fun RouteMapView(
         wv.evaluateJavascript("updateView($lat,$lng,$zoomLevel);", null)
     }
 
+    LaunchedEffect(webViewRef.value, points) {
+        val wv = webViewRef.value ?: return@LaunchedEffect
+        if (points.isEmpty()) return@LaunchedEffect
+        val wpArray = points.joinToString(",") { "[${it.lat},${it.lng}]" }
+        Log.d(ROUTE_TAG, "SET_WAYPOINTS count=${points.size}")
+        wv.evaluateJavascript("setWaypoints([$wpArray]);", null)
+    }
+
     AndroidView(
         modifier = modifier,
         factory = { ctx ->

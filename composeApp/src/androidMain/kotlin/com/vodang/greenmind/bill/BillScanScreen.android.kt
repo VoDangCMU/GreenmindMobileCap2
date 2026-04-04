@@ -55,11 +55,12 @@ private fun createBillPhotoUri(context: Context): Uri {
 }
 
 private fun InvoicePollutionResponse.toBillAnalysisResult(): BillAnalysisResult = BillAnalysisResult(
-    storeName   = "",
-    totalAmount = totalItems.toDouble(),
-    greenAmount = 0.0,
-    greenRatio  = ecoScore,
-    items       = items.map { BillItem(name = it.rawName, amount = 0.0, isGreen = false) },
+    storeName       = "",
+    totalAmount     = totalItems.toDouble(),
+    greenAmount     = 0.0,
+    greenRatio      = ecoScore,
+    items           = items.map { BillItem(name = it.rawName, amount = 0.0, isGreen = false) },
+    pollutionResult = this,
 )
 
 @Composable

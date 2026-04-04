@@ -10,7 +10,7 @@ fun BillScreen() {
     if (showScan) {
         BillScanScreen(
             onScanComplete = { result, storeName, imageUrl ->
-                BillStore.add(storeName, result.totalAmount, result.greenAmount, result.greenRatio, imageUrl)
+                BillStore.add(storeName, result.totalAmount, result.greenAmount, result.greenRatio, result.items, result.pollutionResult, imageUrl)
                 showScan = false
             },
             onBack = { showScan = false }

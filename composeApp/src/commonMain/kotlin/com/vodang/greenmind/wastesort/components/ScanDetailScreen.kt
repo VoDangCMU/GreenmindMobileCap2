@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,8 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.store.HouseholdWasteStore
 import com.vodang.greenmind.wastereport.NetworkImage
 import com.vodang.greenmind.wastesort.WasteSortEntry
 import com.vodang.greenmind.wastesort.categoryBg
@@ -30,6 +33,9 @@ fun ScanDetailScreen(entry: WasteSortEntry, onBack: () -> Unit) {
     var selectedCategory by remember(entry.id) {
         mutableStateOf(categories.firstOrNull() ?: "")
     }
+
+    val records by HouseholdWasteStore.records.collectAsState()
+    val record = records.find { it.id == entry.id }
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
         LazyColumn(
@@ -59,38 +65,6 @@ fun ScanDetailScreen(entry: WasteSortEntry, onBack: () -> Unit) {
                     }
                 }
             }
-
-            // Stats row
-            // item {
-            //     Row(
-            //         modifier = Modifier
-            //             .fillMaxWidth()
-            //             .padding(horizontal = 16.dp),
-            //         horizontalArrangement = Arrangement.spacedBy(8.dp),
-            //     ) {
-            //         StatChip(
-            //             emoji = "♻️",
-            //             label = "${entry.totalObjects} objects",
-            //             bgColor = green50,
-            //             textColor = green800,
-            //             modifier = Modifier.weight(1f),
-            //         )
-            //         StatChip(
-            //             emoji = "📅",
-            //             label = entry.createdAt,
-            //             bgColor = Color(0xFFF3E5F5),
-            //             textColor = Color(0xFF6A1B9A),
-            //             modifier = Modifier.weight(1f),
-            //         )
-            //         StatChip(
-            //             emoji = "👤",
-            //             label = entry.scannedBy,
-            //             bgColor = Color(0xFFFFF3E0),
-            //             textColor = Color(0xFFE65100),
-            //             modifier = Modifier.weight(1f),
-            //         )
-            //     }
-            // }
 
             // Category tabs + segment grid
             if (entry.grouped.isNotEmpty()) {
@@ -144,6 +118,58 @@ fun ScanDetailScreen(entry: WasteSortEntry, onBack: () -> Unit) {
                     }
                 }
             }
+
+            if (record != null) {
+                item {
+                    WasteStatusActionButton(
+                        status = record.status,
+                        onAction = { next -> HouseholdWasteStore.updateStatus(entry.id, next) },
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .navigationBarsPadding(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun WasteStatusActionButton(
+    status: String,
+    onAction: (nextStatus: String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (status) {
+        "SCANNED_RAW" -> Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = Color(0xFF1565C0),
+            modifier = modifier.fillMaxWidth(),
+            onClick = { onAction("SCANNED_SORTED") },
+        ) {
+            Text(
+                "✅  Mark as Sorted",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(vertical = 16.dp),
+            )
+        }
+        "SCANNED_SORTED" -> Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = Color(0xFFF59E0B),
+            modifier = modifier.fillMaxWidth(),
+            onClick = { onAction("DISPOSED") },
+        ) {
+            Text(
+                "🗑️  Dispose",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(vertical = 16.dp),
+            )
         }
     }
 }
