@@ -10,6 +10,7 @@ import com.vodang.greenmind.store.WasteSortStore
 import com.vodang.greenmind.time.nowIso8601
 import com.vodang.greenmind.wastesort.components.ScanDetailScreen
 import com.vodang.greenmind.wastesort.components.WasteSortListScreen
+import com.vodang.greenmind.store.HouseholdStore
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
@@ -77,6 +78,8 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
     var useGallery    by remember { mutableStateOf(false) }
 
     val user by SettingsStore.user.collectAsState()
+
+    LaunchedEffect(Unit) { HouseholdStore.fetchHousehold() }
 
     BackHandler(enabled = selectedEntry != null) { selectedEntry = null }
     BackHandler(enabled = showScan) { showScan = false }

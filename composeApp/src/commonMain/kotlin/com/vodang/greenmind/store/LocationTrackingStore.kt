@@ -85,6 +85,15 @@ object LocationTrackingStore {
         // Reverse-geocode only when moved far enough (Nominatim rate-limit guard)
         val address = reverseCached(current.latitude, current.longitude)
 
+        val tick = GpsTick(
+            timestampMs    = current.timestampMillis,
+            latitude       = current.latitude,
+            longitude      = current.longitude,
+            distanceMeters = distanceMeters,
+            address        = address,
+        )
+        _recentTicks.value = (_recentTicks.value + tick).takeLast(MAX_RECENT)
+
         try {
             createLocation(
                 token, CreateLocationRequest(
@@ -95,14 +104,6 @@ object LocationTrackingStore {
                     lengthToPreviousLocation = lengthToPrevious
                 )
             )
-            val tick = GpsTick(
-                timestampMs    = current.timestampMillis,
-                latitude       = current.latitude,
-                longitude      = current.longitude,
-                distanceMeters = distanceMeters,
-                address        = address,
-            )
-            _recentTicks.value = (_recentTicks.value + tick).takeLast(MAX_RECENT)
         } catch (_: Throwable) {
             // Silent fail — foreground service will retry on the next tick
         }

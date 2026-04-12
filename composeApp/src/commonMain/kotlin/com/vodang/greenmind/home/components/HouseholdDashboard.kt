@@ -83,6 +83,7 @@ fun HouseholdDashboard(
     onScanMealClick: () -> Unit = {},
     onScanBillClick: () -> Unit = {},
     onBlogClick: () -> Unit = {},
+    onWasteReportClick: () -> Unit = {},
     showPreAppSurveyBadge: Boolean = false,
     onPreAppSurveyClick: () -> Unit = {},
 ) {
@@ -150,6 +151,10 @@ fun HouseholdDashboard(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FeatureButton("📸", s.scanBillMealTitle, s.scanBillMealDesc, green50h, green600h, Modifier.weight(1f)) { showScanModal = true }
                 FeatureButton("📰", s.blog, s.blogDesc, Color(0xFFFFF8E1), Color(0xFFF57F17), Modifier.weight(1f)) { onBlogClick() }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FeatureButton("🗑️", s.wasteReport, s.wasteReportDesc, Color(0xFFFFEBEE), Color(0xFFB71C1C), Modifier.weight(1f)) { onWasteReportClick() }
+                Spacer(Modifier.weight(1f))
             }
         }
     }

@@ -25,9 +25,8 @@ data class WasteReportDto(
     val code: String,
     val wasteType: String,
     val wardName: String,
-    val lat: Double,
-    val lng: Double,
-    val wasteKg: Int,
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
     val description: String,
     val status: String,
     val createdAt: String,
@@ -38,6 +37,13 @@ data class WasteReportDto(
     val assignedTo: String? = null,
     val imageEvidenceUrl: String? = null,
     val resolvedAt: String? = null,
+    val campaignId: String? = null,
+    val segmentedImageUrl: String? = null,
+    val depthImageUrl: String? = null,
+    val heatmapUrl: String? = null,
+    val segmentRatio: Double? = null,
+    val pollutionScore: Double? = null,
+    val pollutionLevel: String? = null,
 )
 
 /** Paginated list wrapper used by GET /waste-reports/ and GET /waste-reports/my */
@@ -57,7 +63,6 @@ data class CreateWasteReportRequest(
     val wardName: String,
     val lat: Double,
     val lng: Double,
-    val wasteKg: Double,
     val description: String,
     val imageKey: String,
     val imageUrl: String,
@@ -66,7 +71,6 @@ data class CreateWasteReportRequest(
 @Serializable
 data class UpdateWasteReportRequest(
     val wasteType: String,
-    val wasteKg: Int,
     val description: String,
     val imageKey: String,
     val imageUrl: String,
@@ -79,7 +83,7 @@ suspend fun createWasteReport(
     accessToken: String,
     request: CreateWasteReportRequest,
 ): WasteReportDto {
-    AppLogger.i("WasteReport", "createWasteReport wasteType=${request.wasteType} ward=${request.wardName} kg=${request.wasteKg} imageKey=${request.imageKey}")
+    AppLogger.i("WasteReport", "createWasteReport wasteType=${request.wasteType} ward=${request.wardName} imageKey=${request.imageKey}")
     try {
         val resp = httpClient.post("$BASE_URL/waste-reports") {
             header("Authorization", "Bearer $accessToken")
@@ -205,7 +209,7 @@ suspend fun updateWasteReport(
     id: String,
     request: UpdateWasteReportRequest,
 ): WasteReportDto {
-    AppLogger.i("WasteReport", "updateWasteReport id=$id wasteType=${request.wasteType} kg=${request.wasteKg}")
+    AppLogger.i("WasteReport", "updateWasteReport id=$id wasteType=${request.wasteType}")
     try {
         val resp = httpClient.patch("$BASE_URL/waste-reports/$id") {
             header("Authorization", "Bearer $accessToken")

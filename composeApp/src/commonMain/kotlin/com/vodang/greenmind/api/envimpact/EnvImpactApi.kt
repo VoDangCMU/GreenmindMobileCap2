@@ -14,6 +14,8 @@ import kotlinx.serialization.json.Json as KJson
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+private val json = KJson { ignoreUnknownKeys = true; isLenient = true }
+
 // ── DTOs ─────────────────────────────────────────────────────────────────────
 
 @Serializable
@@ -117,8 +119,7 @@ suspend fun logEnvironmentalImpact(
             val raw = resp.bodyAsText()
             AppLogger.d("EnvImpact", "logEnvironmentalImpact raw body (${raw.length} chars): ${raw.take(500)}")
             try {
-                KJson { ignoreUnknownKeys = true; isLenient = true }
-                    .decodeFromString<EnvImpactResponse>(raw)
+                json.decodeFromString<EnvImpactResponse>(raw)
                     .also { parsed ->
                         AppLogger.i("EnvImpact", "logEnvironmentalImpact ok: ${parsed.message} id=${parsed.data.id}")
                     }

@@ -1,6 +1,7 @@
 package com.vodang.greenmind.api.ocr
 
 import com.vodang.greenmind.api.BASE_URL
+import com.vodang.greenmind.api.buildHttpClient
 import com.vodang.greenmind.api.auth.ApiException
 import com.vodang.greenmind.api.auth.ErrorResponse
 import com.vodang.greenmind.api.httpClient
@@ -112,25 +113,12 @@ data class InvoiceDto(
 // ── Dedicated HTTP client ─────────────────────────────────────────────────────
 // OCR inference is slow — use a much longer timeout than the default client.
 
-private val ocrHttpClient = HttpClient {
-    install(ContentNegotiation) {
-        json(Json {
-            ignoreUnknownKeys = true
-            isLenient = true
-        })
-    }
-    install(HttpTimeout) {
-        requestTimeoutMillis  = 120_000  // 2 min — model warm-up + inference
-        connectTimeoutMillis  = 30_000
-        socketTimeoutMillis   = 120_000
-    }
-    install(Logging) {
-        logger = object : Logger {
-            override fun log(message: String) { AppLogger.d("OCR", message) }
-        }
-        level = LogLevel.INFO
-    }
-}
+private val ocrHttpClient = buildHttpClient(
+    tag              = "OCR",
+    requestTimeoutMs = 120_000,
+    connectTimeoutMs = 30_000,
+    socketTimeoutMs  = 120_000,
+)
 
 // ── API call ──────────────────────────────────────────────────────────────────
 

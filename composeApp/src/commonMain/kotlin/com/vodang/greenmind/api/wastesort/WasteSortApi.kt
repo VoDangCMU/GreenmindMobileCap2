@@ -1,6 +1,7 @@
 package com.vodang.greenmind.api.wastesort
 
 import com.vodang.greenmind.api.auth.ApiException
+import com.vodang.greenmind.api.buildHttpClient
 import com.vodang.greenmind.util.AppLogger
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -25,22 +26,12 @@ data class DetectTrashResponse(
     val grouped: Map<String, List<String>>,
 )
 
-private val detectHttpClient = HttpClient {
-    install(ContentNegotiation) {
-        json(Json { ignoreUnknownKeys = true; isLenient = true })
-    }
-    install(HttpTimeout) {
-        requestTimeoutMillis = 120_000 // 2 min — AI inference can be slow
-        connectTimeoutMillis = 30_000
-        socketTimeoutMillis  = 120_000
-    }
-    install(Logging) {
-        logger = object : Logger {
-            override fun log(message: String) { AppLogger.d("DetectTrash", message) }
-        }
-        level = LogLevel.INFO
-    }
-}
+private val detectHttpClient = buildHttpClient(
+    tag              = "DetectTrash",
+    requestTimeoutMs = 120_000,
+    connectTimeoutMs = 30_000,
+    socketTimeoutMs  = 120_000,
+)
 
 /**
  * POST /detect-trash-ver2 — uploads an image and returns the waste detection result.

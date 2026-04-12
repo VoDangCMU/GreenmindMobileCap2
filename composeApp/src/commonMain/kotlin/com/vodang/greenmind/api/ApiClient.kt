@@ -18,30 +18,14 @@ import kotlin.time.TimeSource
 
 const val BASE_URL = "https://vodang-api.gauas.com"
 
-val httpClient: HttpClient = HttpClient {
-    install(ContentNegotiation) {
-        json(Json {
-            ignoreUnknownKeys = true
-            isLenient = true
-        })
-    }
-    install(Logging) {
-        logger = object : Logger {
-            override fun log(message: String) {
-                AppLogger.d("HTTP", message)
-            }
-        }
-        level = LogLevel.HEADERS
-    }
-    install(HttpCallValidator) {
-        validateResponse { response ->
-            val method = response.call.request.method.value
-            val url = response.call.request.url.encodedPath
-            val status = response.status.value
-            AppLogger.i("API", "$method $url → $status")
-        }
-    }
-}.also { client ->
+// ── Shared network capture ────────────────────────────────────────────────────
+
+/**
+ * Attaches the NetworkCaptureStore interceptor to [client].
+ * Every request/response pair — regardless of which base URL or timeout
+ * config the client uses — will be recorded in the in-app network log.
+ */
+private fun attachNetworkCapture(client: HttpClient) {
     client.plugin(HttpSend).intercept { request ->
         val mark = TimeSource.Monotonic.markNow()
 
@@ -55,15 +39,9 @@ val httpClient: HttpClient = HttpClient {
                         b.bytes().decodeToString()
                     }
                 }
-                is OutgoingContent.WriteChannelContent -> {
-                    val ct = b.contentType?.toString() ?: "stream"
-                    "[${ct}]"
-                }
-                is OutgoingContent.ReadChannelContent -> {
-                    val ct = b.contentType?.toString() ?: "stream"
-                    "[${ct}]"
-                }
-                is OutgoingContent.NoContent -> ""
+                is OutgoingContent.WriteChannelContent -> "[${b.contentType ?: "stream"}]"
+                is OutgoingContent.ReadChannelContent  -> "[${b.contentType ?: "stream"}]"
+                is OutgoingContent.NoContent           -> ""
                 else -> ""
             }
         } catch (_: Throwable) { "" }
@@ -72,9 +50,9 @@ val httpClient: HttpClient = HttpClient {
             request.headers.entries().map { (k, v) -> k to v.joinToString(", ") }
         } catch (_: Throwable) { emptyList() }
 
-        val call = execute(request)
+        val call       = execute(request)
         val durationMs = mark.elapsedNow().inWholeMilliseconds
-        val savedCall = call.save()
+        val savedCall  = call.save()
 
         val respBody = try { savedCall.response.bodyAsText() } catch (_: Throwable) { "" }
         val respHeaders = try {
@@ -83,17 +61,63 @@ val httpClient: HttpClient = HttpClient {
 
         NetworkCaptureStore.add(
             NetworkEntry(
-                method = request.method.value,
-                url = request.url.toString(),
-                statusCode = savedCall.response.status.value,
-                durationMs = durationMs,
+                method         = request.method.value,
+                url            = request.url.toString(),
+                statusCode     = savedCall.response.status.value,
+                durationMs     = durationMs,
                 requestHeaders = reqHeaders,
-                requestBody = reqBody,
+                requestBody    = reqBody,
                 responseHeaders = respHeaders,
-                responseBody = respBody,
+                responseBody   = respBody,
             )
         )
 
         savedCall
     }
 }
+
+// ── Client factory ────────────────────────────────────────────────────────────
+
+/**
+ * Creates an [HttpClient] with:
+ *  - JSON content negotiation (lenient, ignores unknown keys)
+ *  - Per-tag logcat logging
+ *  - Configurable timeouts
+ *  - The shared NetworkCaptureStore interceptor
+ *
+ * All API modules should use this factory instead of constructing their own
+ * HttpClient so that every network call appears in the in-app network log.
+ */
+fun buildHttpClient(
+    tag: String = "HTTP",
+    requestTimeoutMs: Long = 30_000,
+    connectTimeoutMs: Long = 15_000,
+    socketTimeoutMs: Long  = 30_000,
+): HttpClient = HttpClient {
+    install(ContentNegotiation) {
+        json(Json { ignoreUnknownKeys = true; isLenient = true })
+    }
+    install(HttpTimeout) {
+        requestTimeoutMillis = requestTimeoutMs
+        connectTimeoutMillis = connectTimeoutMs
+        socketTimeoutMillis  = socketTimeoutMs
+    }
+    install(Logging) {
+        logger = object : Logger {
+            override fun log(message: String) { AppLogger.d(tag, message) }
+        }
+        level = LogLevel.HEADERS
+    }
+    install(HttpCallValidator) {
+        validateResponse { response ->
+            val method = response.call.request.method.value
+            val url    = response.call.request.url.encodedPath
+            val status = response.status.value
+            AppLogger.i(tag, "$method $url → $status")
+        }
+    }
+}.also { attachNetworkCapture(it) }
+
+// ── Default shared client (backend REST API) ──────────────────────────────────
+
+val httpClient: HttpClient = buildHttpClient(tag = "HTTP")

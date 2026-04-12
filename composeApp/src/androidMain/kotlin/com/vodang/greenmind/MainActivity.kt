@@ -5,8 +5,11 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import android.view.WindowManager
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.Modifier
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -20,9 +23,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        // Ensure keyboard does not resize the layout; it will overlay the UI.
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
 
         // ── Geolocation ──────────────────────────────────────────────
         com.vodang.greenmind.location.Geo.service.initialize(this)
@@ -58,7 +58,9 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            App()
+            Box(Modifier.fillMaxSize().imePadding()) {
+                App()
+            }
         }
     }
 }

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.vodang.greenmind.api.meal.MealAnalysisResult
+import com.vodang.greenmind.permission.CameraPermissionGate
 import com.vodang.greenmind.api.meal.analyzeMeal
 import com.vodang.greenmind.i18n.LocalAppStrings
 import kotlinx.coroutines.async
@@ -56,6 +57,16 @@ private fun createMealPhotoUri(context: Context): Uri {
 
 @Composable
 actual fun MealScanScreen(
+    onScanComplete: (plantRatio: Int, description: String, imageUrl: String?, plantImageBase64: String?, dishImageBase64: String?) -> Unit,
+    onBack: () -> Unit,
+) {
+    CameraPermissionGate(onDenied = onBack) {
+    MealScanContent(onScanComplete = onScanComplete, onBack = onBack)
+    }
+}
+
+@Composable
+private fun MealScanContent(
     onScanComplete: (plantRatio: Int, description: String, imageUrl: String?, plantImageBase64: String?, dishImageBase64: String?) -> Unit,
     onBack: () -> Unit,
 ) {

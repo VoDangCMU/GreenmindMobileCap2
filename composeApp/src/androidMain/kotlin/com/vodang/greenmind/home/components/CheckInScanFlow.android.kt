@@ -21,6 +21,7 @@ import androidx.core.content.FileProvider
 import com.vodang.greenmind.api.upload.requestAndUpload
 import com.vodang.greenmind.api.wastecollector.UpdateStatusRequest
 import com.vodang.greenmind.api.wastecollector.updateReportStatus
+import com.vodang.greenmind.permission.CameraPermissionGate
 import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.launch
 import java.io.File
@@ -35,6 +36,18 @@ private fun createPhotoUri(context: android.content.Context): Uri {
 
 @Composable
 actual fun CheckInScanFlow(
+    reportId: String?,
+    accessToken: String,
+    onSuccess: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    CameraPermissionGate(onDenied = onDismiss) {
+    CheckInScanContent(reportId = reportId, accessToken = accessToken, onSuccess = onSuccess, onDismiss = onDismiss)
+    }
+}
+
+@Composable
+private fun CheckInScanContent(
     reportId: String?,
     accessToken: String,
     onSuccess: () -> Unit,

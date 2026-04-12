@@ -359,6 +359,9 @@ fun SettingsScreen() {
                     }
                 }
 
+                // ── Error Log ─────────────────────────────────────────────────
+                ErrorLogSection()
+
                 // ── Network Log ───────────────────────────────────────────────
                 NetworkLogSection()
 

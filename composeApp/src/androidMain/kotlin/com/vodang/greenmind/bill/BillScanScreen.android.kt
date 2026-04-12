@@ -34,6 +34,7 @@ import com.vodang.greenmind.api.upload.requestAndUpload
 import com.vodang.greenmind.home.components.EnvImpactCard
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.permission.CameraPermissionGate
 import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -64,6 +65,16 @@ private fun InvoicePollutionResponse.toBillAnalysisResult(): BillAnalysisResult 
 
 @Composable
 actual fun BillScanScreen(
+    onScanComplete: (result: BillAnalysisResult, storeName: String, imageUrl: String?) -> Unit,
+    onBack: () -> Unit,
+) {
+    CameraPermissionGate(onDenied = onBack) {
+    BillScanContent(onScanComplete = onScanComplete, onBack = onBack)
+    }
+}
+
+@Composable
+private fun BillScanContent(
     onScanComplete: (result: BillAnalysisResult, storeName: String, imageUrl: String?) -> Unit,
     onBack: () -> Unit,
 ) {

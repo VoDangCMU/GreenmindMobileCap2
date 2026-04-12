@@ -2,278 +2,422 @@ package com.vodang.greenmind.householdwaste
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.api.households.DetectTrashHistoryDto
+import com.vodang.greenmind.api.households.GreenScoreEntryDto
+import com.vodang.greenmind.api.households.getCurrentUserHousehold
+import com.vodang.greenmind.api.households.getDetectHistoryByHousehold
+import com.vodang.greenmind.api.households.getDetectHistoryByUser
+import com.vodang.greenmind.api.households.getGreenScoreByHousehold
+import com.vodang.greenmind.householdwaste.components.CreateHouseholdForm
+import com.vodang.greenmind.store.HouseholdStore
+import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.wastereport.NetworkImage
-
-// ── Status catalogue ──────────────────────────────────────────────────────────
-
-private data class WasteStatus(val key: String, val label: String, val color: Color)
-
-private val wasteStatuses = listOf(
-    WasteStatus("SCANNED_RAW",    "Scanned",  Color(0xFF9CA3AF)),
-    WasteStatus("SCANNED_SORTED", "Sorted",   Color(0xFF3B82F6)),
-    WasteStatus("DISPOSED",       "Disposed", Color(0xFFF59E0B)),
-    WasteStatus("PENDING",        "Pending",  Color(0xFFEAB308)),
-    WasteStatus("PROCESSED",      "Done",     Color(0xFF10B981)),
-    WasteStatus("ERROR",          "Error",    Color(0xFFEF4444)),
-    WasteStatus("SKIPPED",        "Skipped",  Color(0xFF6B7280)),
-)
-
-private fun statusFor(key: String) =
-    wasteStatuses.find { it.key == key } ?: WasteStatus(key, key, Color(0xFF9CA3AF))
-
-private val pipeline = listOf("SCANNED_RAW", "SCANNED_SORTED", "DISPOSED", "PROCESSED")
-
-// ── Mock record ───────────────────────────────────────────────────────────────
-
-private data class WasteScanRecord(
-    val id: String,
-    val totalObjects: Int,
-    val imageUrl: String,
-    val segments: List<String>,
-    val wasteCategory: String,
-    val status: String,
-    val scannedAt: String,
-    val co2AvoidedKg: Double,
-)
-
-private val mockRecord = WasteScanRecord(
-    id           = "WSR-20260401-001",
-    totalObjects = 20,
-    imageUrl     = "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229811/yolo_detect/detect/cc68420fb9d244aa8fbc8d04f9c36b3e.jpg",
-    segments     = listOf(
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229793/yolo_segments/segments/5a773619de2f456d8f1125414e674932.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229794/yolo_segments/segments/1c9467c3460a4c8384e62e1a2fc89c44.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229794/yolo_segments/segments/784f03c4f3ea4ef398759eb6f7c74557.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229795/yolo_segments/segments/46fc23d93e0845e4a39711312ffbd382.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229796/yolo_segments/segments/6cfd851246704eee9d2879692e5831ce.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229797/yolo_segments/segments/40dc1771ad3148c8a546573d8809b48b.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229798/yolo_segments/segments/fda0c521ac864860a57ffe6280aeef67.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229799/yolo_segments/segments/f1c3bdbeebc24381b741b73815386d66.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229799/yolo_segments/segments/be5bcce1b09343aea2a26c74d7e65ee5.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229800/yolo_segments/segments/f18643d656564409a03c2f959fcb1901.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229801/yolo_segments/segments/cbce16b89a8042d4b1824af23b240f84.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229802/yolo_segments/segments/899fdbd04b9a4292b07e313759552488.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229803/yolo_segments/segments/f3fe12a5832b4489bc7d2c8c33f2cd75.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229804/yolo_segments/segments/f97951adf882430c830e10a8fd976da3.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229805/yolo_segments/segments/53376faf83244bb0a40823bdc7dd5fb1.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229806/yolo_segments/segments/98f0a5c943774825aed021a9ff197e78.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229807/yolo_segments/segments/ea2b92dce5a644f1976786d50d2b34d1.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229808/yolo_segments/segments/326544ca391f4cbcbc531a6aee7ea8e3.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229809/yolo_segments/segments/4a953c3efe0c4f4ca80d801b17c1f9b5.png",
-        "https://res.cloudinary.com/dc8q7sv1f/image/upload/v1775229805/yolo_segments/segments/2dc9dffad09c4d149b60bd449dce3498.png"
-    ),
-    wasteCategory = "Recyclable",
-    status        = "SCANNED_SORTED",
-    scannedAt     = "2026-04-01  09:14",
-    co2AvoidedKg  = 0.76,
-)
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-private val purple800 = Color(0xFF6A1B9A)
-private val green700  = Color(0xFF388E3C)
-private val green50   = Color(0xFFE8F5E9)
-private val bgGray    = Color(0xFFF5F5F5)
+private val bgGray   = Color(0xFFF3F4F6)
+private val green700 = Color(0xFF2E7D32)
+private val green50  = Color(0xFFE8F5E9)
+private val red600   = Color(0xFFDC2626)
+private val red50    = Color(0xFFFEF2F2)
+private val gray700  = Color(0xFF374151)
+private val gray400  = Color(0xFF9CA3AF)
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 @Composable
-fun HouseholdWasteScreen() {
-    Box(modifier = Modifier.fillMaxSize().background(bgGray)) {
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Row(
-                modifier = Modifier
+fun HouseholdWasteScreen(onBack: () -> Unit = {}) {
+    var showSettings by remember { mutableStateOf(false) }
+
+    if (showSettings) {
+        HouseholdSettingsScreen(onBack = { showSettings = false })
+        return
+    }
+
+    val household by HouseholdStore.household.collectAsState()
+    val hasFetched by HouseholdStore.hasFetched.collectAsState()
+    val isFetching by HouseholdStore.isFetching.collectAsState()
+
+    var householdHistory  by remember { mutableStateOf<List<DetectTrashHistoryDto>>(emptyList()) }
+    var userHistory       by remember { mutableStateOf<List<DetectTrashHistoryDto>>(emptyList()) }
+    var greenScoreEntries by remember { mutableStateOf<List<GreenScoreEntryDto>>(emptyList()) }
+    var isLoadingData     by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) { HouseholdStore.fetchHousehold() }
+
+    LaunchedEffect(household) {
+        val h = household ?: return@LaunchedEffect
+        val token = SettingsStore.getAccessToken() ?: return@LaunchedEffect
+        isLoadingData = true
+        try {
+            val (scanResp, userResp, scoreResp) = Triple(
+                runCatching { getDetectHistoryByHousehold(token) },
+                runCatching { getDetectHistoryByUser(token) },
+                runCatching { getGreenScoreByHousehold(token, h.id) }
+            )
+            scanResp.getOrNull()?.data?.let  { householdHistory  = it }
+            userResp.getOrNull()?.data?.let  { userHistory       = it }
+            scoreResp.getOrNull()?.data?.greenScores?.let { greenScoreEntries = it }
+        } finally {
+            isLoadingData = false
+        }
+    }
+
+    if (!hasFetched || isFetching) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (household == null) {
+        CreateHouseholdScreen(onBack = onBack, onSuccess = { HouseholdStore.fetchHousehold() })
+        return
+    }
+
+    val h = household!!
+    val currentScore = greenScoreEntries.lastOrNull()?.finalScore ?: h.scoreGreen
+
+    Box(Modifier.fillMaxSize().background(bgGray)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+
+            // ── Header ────────────────────────────────────────────────────────
+            Box(
+                Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .background(green700)
+                    .padding(horizontal = 20.dp, vertical = 20.dp)
             ) {
-                Column {
-                    Text("🗑️  Household Waste", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = purple800)
-                    Text("Track your scanned waste items", fontSize = 11.sp, color = Color.Gray)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Household Dashboard", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(h.address, fontSize = 13.sp, color = Color.White.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val memberCount = h.members?.size ?: 0
+                    Text("$memberCount member${if (memberCount != 1) "s" else ""}", fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f))
+                }
+                Row(
+                    Modifier.align(Alignment.CenterEnd),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Settings button
+                    IconButton(
+                        onClick = { showSettings = true },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.White.copy(alpha = 0.15f)),
+                    ) {
+                        Text("⚙", fontSize = 18.sp, color = Color.White)
+                    }
+                    // Current score badge
+                    Box(
+                        Modifier
+                            .size(72.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.White.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("$currentScore", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                            Text("score", fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f))
+                        }
+                    }
                 }
             }
 
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text("Recent Scans", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
-                WasteScanCard(mockRecord)
-                Spacer(Modifier.navigationBarsPadding())
+            if (isLoadingData) {
+                Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = green700)
+                }
+            } else {
+                Column(
+                    Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    // ── Section 1: Scan History ───────────────────────────────
+                    SectionHeader("📷  Scan History", householdHistory.size)
+                    if (householdHistory.isEmpty()) {
+                        EmptyState("No household scans yet")
+                    } else {
+                        householdHistory.forEach { ScanCard(it) }
+                    }
+
+                    HorizontalDivider(color = Color(0xFFE5E7EB))
+
+                    // ── Section 2: Green Score ────────────────────────────────
+                    SectionHeader("🌿  Green Score", greenScoreEntries.size)
+                    if (greenScoreEntries.isEmpty()) {
+                        EmptyState("No score history yet")
+                    } else {
+                        GreenScoreSection(greenScoreEntries)
+                    }
+
+                    HorizontalDivider(color = Color(0xFFE5E7EB))
+
+                    // ── Section 3: My Reports ─────────────────────────────────
+                    SectionHeader("👤  My Reports", userHistory.size)
+                    if (userHistory.isEmpty()) {
+                        EmptyState("You haven't submitted any reports yet")
+                    } else {
+                        userHistory.forEach { ScanCard(it) }
+                    }
+
+                    Spacer(Modifier.navigationBarsPadding())
+                }
             }
         }
     }
 }
 
-// ── Card ──────────────────────────────────────────────────────────────────────
+// ── Section header ────────────────────────────────────────────────────────────
 
 @Composable
-private fun WasteScanCard(record: WasteScanRecord) {
-    val status = statusFor(record.status)
-    val pipelineIndex = pipeline.indexOf(record.status)
+private fun SectionHeader(title: String, count: Int) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = gray700)
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFE5E7EB))
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+        ) {
+            Text("$count", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = gray700)
+        }
+    }
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+@Composable
+private fun EmptyState(message: String) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White)
+            .padding(vertical = 24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(message, fontSize = 13.sp, color = gray400)
+    }
+}
+
+// ── Scan card ─────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ScanCard(record: DetectTrashHistoryDto) {
+    val detectLabel = when (record.detectType) {
+        "detect_trash"            -> "Detect Trash"
+        "predict_pollutant_impact" -> "Pollutant Impact"
+        "total_mass"              -> "Total Mass"
+        else                      -> record.detectType ?: "Unknown"
+    }
+    val labelColor = when (record.detectType) {
+        "predict_pollutant_impact" -> Color(0xFFB45309)
+        "total_mass"               -> Color(0xFF1D4ED8)
+        else                       -> green700
+    }
+    val labelBg = when (record.detectType) {
+        "predict_pollutant_impact" -> Color(0xFFFEF3C7)
+        "total_mass"               -> Color(0xFFEFF6FF)
+        else                       -> green50
+    }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column {
-            // ── Main scan image ───────────────────────────────────────────────
-            Box {
-                NetworkImage(
-                    url = record.imageUrl,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(10.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Black.copy(alpha = 0.6f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                ) {
-                    Text("♻️  ${record.totalObjects} objects", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(10.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF3B82F6).copy(alpha = 0.88f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                ) {
-                    Text(record.wasteCategory, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                }
-            }
-
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                // ── Header ────────────────────────────────────────────────────
+        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            NetworkImage(
+                url = record.imageUrl,
+                modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp))
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("Waste Scan", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-                        Text(record.scannedAt, fontSize = 11.sp, color = Color.Gray)
-                    }
                     Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(status.color.copy(alpha = 0.12f))
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(labelBg)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
-                        Text(status.label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = status.color)
+                        Text(detectLabel, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = labelColor)
                     }
-                }
-
-                HorizontalDivider(color = Color(0xFFF0F0F0))
-
-                // ── Segment thumbnails ────────────────────────────────────────
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        "Detected items  (${record.segments.size})",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF424242),
+                        record.createdAt?.take(10) ?: "",
+                        fontSize = 10.sp,
+                        color = gray400
                     )
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(record.segments) { url ->
-                            NetworkImage(
-                                url = url,
-                                modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)),
-                            )
-                        }
-                    }
                 }
-
-                HorizontalDivider(color = Color(0xFFF0F0F0))
-
-                // ── Pipeline progress ─────────────────────────────────────────
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Status", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF424242))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        pipeline.forEachIndexed { i, key ->
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(5.dp)
-                                    .clip(RoundedCornerShape(3.dp))
-                                    .background(if (i <= pipelineIndex) statusFor(key).color else Color(0xFFE5E7EB))
-                            )
-                        }
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        pipeline.forEachIndexed { i, key ->
-                            Text(
-                                statusFor(key).label,
-                                fontSize = 9.sp,
-                                color = if (i <= pipelineIndex) Color(0xFF374151) else Color(0xFFD1D5DB),
-                                fontWeight = if (i == pipelineIndex) FontWeight.Bold else FontWeight.Normal,
-                            )
-                        }
-                    }
+                Text(
+                    "${record.totalObjects ?: 0} objects detected",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = gray700
+                )
+                record.items?.take(3)?.joinToString(" · ") { "${it.quantity}× ${it.name}" }?.let {
+                    Text(it, fontSize = 11.sp, color = gray400, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-
-                HorizontalDivider(color = Color(0xFFF0F0F0))
-
-                // ── Waste impact ──────────────────────────────────────────────
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Waste Impact", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF424242))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        ImpactChip("♻️", "${record.totalObjects}", "Recyclable", Color(0xFFEFF6FF), Color(0xFF3B82F6), Modifier.weight(1f))
-                        ImpactChip("💨", "${record.co2AvoidedKg} kg", "CO₂ avoided", green50, green700, Modifier.weight(1f))
-                        ImpactChip("🌱", "Low", "Pollution risk", green50, green700, Modifier.weight(1f))
-                    }
+                record.totalMassKg?.let {
+                    Text("⚖️ %.2f kg".format(it), fontSize = 11.sp, color = green700)
                 }
-
-                Text(record.id, fontSize = 10.sp, color = Color(0xFFBDBDBD))
             }
         }
     }
 }
 
+// ── Green score section ───────────────────────────────────────────────────────
+
 @Composable
-private fun ImpactChip(emoji: String, value: String, label: String, bg: Color, fg: Color, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(bg)
-            .padding(horizontal = 8.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+private fun GreenScoreSection(entries: List<GreenScoreEntryDto>) {
+    val latest = entries.last()
+
+    // Current score card
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Text(emoji, fontSize = 18.sp)
-        Text(value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = fg)
-        Text(label, fontSize = 9.sp, color = fg.copy(alpha = 0.75f))
+        Row(
+            Modifier.fillMaxWidth().padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Current Score", fontSize = 12.sp, color = gray400)
+                Text("${latest.finalScore}", fontSize = 42.sp, fontWeight = FontWeight.ExtraBold, color = green700)
+                val deltaColor = if (latest.delta >= 0) green700 else red600
+                val deltaPrefix = if (latest.delta >= 0) "+" else ""
+                Text("$deltaPrefix${latest.delta} from last scan", fontSize = 12.sp, color = deltaColor)
+            }
+            // Score ring
+            Box(
+                Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (latest.finalScore >= 50) green50 else red50),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (latest.finalScore >= 70) "🌟" else if (latest.finalScore >= 40) "🌿" else "⚠️",
+                    fontSize = 32.sp
+                )
+            }
+        }
+    }
+
+    Spacer(Modifier.height(8.dp))
+
+    // Score history
+    Text("Score History", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700)
+    Spacer(Modifier.height(4.dp))
+
+    entries.reversed().forEach { entry ->
+        ScoreEntryRow(entry)
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun ScoreEntryRow(entry: GreenScoreEntryDto) {
+    val isPositive = entry.delta >= 0
+    val deltaColor = if (isPositive) green700 else red600
+    val deltaBg    = if (isPositive) green50 else red50
+    val deltaText  = if (isPositive) "+${entry.delta}" else "${entry.delta}"
+
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(entry.createdAt.take(10), fontSize = 11.sp, color = gray400)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("${entry.previousScore} →", fontSize = 12.sp, color = gray400)
+                    Text("${entry.finalScore}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = gray700)
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(deltaBg)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(deltaText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = deltaColor)
+                    }
+                }
+            }
+            entry.reasons?.forEach { reason ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("•", fontSize = 11.sp, color = gray400)
+                    Text(reason, fontSize = 11.sp, color = gray700)
+                }
+            }
+        }
+    }
+}
+
+// ── Create household screen ───────────────────────────────────────────────────
+
+@Composable
+private fun CreateHouseholdScreen(onBack: () -> Unit, onSuccess: () -> Unit) {
+    var isChecking by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        val token = SettingsStore.getAccessToken()
+        if (token != null) {
+            try {
+                val response = getCurrentUserHousehold(token)
+                val household = response.data.toHouseholdDto()
+                if (household != null) {
+                    HouseholdStore.setHousehold(household)
+                    return@LaunchedEffect
+                }
+            } catch (_: Exception) { }
+        }
+        isChecking = false
+    }
+
+    if (isChecking) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    Column(
+        Modifier.fillMaxSize().background(Color(0xFFF5F5F5)).padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        CreateHouseholdForm(onSuccess = onSuccess, onCancel = onBack)
     }
 }

@@ -43,6 +43,11 @@ object SettingsStore {
     fun setAccessToken(token: String?) {
         if (token == null) settings.remove(KEY_ACCESS_TOKEN) else settings.putString(KEY_ACCESS_TOKEN, token)
         _accessToken.value = token
+        if (token != null) {
+            HouseholdStore.fetchHousehold()
+        } else {
+            HouseholdStore.clearHousehold()
+        }
     }
     fun setRefreshToken(token: String?) {
         if (token == null) settings.remove(KEY_REFRESH_TOKEN) else settings.putString(KEY_REFRESH_TOKEN, token)
@@ -100,5 +105,12 @@ object SettingsStore {
     fun setLocationEnabled(enabled: Boolean) {
         settings.putBoolean(KEY_LOCATION_ENABLED, enabled)
         _locationEnabled.value = enabled
+    }
+
+    init {
+        // Fetch household on app startup if already logged in
+        if (_accessToken.value != null) {
+            HouseholdStore.fetchHousehold()
+        }
     }
 }

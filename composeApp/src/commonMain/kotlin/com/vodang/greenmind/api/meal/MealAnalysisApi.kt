@@ -1,6 +1,7 @@
 package com.vodang.greenmind.api.meal
 
 import com.vodang.greenmind.api.auth.ApiException
+import com.vodang.greenmind.api.buildHttpClient
 import com.vodang.greenmind.api.auth.ErrorResponse
 import com.vodang.greenmind.util.AppLogger
 import io.ktor.client.*
@@ -42,25 +43,12 @@ data class MealAnalysisResult(
 // ── Dedicated HTTP client ─────────────────────────────────────────────────────
 // AI inference can be slow — use a longer timeout than the default client.
 
-private val mealAiHttpClient = HttpClient {
-    install(ContentNegotiation) {
-        json(Json {
-            ignoreUnknownKeys = true
-            isLenient = true
-        })
-    }
-    install(HttpTimeout) {
-        requestTimeoutMillis = 120_000  // 2 min — model warm-up + inference
-        connectTimeoutMillis = 30_000
-        socketTimeoutMillis  = 120_000
-    }
-    install(Logging) {
-        logger = object : Logger {
-            override fun log(message: String) { AppLogger.d("MealAI", message) }
-        }
-        level = LogLevel.INFO
-    }
-}
+private val mealAiHttpClient = buildHttpClient(
+    tag              = "MealAI",
+    requestTimeoutMs = 120_000,
+    connectTimeoutMs = 30_000,
+    socketTimeoutMs  = 120_000,
+)
 
 // ── API call ──────────────────────────────────────────────────────────────────
 

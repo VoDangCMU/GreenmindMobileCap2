@@ -33,6 +33,9 @@ import com.vodang.greenmind.home.components.UserTypePickerModal
 import com.vodang.greenmind.home.components.VolunteerDashboard
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.location.Geo
+import com.vodang.greenmind.permission.PermissionGroup
+import com.vodang.greenmind.permission.PermissionRequester
+import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.ProfileScreen
 import com.vodang.greenmind.SettingsScreen
@@ -76,7 +79,16 @@ fun HomeScreen(
 
     BackHandler(enabled = detailDest != null) { detailDest = null }
 
-    LaunchedEffect(Unit) { Geo.service.start() }
+    val locationGranted by PermissionRequester.grantedFlow(PermissionGroup.LOCATION).collectAsState()
+    LaunchedEffect(Unit) {
+        if (!PermissionRequester.grantedFlow(PermissionGroup.LOCATION).value) {
+            PermissionRequester.request(PermissionGroup.LOCATION)
+        }
+        HouseholdStore.fetchHousehold()
+    }
+    LaunchedEffect(locationGranted) {
+        if (locationGranted) Geo.service.start()
+    }
 
     val destinations = HomeDestination.entries
     val pagerState = rememberPagerState(
@@ -97,6 +109,10 @@ fun HomeScreen(
     // Drawer nav → pager
     val navigateTo: (HomeDestination) -> Unit = { dest ->
         scope.launch { pagerState.animateScrollToPage(destinations.indexOf(dest)) }
+    }
+
+    BackHandler(enabled = detailDest == null && destination != HomeDestination.DASHBOARD) {
+        navigateTo(HomeDestination.DASHBOARD)
     }
 
     ModalNavigationDrawer(
@@ -190,7 +206,7 @@ fun HomeScreen(
                 when (detailDest) {
                     DetailDest.WASTE_REPORT    -> WasteReportScreen()
                     DetailDest.WASTE_IMPACT    -> WasteImpactScreen()
-                    DetailDest.HOUSEHOLD_WASTE  -> HouseholdWasteScreen()
+                    DetailDest.HOUSEHOLD_WASTE  -> HouseholdWasteScreen(onBack = { detailDest = null })
                     DetailDest.WASTE_ANALYTICS  -> WasteAnalyticsScreen()
                     DetailDest.MEAL         -> MealScreen()
                     DetailDest.BILL         -> BillScreen()
@@ -223,6 +239,7 @@ fun HomeScreen(
                                     onScanMealClick = { detailDest = DetailDest.MEAL },
                                     onScanBillClick = { detailDest = DetailDest.BILL },
                                     onBlogClick = { navigateTo(HomeDestination.BLOG) },
+                                    onWasteReportClick = { detailDest = DetailDest.WASTE_REPORT },
                                     showPreAppSurveyBadge = !hasPreAppSurvey,
                                     onPreAppSurveyClick = { detailDest = DetailDest.PRE_APP_SURVEY },
                                 )

@@ -94,7 +94,6 @@ fun WasteReportScreen() {
                                 wardName    = form.wardName,
                                 lat         = form.lat,
                                 lng         = form.lng,
-                                wasteKg     = form.wasteKg,
                                 description = form.description,
                                 imageKey    = form.imageKey,
                                 imageUrl    = form.imageUrl,
@@ -272,7 +271,7 @@ private fun WasteReportCard(report: WasteReportDto, onClick: () -> Unit) {
                         color = Color(0xFF9E9E9E),
                     )
                     Text(
-                        "${report.wasteKg} kg · ${report.status}",
+                        report.status,
                         fontSize = 11.sp,
                         color = Color(0xFF9E9E9E),
                     )
@@ -331,7 +330,6 @@ private fun WasteReportDetailSheet(report: WasteReportDto, onDismiss: () -> Unit
 
             // Details grid
             DetailRow("🗑️  Type", report.wasteType.replaceFirstChar { it.uppercase() })
-            DetailRow("⚖️  Weight", "${report.wasteKg} kg")
             DetailRow("📍  Ward", report.wardName)
             DetailRow("🗓️  Reported", formatReportDate(report.createdAt))
             if (!report.resolvedAt.isNullOrBlank()) {

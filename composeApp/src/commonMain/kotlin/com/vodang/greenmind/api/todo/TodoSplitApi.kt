@@ -1,18 +1,13 @@
 package com.vodang.greenmind.api.todo
 
 import com.vodang.greenmind.api.auth.ApiException
+import com.vodang.greenmind.api.buildHttpClient
 import com.vodang.greenmind.util.AppLogger
-import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 private const val SPLIT_URL = "https://task-splitter-worker.nbk2124-z.workers.dev/split"
 
@@ -38,22 +33,12 @@ data class SplitResponse(
 
 // ── HTTP client ───────────────────────────────────────────────────────────────
 
-private val splitClient = HttpClient {
-    install(ContentNegotiation) {
-        json(Json { ignoreUnknownKeys = true; isLenient = true })
-    }
-    install(HttpTimeout) {
-        requestTimeoutMillis = 60_000
-        connectTimeoutMillis = 15_000
-        socketTimeoutMillis  = 60_000
-    }
-    install(Logging) {
-        logger = object : Logger {
-            override fun log(message: String) { AppLogger.d("TodoSplit", message) }
-        }
-        level = LogLevel.INFO
-    }
-}
+private val splitClient = buildHttpClient(
+    tag              = "TodoSplit",
+    requestTimeoutMs = 60_000,
+    connectTimeoutMs = 15_000,
+    socketTimeoutMs  = 60_000,
+)
 
 // ── API call ──────────────────────────────────────────────────────────────────
 

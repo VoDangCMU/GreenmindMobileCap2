@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,7 +24,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +35,7 @@ import com.vodang.greenmind.api.upload.requestAndUpload
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.location.Geo
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.permission.CameraPermissionGate
 import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -78,6 +77,16 @@ actual fun WasteReportScanScreen(
     onReported: (WasteReportFormData) -> Unit,
     onBack: () -> Unit,
 ) {
+    CameraPermissionGate(onDenied = onBack) {
+    WasteReportScanContent(onReported = onReported, onBack = onBack)
+    }
+}
+
+@Composable
+private fun WasteReportScanContent(
+    onReported: (WasteReportFormData) -> Unit,
+    onBack: () -> Unit,
+) {
     val s       = LocalAppStrings.current
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
@@ -88,7 +97,6 @@ actual fun WasteReportScanScreen(
 
     // Form fields
     var selectedWasteType by remember { mutableStateOf("mixed") }
-    var wasteKgText       by remember { mutableStateOf("") }
     var description       by remember { mutableStateOf("") }
     var wardName          by remember { mutableStateOf("") }
     var currentLat        by remember { mutableStateOf(0.0) }
@@ -304,22 +312,6 @@ actual fun WasteReportScanScreen(
                         }
                     }
 
-                    // ── Weight ────────────────────────────────────────────────
-                    OutlinedTextField(
-                        value = wasteKgText,
-                        onValueChange = { wasteKgText = it.filter { c -> c.isDigit() || c == '.' } },
-                        label = { Text(s.wasteReportWeightLabel) },
-                        placeholder = { Text("e.g. 5", color = Color.LightGray) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = green800,
-                            focusedLabelColor  = green800,
-                            cursorColor        = green800,
-                        ),
-                    )
-
                     // ── Ward ──────────────────────────────────────────────────
                     OutlinedTextField(
                         value = wardName,
@@ -393,7 +385,6 @@ actual fun WasteReportScanScreen(
                                         imageKey  = last.key ?: "",
                                         imageUrl  = last.imageUrl ?: "",
                                         wasteType = selectedWasteType,
-                                        wasteKg   = wasteKgText.toDoubleOrNull() ?: 0.0,
                                         description = description.ifBlank {
                                             wasteTypeOptions.find { it.first == selectedWasteType }
                                                 ?.second?.trim() ?: selectedWasteType

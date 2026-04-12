@@ -7,7 +7,6 @@ data class WasteReportFormData(
     val imageKey: String,
     val imageUrl: String,
     val wasteType: String,
-    val wasteKg: Double,
     val description: String,
     val lat: Double,
     val lng: Double,

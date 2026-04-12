@@ -4,12 +4,13 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,7 +20,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.auth.UserDto
+import com.vodang.greenmind.api.campaign.CampaignDto
+import com.vodang.greenmind.api.campaign.getAllCampaigns
+import com.vodang.greenmind.api.participantcampaign.ParticipantCampaignDto
+import com.vodang.greenmind.api.participantcampaign.checkInCampaign
+import com.vodang.greenmind.api.participantcampaign.checkOutCampaign
+import com.vodang.greenmind.api.participantcampaign.registerCampaign
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.location.Geo
+import com.vodang.greenmind.store.SettingsStore
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 
 private val green800v = Color(0xFF2E7D32)
 private val green600v = Color(0xFF388E3C)
@@ -28,33 +39,42 @@ private val blue600v  = Color(0xFF1976D2)
 private val blue50v   = Color(0xFFE3F2FD)
 private val teal600v  = Color(0xFF00897B)
 private val teal50v   = Color(0xFFE0F2F1)
+private val orange600v = Color(0xFFF57C00)
+private val orange50v  = Color(0xFFFFF3E0)
 
-data class VolunteerEvent(
-    val id: Int,
-    val title: String,
-    val location: String,
-    val date: String,
-    val participants: Int,
-    val isRegistered: Boolean,
-    val isActive: Boolean,
+// Per-campaign mutable state tracked in memory for this session
+private data class CampaignUiState(
+    val participant: ParticipantCampaignDto? = null,
+    val busy: Boolean = false,
+    val error: String? = null,
 )
 
 @Composable
 fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = rememberScrollState()) {
     val s = LocalAppStrings.current
+    val scope = rememberCoroutineScope()
 
-    // TODO: Replace with live volunteer event data from the API.
-    //       Expected source: GET /volunteer/events?status=active  and  ?status=upcoming
-    //       Move into a VolunteerStore with a StateFlow so the list updates reactively.
-    val activeEvents = listOf(
-        VolunteerEvent(1, "Dọn rác bãi biển Mỹ Khê", "Bãi biển Mỹ Khê, Sơn Trà", "19/03/2026 · 07:00", 34, true, true),
-        VolunteerEvent(2, "Trồng cây xanh Hải Châu", "Công viên 29/3, Hải Châu", "19/03/2026 · 14:00", 18, false, true),
-    )
-    val upcomingEvents = listOf(
-        VolunteerEvent(3, "Dọn vệ sinh kênh Phú Lộc", "Kênh Phú Lộc, Thanh Khê", "22/03/2026 · 06:30", 45, true, false),
-        VolunteerEvent(4, "Thu gom rác thải điện tử", "UBND Q. Ngũ Hành Sơn", "25/03/2026 · 08:00", 22, false, false),
-        VolunteerEvent(5, "Vệ sinh cống thoát nước", "Khu dân cư Liên Chiểu", "28/03/2026 · 07:30", 30, false, false),
-    )
+    var campaigns by remember { mutableStateOf<List<CampaignDto>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+    // Track participant state per campaign id
+    val campaignStates = remember { mutableStateMapOf<String, CampaignUiState>() }
+
+    val accessToken = remember { SettingsStore.getAccessToken() ?: "" }
+
+    // Load campaigns once
+    LaunchedEffect(accessToken) {
+        if (accessToken.isBlank()) { loading = false; return@LaunchedEffect }
+        loading = true
+        loadError = null
+        try {
+            campaigns = getAllCampaigns(accessToken)
+        } catch (e: Throwable) {
+            loadError = e.message ?: s.volunteerLoadError
+        } finally {
+            loading = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -63,107 +83,233 @@ fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header
-        // Row(verticalAlignment = Alignment.CenterVertically) {
-        //     Column(modifier = Modifier.weight(1f)) {
-        //         Text(
-        //             "${user?.fullName ?: s.volunteerTitle} 🤝",
-        //             fontSize = 20.sp, fontWeight = FontWeight.Bold, color = green800v
-        //         )
-        //         Text(s.volunteerSubtitle, fontSize = 12.sp, color = Color.Gray)
-        //     }
-        //     Box(
-        //         modifier = Modifier.size(56.dp).background(green800v, CircleShape),
-        //         contentAlignment = Alignment.Center
-        //     ) {
-        //         Text("🤝", fontSize = 24.sp)
-        //     }
-        // }
-
-        // OCEAN
         OceanScoreCard()
 
-        // Metrics
         Row(
             modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // TODO: Replace hardcoded metric values (volunteerHoursValue, volunteerEventsValue,
-        //       volunteerPointsValue) in i18n strings with real data from the user profile API.
-        //       Expected source: GET /volunteer/stats  (hours, events joined, points)
-        MetricCard("⏱️", s.volunteerHoursLabel, s.volunteerHoursValue, "", teal50v, teal600v, Modifier.weight(1f).aspectRatio(1f))
+            MetricCard("⏱️", s.volunteerHoursLabel, s.volunteerHoursValue, "", teal50v, teal600v, Modifier.weight(1f).aspectRatio(1f))
             MetricCard("🗓️", s.volunteerEventsLabel, s.volunteerEventsValue, "", green50v, green800v, Modifier.weight(1f).aspectRatio(1f))
             MetricCard("⭐", s.volunteerPointsLabel, s.volunteerPointsValue, "", blue50v, blue600v, Modifier.weight(1f).aspectRatio(1f))
         }
 
-        // Heatmap
         GarbageHeatmapCard()
 
-        // Active events
+        // Campaign list section
         SectionCard {
             Text(s.volunteerEventsCardTitle, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                activeEvents.forEach { event -> VolunteerEventRow(event, s.volunteerJoinButton, s.volunteerRegistered) }
-            }
-        }
 
-        // Upcoming events
-        SectionCard {
-            Text(s.volunteerUpcomingTitle, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Spacer(Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                upcomingEvents.forEach { event -> VolunteerEventRow(event, s.volunteerJoinButton, s.volunteerRegistered) }
+            when {
+                loading -> {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = green800v)
+                            Text(s.volunteerLoading, fontSize = 13.sp, color = Color.Gray)
+                        }
+                    }
+                }
+                loadError != null -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("⚠️ $loadError", fontSize = 13.sp, color = Color(0xFFB71C1C))
+                        TextButton(onClick = {
+                            scope.launch {
+                                loading = true
+                                loadError = null
+                                try { campaigns = getAllCampaigns(accessToken) }
+                                catch (e: Throwable) { loadError = e.message ?: s.volunteerLoadError }
+                                finally { loading = false }
+                            }
+                        }) {
+                            Text("Retry", fontSize = 12.sp, color = green800v)
+                        }
+                    }
+                }
+                campaigns.isEmpty() -> {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                        Text(s.volunteerNoCampaigns, fontSize = 13.sp, color = Color.Gray)
+                    }
+                }
+                else -> {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        campaigns.forEach { campaign ->
+                            val state = campaignStates[campaign.id] ?: CampaignUiState()
+                            CampaignRow(
+                                campaign = campaign,
+                                state = state,
+                                s = s,
+                                onRegister = {
+                                    scope.launch {
+                                        campaignStates[campaign.id] = state.copy(busy = true, error = null)
+                                        try {
+                                            val result = registerCampaign(accessToken, campaign.id)
+                                            campaignStates[campaign.id] = CampaignUiState(participant = result)
+                                        } catch (e: Throwable) {
+                                            campaignStates[campaign.id] = state.copy(busy = false, error = e.message ?: "Error")
+                                        }
+                                    }
+                                },
+                                onCheckIn = {
+                                    scope.launch {
+                                        val participant = state.participant ?: return@launch
+                                        campaignStates[campaign.id] = state.copy(busy = true, error = null)
+                                        try {
+                                            val loc = Geo.service.locationUpdates.firstOrNull()
+                                            val lat = loc?.latitude ?: 0.0
+                                            val lng = loc?.longitude ?: 0.0
+                                            val result = checkInCampaign(accessToken, participant.id, lat, lng)
+                                            campaignStates[campaign.id] = CampaignUiState(participant = result)
+                                        } catch (e: Throwable) {
+                                            campaignStates[campaign.id] = state.copy(busy = false, error = e.message ?: "Error")
+                                        }
+                                    }
+                                },
+                                onCheckOut = {
+                                    scope.launch {
+                                        val participant = state.participant ?: return@launch
+                                        campaignStates[campaign.id] = state.copy(busy = true, error = null)
+                                        try {
+                                            val loc = Geo.service.locationUpdates.firstOrNull()
+                                            val lat = loc?.latitude ?: 0.0
+                                            val lng = loc?.longitude ?: 0.0
+                                            val result = checkOutCampaign(accessToken, participant.id, lat, lng)
+                                            campaignStates[campaign.id] = CampaignUiState(participant = result)
+                                        } catch (e: Throwable) {
+                                            campaignStates[campaign.id] = state.copy(busy = false, error = e.message ?: "Error")
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun VolunteerEventRow(event: VolunteerEvent, joinLabel: String, registeredLabel: String) {
-    var registered by remember(event.id) { mutableStateOf(event.isRegistered) }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
+private fun CampaignRow(
+    campaign: CampaignDto,
+    state: CampaignUiState,
+    s: com.vodang.greenmind.i18n.AppStrings,
+    onRegister: () -> Unit,
+    onCheckIn: () -> Unit,
+    onCheckOut: () -> Unit,
+) {
+    val participant = state.participant
+    val participantStatus = participant?.status
+
+    // Derive isActive from campaign dates if status not present
+    val isActive = campaign.status?.equals("ACTIVE", ignoreCase = true) == true ||
+            campaign.status?.equals("IN_PROGRESS", ignoreCase = true) == true
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFF9FBF9))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(if (event.isActive) Color(0xFFE8F5E9) else Color(0xFFF5F5F5)),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
         ) {
-            Text(if (event.isActive) "🟢" else "📅", fontSize = 18.sp)
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(event.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-            Spacer(Modifier.height(2.dp))
-            Text("📍 ${event.location}", fontSize = 11.sp, color = Color.Gray)
-            Text("🕐 ${event.date}  ·  👥 ${event.participants}", fontSize = 11.sp, color = Color.Gray)
-        }
-        Spacer(Modifier.width(8.dp))
-        if (registered) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFFE8F5E9))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isActive) green50v else Color(0xFFF5F5F5)),
+                contentAlignment = Alignment.Center
             ) {
-                Text("✓ $registeredLabel", fontSize = 11.sp, color = green600v, fontWeight = FontWeight.Medium)
+                Text(if (isActive) "🟢" else "📅", fontSize = 18.sp)
             }
-        } else {
-            Button(
-                // TODO: Call event registration API instead of toggling local state.
-                //       Expected: POST /volunteer/events/{event.id}/register
-                //       On success update the event list from the store, not local mutableState.
-                onClick = { registered = true },
-                colors = ButtonDefaults.buttonColors(containerColor = green800v),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                modifier = Modifier.height(30.dp)
-            ) {
-                Text(joinLabel, fontSize = 11.sp, color = Color.White)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(campaign.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                Spacer(Modifier.height(2.dp))
+                Text("📝 ${campaign.description}", fontSize = 11.sp, color = Color.Gray, maxLines = 2)
+                Text("🕐 ${formatDate(campaign.startDate)} → ${formatDate(campaign.endDate)}", fontSize = 11.sp, color = Color.Gray)
+                Text("📍 ${campaign.lat}, ${campaign.lng}  ·  radius ${campaign.radius}m", fontSize = 11.sp, color = Color.Gray)
+            }
+        }
+
+        // Error row
+        if (state.error != null) {
+            Text("⚠️ ${state.error}", fontSize = 11.sp, color = Color(0xFFB71C1C))
+        }
+
+        // Action buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (state.busy) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = green800v)
+            } else {
+                when (participantStatus) {
+                    null -> {
+                        // Not registered
+                        ActionButton(s.volunteerJoinButton, green800v, onRegister)
+                    }
+                    "REGISTERED" -> {
+                        // Registered, not checked in
+                        StatusBadge("✓ ${s.volunteerRegistered}", green600v, green50v)
+                        Spacer(Modifier.width(8.dp))
+                        ActionButton(s.volunteerCheckIn, teal600v, onCheckIn)
+                    }
+                    "CHECKED_IN" -> {
+                        // Checked in, can check out
+                        StatusBadge("📍 ${s.volunteerCheckedIn}", teal600v, teal50v)
+                        Spacer(Modifier.width(8.dp))
+                        ActionButton(s.volunteerCheckOut, orange600v, onCheckOut)
+                    }
+                    "CHECKED_OUT", "COMPLETED" -> {
+                        StatusBadge("✅ ${s.volunteerCheckedOut}", blue600v, blue50v)
+                    }
+                    else -> {
+                        StatusBadge(participantStatus, Color.Gray, Color(0xFFF5F5F5))
+                    }
+                }
             }
         }
     }
 }
+
+@Composable
+private fun ActionButton(label: String, color: Color, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = color),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+        modifier = Modifier.height(32.dp)
+    ) {
+        Text(label, fontSize = 12.sp, color = Color.White)
+    }
+}
+
+@Composable
+private fun StatusBadge(label: String, textColor: Color, bgColor: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(bgColor)
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Text(label, fontSize = 11.sp, color = textColor, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** Trims ISO timestamp to just the date portion for display */
+private fun formatDate(iso: String): String =
+    if (iso.length >= 10) iso.substring(0, 10) else iso

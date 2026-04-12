@@ -171,9 +171,9 @@ fun EnvImpactCard(result: WasteDetectResponse, modifier: Modifier = Modifier) {
                 color = Color(0xFF616161),
             )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ImpactMeter(icon = "💨", label = "Air pollution",   value = result.impact.airPollution.toFloat(),   barColor = red700)
-                ImpactMeter(icon = "💧", label = "Water pollution", value = result.impact.waterPollution.toFloat(), barColor = blue600)
-                ImpactMeter(icon = "🌱", label = "Soil pollution",  value = result.impact.soilPollution.toFloat(),  barColor = amber)
+                ImpactMeter(icon = "💨", label = "Air pollution",   value = result.impact.airPollution.toFloat())
+                ImpactMeter(icon = "💧", label = "Water pollution", value = result.impact.waterPollution.toFloat())
+                ImpactMeter(icon = "🌱", label = "Soil pollution",  value = result.impact.soilPollution.toFloat())
             }
 
             // ── Active pollutant chips ────────────────────────────────────────
@@ -221,9 +221,14 @@ private fun ecoScoreColor(score: Int): Color = when {
 }
 
 @Composable
-private fun ImpactMeter(icon: String, label: String, value: Float, barColor: Color) {
+private fun ImpactMeter(icon: String, label: String, value: Float) {
     val progress = (value / IMPACT_MAX).coerceIn(0f, 1f)
     val pct = (value * 100).roundToInt()
+    val barColor = when {
+        value < 0.5f -> green800
+        value <= 0.7f -> amber
+        else -> red700
+    }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),

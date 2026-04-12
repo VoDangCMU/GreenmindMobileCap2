@@ -1,6 +1,7 @@
 package com.vodang.greenmind.api.invoicepollution
 
 import com.vodang.greenmind.api.auth.ApiException
+import com.vodang.greenmind.api.buildHttpClient
 import com.vodang.greenmind.api.auth.ErrorResponse
 import com.vodang.greenmind.api.wastedetect.WasteDetectImpact
 import com.vodang.greenmind.api.wastedetect.WasteDetectItem
@@ -75,22 +76,12 @@ fun InvoicePollutionResponse.toWasteDetectResponse() = WasteDetectResponse(
 
 // ── HTTP client ───────────────────────────────────────────────────────────────
 
-private val invoiceAiClient = HttpClient {
-    install(ContentNegotiation) {
-        json(Json { ignoreUnknownKeys = true; isLenient = true })
-    }
-    install(HttpTimeout) {
-        requestTimeoutMillis = 120_000
-        connectTimeoutMillis = 30_000
-        socketTimeoutMillis  = 120_000
-    }
-    install(Logging) {
-        logger = object : Logger {
-            override fun log(message: String) { AppLogger.d("InvoiceAI", message) }
-        }
-        level = LogLevel.INFO
-    }
-}
+private val invoiceAiClient = buildHttpClient(
+    tag              = "InvoiceAI",
+    requestTimeoutMs = 120_000,
+    connectTimeoutMs = 30_000,
+    socketTimeoutMs  = 120_000,
+)
 
 // ── API call ──────────────────────────────────────────────────────────────────
 
