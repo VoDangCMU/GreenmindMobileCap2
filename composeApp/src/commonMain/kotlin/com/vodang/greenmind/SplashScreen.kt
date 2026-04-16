@@ -13,11 +13,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.i18n.LocalAppStrings
 
 private val green800 = Color(0xFF2E7D32)
 
 @Composable
 fun SplashScreen() {
+    val s = LocalAppStrings.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -34,9 +36,9 @@ fun SplashScreen() {
                     .background(green800, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text("🌱", fontSize = 40.sp)
+                Text(s.splashLogo, fontSize = 40.sp)
             }
-            Text("GreenMind", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = green800)
+            Text(s.greenMind, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = green800)
             Spacer(Modifier.height(8.dp))
             CircularProgressIndicator(color = green800, strokeWidth = 3.dp, modifier = Modifier.size(28.dp))
         }

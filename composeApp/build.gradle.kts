@@ -19,6 +19,8 @@ kotlin {
         }
     }
 
+    jvm("desktop")
+
     iosArm64()
     iosSimulatorArm64()
 
@@ -40,7 +42,8 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation("com.google.android.gms:play-services-location:21.0.1")
-implementation(libs.ktor.client.android)
+            implementation(libs.ktor.client.android)
+            implementation("io.coil-kt:coil-compose:2.7.0")
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -59,6 +62,12 @@ implementation(libs.ktor.client.android)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.multiplatform.settings)
             implementation(libs.koalaplot.core)
+        }
+        val desktopMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation(libs.ktor.client.cio)
+            }
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -99,6 +108,17 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+compose.desktop {
+    application {
+        mainClass = "com.vodang.greenmind.MainKt"
+        nativeDistributions {
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            packageName = "GreenMind"
+            packageVersion = "1.0.0"
+        }
     }
 }
 

@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.nominatim.ReverseOptions
 import com.vodang.greenmind.api.nominatim.nominatimReverse
+import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.location.Geo
 import com.vodang.greenmind.location.Location
 import com.vodang.greenmind.permission.PermissionGroup
@@ -24,6 +25,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun CreateHouseholdForm(onSuccess: () -> Unit, onCancel: () -> Unit) {
+    val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
     var houseNumber by remember { mutableStateOf("") }
     var nominatimAddress by remember { mutableStateOf("") }
@@ -71,7 +73,7 @@ fun CreateHouseholdForm(onSuccess: () -> Unit, onCancel: () -> Unit) {
     }
 
     Text(
-        text = "Set Location",
+        text = s.setLocation,
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
         color = Color(0xFF2E7D32)
@@ -80,8 +82,8 @@ fun CreateHouseholdForm(onSuccess: () -> Unit, onCancel: () -> Unit) {
     OutlinedTextField(
         value = houseNumber,
         onValueChange = { houseNumber = it },
-        label = { Text("House number (optional)") },
-        placeholder = { Text("e.g. 42, 12A") },
+        label = { Text(s.houseNumberOptional) },
+        placeholder = { Text(s.houseNumberPlaceholder) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -90,7 +92,7 @@ fun CreateHouseholdForm(onSuccess: () -> Unit, onCancel: () -> Unit) {
         value = nominatimAddress,
         onValueChange = {},
         readOnly = true,
-        label = { Text("Address from GPS") },
+        label = { Text(s.addressFromGps) },
         modifier = Modifier.fillMaxWidth(),
         trailingIcon = {
             if (isResolvingAddress) {
@@ -101,7 +103,7 @@ fun CreateHouseholdForm(onSuccess: () -> Unit, onCancel: () -> Unit) {
 
     if (effectiveLat != null && effectiveLon != null) {
         Text(
-            text = "Coordinates from GPS: $effectiveLat, $effectiveLon",
+            text = "${s.coordinatesFromGps(effectiveLat, effectiveLon)}",
             fontSize = 12.sp,
             color = Color.Gray,
             modifier = Modifier.fillMaxWidth()
@@ -117,14 +119,14 @@ fun CreateHouseholdForm(onSuccess: () -> Unit, onCancel: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "📍 Location required",
+                    text = s.locationRequired,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFFE65100)
                 )
                 if (!locationGranted) {
                     Text(
-                        text = "Location permission is not granted. Please allow location access.",
+                        text = s.locationPermissionNotGranted,
                         fontSize = 12.sp,
                         color = Color(0xFF6D4C41)
                     )
@@ -133,11 +135,11 @@ fun CreateHouseholdForm(onSuccess: () -> Unit, onCancel: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
                     ) {
-                        Text("Grant Location Permission")
+                        Text(s.grantLocationPermission)
                     }
                 } else if (!trackingEnabled) {
                     Text(
-                        text = "Location tracking is turned off. Enable it to auto-detect your address.",
+                        text = s.locationTrackingOff,
                         fontSize = 12.sp,
                         color = Color(0xFF6D4C41)
                     )
@@ -146,11 +148,11 @@ fun CreateHouseholdForm(onSuccess: () -> Unit, onCancel: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
                     ) {
-                        Text("Enable Location Tracking")
+                        Text(s.enableLocationTracking)
                     }
                 } else {
                     Text(
-                        text = "Waiting for GPS fix... Please make sure location services are on.",
+                        text = s.waitingForGps,
                         fontSize = 12.sp,
                         color = Color(0xFF6D4C41)
                     )
@@ -166,7 +168,7 @@ fun CreateHouseholdForm(onSuccess: () -> Unit, onCancel: () -> Unit) {
 
     Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
-            Text("Back")
+            Text(s.backArrow)
         }
         Button(
             onClick = {
@@ -186,7 +188,7 @@ fun CreateHouseholdForm(onSuccess: () -> Unit, onCancel: () -> Unit) {
             if (isSubmitting) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
             } else {
-                Text("Save")
+                Text(s.save)
             }
         }
     }

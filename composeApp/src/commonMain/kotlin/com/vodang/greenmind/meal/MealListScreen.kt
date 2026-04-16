@@ -43,7 +43,7 @@ fun MealListScreen(onScanClick: () -> Unit, onCardClick: (MealRecord) -> Unit = 
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("??", fontSize = 48.sp)
+                    Text(s.emptyMealEmoji, fontSize = 48.sp)
                     Text(s.mealListEmpty, color = Color.Gray, fontSize = 15.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(
@@ -55,7 +55,7 @@ fun MealListScreen(onScanClick: () -> Unit, onCardClick: (MealRecord) -> Unit = 
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text("??", fontSize = 15.sp)
+                        Text(s.scanMealEmoji, fontSize = 15.sp)
                         Text(s.mealScanTitle, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }

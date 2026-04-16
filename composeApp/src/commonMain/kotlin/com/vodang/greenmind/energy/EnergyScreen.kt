@@ -89,7 +89,7 @@ fun EnergyScreen() {
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                "kWh",
+                                s.kWh,
                                 fontSize = 18.sp,
                                 color = Color.White.copy(alpha = 0.8f),
                                 modifier = Modifier.padding(bottom = 8.dp)
@@ -103,7 +103,7 @@ fun EnergyScreen() {
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             // TODO: Calculate real delta vs yesterday from the API data. Move string to i18n.
-                        Text("▲5% vs yesterday", fontSize = 12.sp, color = Color.White)
+                        Text(s.vsYesterday("5%"), fontSize = 12.sp, color = Color.White)
                         }
                     }
                     Text(
@@ -142,7 +142,7 @@ fun EnergyScreen() {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(s.electricityWeekTitle, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         Spacer(Modifier.weight(1f))
-                        Text("kWh", fontSize = 11.sp, color = Color.Gray)
+                        Text(s.kWh, fontSize = 11.sp, color = Color.Gray)
                     }
                     Spacer(Modifier.height(16.dp))
                     WeekChart(values = weekValues, labels = s.weekDays)

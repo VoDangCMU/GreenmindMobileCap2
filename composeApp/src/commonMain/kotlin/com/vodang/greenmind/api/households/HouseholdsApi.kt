@@ -45,7 +45,8 @@ data class HouseholdMemberDto(
     val dateOfBirth: String,
     val segmentId: String? = null,
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
+    val household: HouseholdDto? = null,
 )
 
 @Serializable
@@ -159,27 +160,28 @@ data class DetectImageUrlRequest(
 
 @Serializable
 data class DetectItemDto(
-    val area: Int,
     val name: String,
-    val quantity: Int
+    val area: Int = 0,
+    val quantity: Int = 0,
+    @SerialName("mass_kg") val massKg: Double? = null,
 )
 
 @Serializable
 data class DetectPollutionDto(
-    @SerialName("Cd") val cd: Int? = null,
-    @SerialName("Hg") val hg: Int? = null,
-    @SerialName("Pb") val pb: Int? = null,
-    @SerialName("CH4") val ch4: Int? = null,
+    @SerialName("Cd") val cd: Double? = null,
+    @SerialName("Hg") val hg: Double? = null,
+    @SerialName("Pb") val pb: Double? = null,
+    @SerialName("CH4") val ch4: Double? = null,
     @SerialName("CO2") val co2: Double? = null,
     @SerialName("NOx") val nox: Double? = null,
     @SerialName("SO2") val so2: Double? = null,
-    @SerialName("PM2.5") val pm25: Int? = null,
+    @SerialName("PM2.5") val pm25: Double? = null,
     val dioxin: Double? = null,
-    val nitrate: Int? = null,
+    val nitrate: Double? = null,
     val styrene: Double? = null,
     val microplastic: Double? = null,
     @SerialName("toxic_chemicals") val toxicChemicals: Double? = null,
-    @SerialName("chemical_residue") val chemicalResidue: Int? = null,
+    @SerialName("chemical_residue") val chemicalResidue: Double? = null,
     @SerialName("non_biodegradable") val nonBiodegradable: Double? = null
 )
 
@@ -211,10 +213,15 @@ data class DetectTrashHistoryDto(
     val aiAnalysis: String? = null,
     val householdId: String? = null,
     val detectType: String? = null,
+    /** Lifecycle status: "detected", "brought_out", "picked_up" */
+    val status: String? = null,
+    val pickupProofImageUrl: String? = null,
+    val collectorId: String? = null,
+    val pickedUpAt: String? = null,
     val createdAt: String? = null,
     val updatedAt: String? = null,
-    val detectedBy: HouseholdMemberDto? = null,
-    val household: HouseholdDto? = null
+    val detectedBy: HouseholdMemberDto? = null,   // required in most endpoints
+    val household: HouseholdDto? = null            // optional — absent from historyByUser required array
 )
 
 @Serializable
@@ -385,6 +392,18 @@ suspend fun detectTotalMass(accessToken: String, request: DetectImageUrlRequest)
             header("Authorization", "Bearer $accessToken")
             contentType(ContentType.Application.Json)
             setBody(request)
+        }
+    }
+}
+
+/**
+ * POST /households/detect-trash/{id}/bring-out — marks the record as brought out for pickup.
+ */
+suspend fun bringOutDetectTrash(accessToken: String, id: String): DetectTrashResultResponse {
+    AppLogger.i("HouseholdsApi", "bringOutDetectTrash id=$id")
+    return executeRequest<DetectTrashResultResponse> {
+        httpClient.post("$BASE_URL/households/detect-trash/$id/bring-out") {
+            header("Authorization", "Bearer $accessToken")
         }
     }
 }

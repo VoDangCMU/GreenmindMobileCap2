@@ -31,6 +31,7 @@ fun HomeTopBar(
     user: UserDto?,
     userType: UserType,
     onSwitchClick: () -> Unit,
+    showRoleSwitcher: Boolean = true,
     scrolled: Boolean = false,
 ) {
     val s = LocalAppStrings.current
@@ -53,30 +54,32 @@ fun HomeTopBar(
             modifier = Modifier.size(40.dp).clip(CircleShape).clickable { onMenuClick() }.background(green50),
             contentAlignment = Alignment.Center
         ) {
-            Text("☰", fontSize = 18.sp)
+            Text(s.menuIcon, fontSize = 18.sp)
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            val displayName = user?.fullName ?: user?.username ?: "User"
+            val displayName = user?.fullName ?: user?.username ?: s.userFallback
             Text(s.greeting(displayName), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = green800)
             Text(s.welcomeBack, fontSize = 12.sp, color = Color.Gray)
         }
-        val roleLabel = when (userType) {
-            UserType.HOUSEHOLD -> s.householdRole
-            UserType.COLLECTOR -> s.collectorRole
-            UserType.VOLUNTEER -> s.volunteerRole
-        }
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(green50)
-                .clickable { onSwitchClick() }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(userType.icon, fontSize = 16.sp)
-            Text("⇄", fontSize = 16.sp, color = green800, fontWeight = FontWeight.Bold)
+        if (showRoleSwitcher) {
+            val roleLabel = when (userType) {
+                UserType.HOUSEHOLD -> s.householdRole
+                UserType.COLLECTOR -> s.collectorRole
+                UserType.VOLUNTEER -> s.volunteerRole
+            }
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(green50)
+                    .clickable { onSwitchClick() }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(userType.icon, fontSize = 16.sp)
+                Text(s.roleSwitch, fontSize = 16.sp, color = green800, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

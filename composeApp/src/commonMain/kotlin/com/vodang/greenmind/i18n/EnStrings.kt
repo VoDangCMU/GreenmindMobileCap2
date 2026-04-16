@@ -113,6 +113,7 @@ val EnStrings = AppStrings("en").apply {
     scanBill = "Scan bill"
     scanBillDesc = "Scan your receipt"
     wasteImpactTitle = "Waste Impact"
+    greenScoreTitle = "Green Score"
     wasteImpactDesc = "Impact analysis"
     wasteImpactTotalReports = "Total Reports"
     wasteImpactTotalKg = "Total kg Reported"
@@ -249,6 +250,8 @@ val EnStrings = AppStrings("en").apply {
     settingsLocation            = "Location Tracking"
     settingsTrackingEnabled     = "Tracking active"
     settingsTrackingEnabledDesc = "Record GPS positions in the background"
+        settingsEnableRoleSwitcher = "Enable role switcher"
+        settingsEnableRoleSwitcherDesc = "Show role switcher in the top bar"
     settingsInterval            = "Update interval"
     settingsIntervalDesc        = "How often your position is saved"
     settingsMinMove             = "Stationary threshold"
@@ -296,6 +299,16 @@ val EnStrings = AppStrings("en").apply {
     blogCreateSubmitting = "Publishing..."
     blogCreateSuccess = "Post published!"
     blogCreateErrorEmpty = "Title and content are required"
+    blogEdit = "Edit"
+    blogDelete = "Delete"
+    blogDeleteTitle = "Delete Post"
+    blogDeleteConfirm = "Are you sure you want to delete this post? This action cannot be undone."
+    blogEditComment = "Edit Comment"
+    blogDeleteCommentTitle = "Delete Comment"
+    blogDeleteCommentConfirm = "Are you sure you want to delete this comment?"
+    blogCommentsLabel = "comments"
+    blogCommentsTitle = { n -> "$n comment${if (n != 1) "s" else ""}" }
+    blogAddCommentHint = "Write a comment..."
     surveyMinutes = { n -> "~$n min" }
     surveyQuestions = { n -> "$n questions" }
     surveyCompleted = "✓ Done"
@@ -389,4 +402,279 @@ val EnStrings = AppStrings("en").apply {
     preAppSurveyDone = "All done! 🎉"
     preAppSurveyDoneDesc = "Your profile is now set up. We'll use your answers to personalise tips and insights."
     preAppSurveyStartButton = "Start Survey"
+
+    // ── General ─────────────────────────────────────────────────────────────────
+    backArrow = "←"
+    menuIcon = "☰"
+    userFallback = "User"
+    roleSwitch = "⇄"
+    retry = "Retry"
+    chevronRight = "›"
+    stationaryLabel = "stationary"
+    hour = "Hour"
+    minute = "Minute"
+    updateTime = "Update Time"
+    updating = "Updating…"
+    updateAll = "↺  Update All"
+    noRecordsYet = "No records yet — tracking will populate this list."
+    googleLogo = "G"
+    searchIcon = "🔍"
+    flagEmoji = "🏳"
+    checkmark = "✓"
+
+    // ── Splash ─────────────────────────────────────────────────────────────────
+    splashLogo = "🌱"
+
+    // ── Blog ───────────────────────────────────────────────────────────────────
+    noContentAvailable = "No content available."
+
+    // ── Settings ────────────────────────────────────────────────────────────────
+    metricsAutoUpdate = "Metrics Auto Update"
+    autoUpdateMetrics = "Auto Update Metrics"
+    autoUpdateMetricsDesc = "Automatically refresh all metrics daily"
+    updateTimeDesc = "Daily refresh will run at this time"
+    dailySpending = "Daily Spending"
+    nightOut = "Night Out"
+    spendVariability = "Spend Variability"
+    brandNovelty = "Brand Novelty"
+    listAdherence = "List Adherence"
+    dailyDistance = "Daily Distance"
+    novelLocationRatio = "Novel Location Ratio"
+    publicTransitRatio = "Public Transit Ratio"
+    interval15s = "15s"
+    interval30s = "30s"
+    interval55s = "55s"
+    interval2m = "2m"
+    interval5m = "5m"
+    speedWalk = "🚶"
+    speedRun = "🏃"
+    speedCycle = "🚴"
+    greenMind = "GreenMind"
+    version = "v1.0.0"
+    noGpsRecords = "No records yet — tracking will populate this list."
+
+    // ── Household Dashboard ─────────────────────────────────────────────────────
+    householdDashboard = "Household Dashboard"
+    memberCount = { n -> "$n member${if (n != 1) "s" else ""}" }
+    noScoreHistory = "No score history yet"
+    viewWasteImpactAnalysis = "📊  View Waste Impact Analysis"
+    noHouseholdScans = "No household scans yet"
+    noWasteReports = "No waste reports submitted yet"
+    householdSettings = "⚙  Household Settings"
+    currentScore = "Current Score"
+    deltaFromLastScan = { d -> "+$d from last scan" }
+    scoreHistory = "Score History"
+    scoreTransition = { prev, curr -> "$prev →" }
+    scoreLabel = { s -> "Score: $s" }
+    detectedItems = "Detected items"
+    scoreBreakdown = "Score breakdown"
+    noDetailAvailable = "No detail available for this score entry."
+    scanHistoryScreen = "Scan History"
+    myScanReports = "My Scan Reports"
+    myWasteReports = "My Waste Reports"
+
+    // ── Create Household Modal ──────────────────────────────────────────────────
+    setLocation = "Set Location"
+    houseNumberOptional = "House number (optional)"
+    houseNumberPlaceholder = "e.g. 42, 12A"
+    addressFromGps = "Address from GPS"
+    coordinatesFromGps = { lat, lon -> "Coordinates from GPS: $lat, $lon" }
+    locationRequired = "📍 Location required"
+    locationPermissionNotGranted = "Location permission is not granted. Please allow location access."
+    grantLocationPermission = "Grant Location Permission"
+    locationTrackingOff = "Location tracking is turned off. Enable it to auto-detect your address."
+    enableLocationTracking = "Enable Location Tracking"
+    waitingForGps = "Waiting for GPS fix... Please make sure location services are on."
+
+    // ── Household Settings ─────────────────────────────────────────────────────
+    householdSettingsTitle = "Household Settings"
+    addMember = "Add Member"
+    userId = "User ID"
+    userIdPlaceholder = "Enter the member's user ID"
+    memberAddedSuccess = "Member added successfully"
+    userIdCannotBeEmpty = "User ID cannot be empty"
+    failedToAddMember = "Failed to add member"
+    members = "Members"
+    noMembersYet = "No members yet"
+    failedToRemoveMember = "Failed to remove member"
+    removeMember = "✕"
+
+    // ── Catalogue ──────────────────────────────────────────────────────────────
+    environmentalImpact = "Environmental Impact"
+    environmentalImpactDesc = "Shows CO₂, microplastic, and pollution scores from waste scans"
+    allUsersLabel = "All users"
+
+    // ── Energy ─────────────────────────────────────────────────────────────────
+    kWh = "kWh"
+    vsYesterday = { d -> "▲$d vs yesterday" }
+
+    // ── Meal Detail ─────────────────────────────────────────────────────────────
+    plant = "plant"
+    unnamedMeal = "Unnamed meal"
+    thresholdLow = "< 40%"
+    thresholdOk = "40–69%"
+    thresholdGood = "≥ 70%"
+    thresholdRange = { l, m, h -> "< 40% / 40–69% / ≥ 70%" }
+    aimForPlant = "🌿  Aim for at least 70% plant-based food to reduce your carbon footprint."
+
+    // ── Meal List ──────────────────────────────────────────────────────────────
+    emptyMealEmoji = "??"
+    scanMealEmoji = "??"
+
+    // ── Todos ──────────────────────────────────────────────────────────────────
+    addTodo = "+"
+    dismissError = "✕"
+    emptyTodosEmoji = "🌱"
+    expand = "▸"
+    aiWand = "✨"
+    deleteTodo = "✕"
+    addSubtask = "+"
+
+    // ── Survey ─────────────────────────────────────────────────────────────────
+    pleaseSelectAnswer = "Please select an answer"
+    errorSubmitting = "Failed to submit"
+    networkError = "Network error. Please try again."
+    surveyBy = { author -> "by $author" }
+
+    // ── Waste Impact ────────────────────────────────────────────────────────────
+    refresh = "↻ Refresh"
+    scans = "Scans"
+    itemsDetected = "Items detected"
+    avgEcoScore = "Avg eco score"
+    greenScoreDescription = "Green score from household data"
+    basedOnScans = { n -> "Based on $n scan(s) with impact data" }
+    averagePollutionImpact = "Average Pollution Impact"
+    topPollutantsAvg = "Top Pollutants (Avg)"
+    pollutantBreakdownAvg = "Pollutant Breakdown (Avg)"
+    scanDetail = "Scan Detail"
+    pollutionImpact = "Pollution Impact"
+    objects = "Objects"
+    ecoScoreLabel = { s -> "Eco score" }
+    air = "Air"
+    water = "Water"
+    soil = "Soil"
+    excellentMinimalImpact = "Excellent — minimal impact"
+    goodLowImpact = "Good — low impact"
+    fairModerateImpact = "Fair — moderate impact"
+    poorHighImpact = "Poor — high environmental impact"
+    scanHistoryRow = { n, author -> "$n items · by $author" }
+    noEcoScore = "—"
+    pollutantCO2 = "CO₂"
+    pollutantDioxin = "Dioxin"
+    pollutantMicroplastic = "Microplastic"
+    pollutantToxic = "Toxic chemicals"
+    pollutantNonBiodegradable = "Non-biodegradable"
+    pollutantNOx = "NOₓ"
+    pollutantSO2 = "SO₂"
+    pollutantCH4 = "CH₄"
+    pollutantPM25 = "PM2.5"
+    pollutantLead = "Lead (Pb)"
+    pollutantMercury = "Mercury (Hg)"
+    pollutantCadmium = "Cadmium (Cd)"
+    pollutantNitrate = "Nitrate"
+    pollutantChemicalResidue = "Chemical residue"
+    pollutantStyrene = "Styrene"
+    airIcon = "💨"
+    waterPollutionLabel = "Water pollution"
+    soilPollutionLabel = "Soil pollution"
+    greenScoreHistory = "Green Score History"
+    scanHistoryTitle = "Scan History"
+
+    // ── Waste Analytics ────────────────────────────────────────────────────────
+    wasteAnalyticsTitle = "📈 Waste Analytics"
+    householdTrends = { p -> "Household trends · $p view" }
+    totalWaste = "Total Waste"
+    peak = { label -> "Peak ($label)" }
+    avgAir = "Avg Air"
+    pollutionImpactTrends = "Pollution Impact Trends"
+    airWaterSoil = "Air · Water · Soil"
+    keyPollutants = "Key Pollutants"
+    co2DioxinMicroplastic = "CO₂ · Dioxin · Microplastic"
+    insight = "📊 Insight"
+    wasteVolume = "Waste Volume"
+    kilograms = "Kilograms"
+    valueLabelKg = { v -> "${v.fmt(1)}kg" }
+    seriesHidden = "Series hidden"
+    noSeriesSelected = "No series selected"
+    seriesAir = "Air"
+    seriesWater = "Water"
+    seriesSoil = "Soil"
+    seriesCO2 = "CO₂"
+    seriesDioxin = "Dioxin"
+    seriesMicroplastic = "Microplastic"
+    periodHour = "hour"
+    periodDay = "day"
+    periodWeek = "week"
+    periodMonth = "month"
+    periodLabel = { label -> label }
+
+    // ── Home components ─────────────────────────────────────────────────────────
+    surveyBadgeIcon = "📋"
+    errorDisplay = { msg -> "⚠️  $msg" }
+    unknownLocation = "Unknown Location"
+    campaignActive = "🟢"
+    campaignInactive = "📅"
+    campaignDescription = { desc -> "📝 $desc" }
+    dateRange = { start, end -> "🕐 $start → $end" }
+    locationRadius = { lat, lng, r -> "📍 $lat, $lng  ·  radius ${r}m" }
+    registeredStatus = { s -> "✓ $s" }
+    checkedInStatus = { s -> "📍 $s" }
+    completedStatus = { s -> "✅ $s" }
+    pollutionTrendTitle = "Pollution Trend"
+    pollutionTrendSubtitle = "1 month · 7-day intervals"
+    co2Legend = "CO₂"
+    ch4Legend = "CH₄"
+    noxLegend = "NOₓ"
+    percentYAxis = "%"
+
+    // ── Waste Sort ──────────────────────────────────────────────────────────────
+    wasteScanned = "Scanned"
+    wasteSorted = "Sorted"
+    wasteBroughtOut = "Brought Out"
+    wasteCollected = "Collected"
+
+    // ── Waste Sort List ─────────────────────────────────────────────────────────
+    localScans = "Local Scans"
+    scanCount = { n -> "$n scans" }
+    uploadImage = "Upload image"
+    takePhoto = "Take a photo"
+    myScanReportsTitle = "My Scan Reports"
+    reportCount = { n -> "$n reports" }
+    noScanReports = "No scan reports found"
+    fabCollapse = "✕"
+    fabExpand = "+"
+
+    // ── Scan Detail ─────────────────────────────────────────────────────────────
+    ecoScore = "Eco Score"
+    noScoreYet = "No score yet"
+    deltaPrefix = { d -> "+$d from last scan" }
+    markAsSorted = "Mark as Sorted"
+    markAsBroughtOut = "Mark as Brought Out"
+    waitingForCollector = "⏳  Waiting for collector pickup"
+    collectedComplete = "✅  Collected — cycle complete!"
+    byCategory = "By Category"
+    categoryTab = { label, count -> "$label ($count)" }
+
+    // ── Error Log ───────────────────────────────────────────────────────────────
+    errorLog = { n -> "🔴  Error Log ($n)" }
+    clear = "Clear"
+    noErrors = "No errors logged."
+    expandIndicator = "›"
+    message = "MESSAGE"
+    stackTrace = "STACK TRACE"
+    truncated = "(truncated)"
+    errorLevel = "E"
+    warningLevel = "W"
+
+    // ── Profile ──────────────────────────────────────────────────────────────────
+    profileUserIcon = "👤"
+    profileRoleHousehold = "🏠"
+    profileRoleCollector = "🚛"
+    profileRoleVolunteer = "🤝"
+    profileLocation = { loc -> "📍  $loc" }
+    plantRatio = "plant ratio"
+    greenSpend = "green spend"
+    habitProfile = "Habit Profile"
+    profileMealsIcon = "🍽️"
+    profileBillsIcon = "🧾"
 }

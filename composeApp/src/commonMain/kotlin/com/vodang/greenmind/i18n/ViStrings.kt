@@ -113,6 +113,7 @@ val ViStrings = AppStrings("vi").apply {
     scanBill = "Quét hoá đơn"
     scanBillDesc = "Quét hoá đơn mua sắm"
     wasteImpactTitle = "Phân tích ảnh hưởng"
+    greenScoreTitle = "Điểm Xanh"
     wasteImpactDesc = "Thống kê ảnh hưởng rác"
     wasteImpactTotalReports = "Tổng báo cáo"
     wasteImpactTotalKg = "Tổng kg báo cáo"
@@ -249,6 +250,8 @@ val ViStrings = AppStrings("vi").apply {
     settingsLocation            = "Theo dõi vị trí"
     settingsTrackingEnabled     = "Đang theo dõi"
     settingsTrackingEnabledDesc = "Lưu vị trí GPS ở chế độ nền"
+    settingsEnableRoleSwitcher = "Bật chuyển vai trò"
+    settingsEnableRoleSwitcherDesc = "Hiển thị nút chuyển vai trò trên thanh trên cùng"
     settingsInterval            = "Khoảng thời gian cập nhật"
     settingsIntervalDesc        = "Tần suất lưu vị trí của bạn"
     settingsMinMove             = "Ngưỡng đứng yên"
@@ -296,6 +299,16 @@ val ViStrings = AppStrings("vi").apply {
     blogCreateSubmitting = "Đang đăng..."
     blogCreateSuccess = "Đã đăng bài!"
     blogCreateErrorEmpty = "Tiêu đề và nội dung là bắt buộc"
+    blogEdit = "Sửa"
+    blogDelete = "Xóa"
+    blogDeleteTitle = "Xóa bài viết"
+    blogDeleteConfirm = "Bạn có chắc muốn xóa bài viết này? Hành động này không thể hoàn tác."
+    blogEditComment = "Sửa bình luận"
+    blogDeleteCommentTitle = "Xóa bình luận"
+    blogDeleteCommentConfirm = "Bạn có chắc muốn xóa bình luận này?"
+    blogCommentsLabel = "bình luận"
+    blogCommentsTitle = { n -> "$n bình luận" }
+    blogAddCommentHint = "Viết bình luận..."
     surveyMinutes = { n -> "~$n phút" }
     surveyQuestions = { n -> "$n câu hỏi" }
     surveyCompleted = "✓ Đã làm"
@@ -389,4 +402,279 @@ val ViStrings = AppStrings("vi").apply {
     preAppSurveyDone = "Hoàn thành! 🎉"
     preAppSurveyDoneDesc = "Hồ sơ của bạn đã được thiết lập. Chúng tôi sẽ dùng câu trả lời để cá nhân hoá gợi ý và thông tin."
     preAppSurveyStartButton = "Bắt đầu khảo sát"
+
+    // ── General ─────────────────────────────────────────────────────────────────
+    backArrow = "←"
+    menuIcon = "☰"
+    userFallback = "Người dùng"
+    roleSwitch = "⇄"
+    retry = "Thử lại"
+    chevronRight = "›"
+    stationaryLabel = "đứng yên"
+    hour = "Giờ"
+    minute = "Phút"
+    updateTime = "Giờ cập nhật"
+    updating = "Đang cập nhật…"
+    updateAll = "↺  Cập nhật tất cả"
+    noRecordsYet = "Chưa có bản ghi nào — theo dõi sẽ hiện danh sách."
+    googleLogo = "G"
+    searchIcon = "🔍"
+    flagEmoji = "🏳"
+    checkmark = "✓"
+
+    // ── Splash ─────────────────────────────────────────────────────────────────
+    splashLogo = "🌱"
+
+    // ── Blog ───────────────────────────────────────────────────────────────────
+    noContentAvailable = "Không có nội dung."
+
+    // ── Settings ────────────────────────────────────────────────────────────────
+    metricsAutoUpdate = "Cập nhật chỉ số tự động"
+    autoUpdateMetrics = "Bật cập nhật chỉ số"
+    autoUpdateMetricsDesc = "Tự động làm mới tất cả chỉ số mỗi ngày"
+    updateTimeDesc = "Cập nhật hàng ngày sẽ chạy vào lúc này"
+    dailySpending = "Chi tiêu hàng ngày"
+    nightOut = "Ra ngoài buổi tối"
+    spendVariability = "Mức biến động chi tiêu"
+    brandNovelty = "Độ mới của thương hiệu"
+    listAdherence = "Tuân thủ danh sách"
+    dailyDistance = "Quãng đường hàng ngày"
+    novelLocationRatio = "Tỉ lệ địa điểm mới"
+    publicTransitRatio = "Tỉ lệ phương tiện công cộng"
+    interval15s = "15s"
+    interval30s = "30s"
+    interval55s = "55s"
+    interval2m = "2p"
+    interval5m = "5p"
+    speedWalk = "🚶"
+    speedRun = "🏃"
+    speedCycle = "🚴"
+    greenMind = "GreenMind"
+    version = "v1.0.0"
+    noGpsRecords = "Chưa có bản ghi nào — theo dõi sẽ hiện danh sách."
+
+    // ── Household Dashboard ─────────────────────────────────────────────────────
+    householdDashboard = "Bảng điều khiển hộ gia đình"
+    memberCount = { n -> "$n thành viên" }
+    noScoreHistory = "Chưa có lịch sử điểm"
+    viewWasteImpactAnalysis = "📊  Xem phân tích ảnh hưởng rác"
+    noHouseholdScans = "Chưa có lượt quét hộ gia đình"
+    noWasteReports = "Chưa có báo cáo rác nào"
+    householdSettings = "⚙  Cài đặt hộ gia đình"
+    currentScore = "Điểm hiện tại"
+    deltaFromLastScan = { d -> "+$d so với lần quét trước" }
+    scoreHistory = "Lịch sử điểm"
+    scoreTransition = { prev, _ -> "$prev →" }
+    scoreLabel = { s -> "Điểm: $s" }
+    detectedItems = "Mục đã phát hiện"
+    scoreBreakdown = "Chi tiết điểm"
+    noDetailAvailable = "Không có chi tiết cho lần ghi này."
+    scanHistoryScreen = "Lịch sử quét"
+    myScanReports = "Báo cáo quét của tôi"
+    myWasteReports = "Báo cáo rác của tôi"
+
+    // ── Create Household Modal ──────────────────────────────────────────────────
+    setLocation = "Đặt vị trí"
+    houseNumberOptional = "Số nhà (tùy chọn)"
+    houseNumberPlaceholder = "VD: 42, 12A"
+    addressFromGps = "Địa chỉ từ GPS"
+    coordinatesFromGps = { lat, lon -> "Tọa độ GPS: $lat, $lon" }
+    locationRequired = "📍 Cần vị trí"
+    locationPermissionNotGranted = "Quyền truy cập vị trí chưa được cấp. Vui lòng cho phép truy cập."
+    grantLocationPermission = "Cấp quyền Vị trí"
+    locationTrackingOff = "Theo dõi vị trí đang tắt. Bật để tự động phát hiện địa chỉ."
+    enableLocationTracking = "Bật theo dõi vị trí"
+    waitingForGps = "Đang chờ tín hiệu GPS... Vui lòng bật dịch vụ vị trí."
+
+    // ── Household Settings ─────────────────────────────────────────────────────
+    householdSettingsTitle = "Cài đặt hộ gia đình"
+    addMember = "Thêm thành viên"
+    userId = "ID người dùng"
+    userIdPlaceholder = "Nhập ID thành viên"
+    memberAddedSuccess = "Thêm thành viên thành công"
+    userIdCannotBeEmpty = "ID người dùng không được để trống"
+    failedToAddMember = "Thêm thành viên thất bại"
+    members = "Thành viên"
+    noMembersYet = "Chưa có thành viên nào"
+    failedToRemoveMember = "Xóa thành viên thất bại"
+    removeMember = "✕"
+
+    // ── Catalogue ──────────────────────────────────────────────────────────────
+    environmentalImpact = "Tác động môi trường"
+    environmentalImpactDesc = "Hiển thị điểm CO₂, vi nhựa và mức ô nhiễm từ quét rác"
+    allUsersLabel = "Tất cả người dùng"
+
+    // ── Energy ─────────────────────────────────────────────────────────────────
+    kWh = "kWh"
+    vsYesterday = { d -> "▲$d so với hôm qua" }
+
+    // ── Meal Detail ─────────────────────────────────────────────────────────────
+    plant = "thực vật"
+    unnamedMeal = "Bữa ăn không tên"
+    thresholdLow = "< 40%"
+    thresholdOk = "40–69%"
+    thresholdGood = "≥ 70%"
+    thresholdRange = { _, _, _ -> "< 40% / 40–69% / ≥ 70%" }
+    aimForPlant = "🌿  Hãy nhắm đến ít nhất 70% thực vật trong bữa ăn để giảm dấu chân carbon."
+
+    // ── Meal List ──────────────────────────────────────────────────────────────
+    emptyMealEmoji = "??"
+    scanMealEmoji = "??"
+
+    // ── Todos ──────────────────────────────────────────────────────────────────
+    addTodo = "+"
+    dismissError = "✕"
+    emptyTodosEmoji = "🌱"
+    expand = "▸"
+    aiWand = "✨"
+    deleteTodo = "✕"
+    addSubtask = "+"
+
+    // ── Survey ─────────────────────────────────────────────────────────────────
+    pleaseSelectAnswer = "Vui lòng chọn một câu trả lời"
+    errorSubmitting = "Gửi thất bại"
+    networkError = "Lỗi mạng. Vui lòng thử lại."
+    surveyBy = { author -> "bởi $author" }
+
+    // ── Waste Impact ────────────────────────────────────────────────────────────
+    refresh = "↻ Làm mới"
+    scans = "Lượt quét"
+    itemsDetected = "Mục đã phát hiện"
+    avgEcoScore = "Điểm sinh thái TB"
+    greenScoreDescription = "Điểm xanh từ dữ liệu hộ gia đình"
+    basedOnScans = { n -> "Dựa trên $n lượt quét có dữ liệu ảnh hưởng" }
+    averagePollutionImpact = "Tác động ô nhiễm trung bình"
+    topPollutantsAvg = "Chất ô nhiễm hàng đầu (TB)"
+    pollutantBreakdownAvg = "Chi tiết chất ô nhiễm (TB)"
+    scanDetail = "Chi tiết lượt quét"
+    pollutionImpact = "Tác động ô nhiễm"
+    objects = "Vật thể"
+    ecoScoreLabel = { s -> "Điểm sinh thái" }
+    air = "Không khí"
+    water = "Nước"
+    soil = "Đất"
+    excellentMinimalImpact = "Xuất sắc — tác động tối thiểu"
+    goodLowImpact = "Tốt — tác động thấp"
+    fairModerateImpact = "Khá — tác động trung bình"
+    poorHighImpact = "Kém — tác động môi trường cao"
+    scanHistoryRow = { n, author -> "$n mục · bởi $author" }
+    noEcoScore = "—"
+    pollutantCO2 = "CO₂"
+    pollutantDioxin = "Dioxin"
+    pollutantMicroplastic = "Vi nhựa"
+    pollutantToxic = "Hóa chất độc"
+    pollutantNonBiodegradable = "Không phân hủy sinh học"
+    pollutantNOx = "NOₓ"
+    pollutantSO2 = "SO₂"
+    pollutantCH4 = "CH₄"
+    pollutantPM25 = "PM2.5"
+    pollutantLead = "Chì (Pb)"
+    pollutantMercury = "Thủy ngân (Hg)"
+    pollutantCadmium = "Cadmi (Cd)"
+    pollutantNitrate = "Nitrat"
+    pollutantChemicalResidue = "Dư lượng hóa chất"
+    pollutantStyrene = "Styrene"
+    airIcon = "💨"
+    waterPollutionLabel = "Ô nhiễm nước"
+    soilPollutionLabel = "Ô nhiễm đất"
+    greenScoreHistory = "Lịch sử Điểm Xanh"
+    scanHistoryTitle = "Lịch sử lượt quét"
+
+    // ── Waste Analytics ────────────────────────────────────────────────────────
+    wasteAnalyticsTitle = "📈 Phân tích rác thải"
+    householdTrends = { p -> "Xu hướng hộ gia đình · xem theo $p" }
+    totalWaste = "Tổng rác thải"
+    peak = { label -> "Đỉnh ($label)" }
+    avgAir = "KK trung bình"
+    pollutionImpactTrends = "Xu hướng tác động ô nhiễm"
+    airWaterSoil = "KK · Nước · Đất"
+    keyPollutants = "Chất ô nhiễm chính"
+    co2DioxinMicroplastic = "CO₂ · Dioxin · Vi nhựa"
+    insight = "📊 Nhận định"
+    wasteVolume = "Khối lượng rác"
+    kilograms = "Kilôgam"
+    valueLabelKg = { v -> "${v.fmt(1)}kg" }
+    seriesHidden = "Đã ẩn chuỗi"
+    noSeriesSelected = "Chưa chọn chuỗi nào"
+    seriesAir = "Không khí"
+    seriesWater = "Nước"
+    seriesSoil = "Đất"
+    seriesCO2 = "CO₂"
+    seriesDioxin = "Dioxin"
+    seriesMicroplastic = "Vi nhựa"
+    periodHour = "giờ"
+    periodDay = "ngày"
+    periodWeek = "tuần"
+    periodMonth = "tháng"
+    periodLabel = { label -> label }
+
+    // ── Home components ─────────────────────────────────────────────────────────
+    surveyBadgeIcon = "📋"
+    errorDisplay = { msg -> "⚠️  $msg" }
+    unknownLocation = "Vị trí không xác định"
+    campaignActive = "🟢"
+    campaignInactive = "📅"
+    campaignDescription = { desc -> "📝 $desc" }
+    dateRange = { start, end -> "🕐 $start → $end" }
+    locationRadius = { lat, lng, r -> "📍 $lat, $lng  ·  bán kính ${r}m" }
+    registeredStatus = { s -> "✓ $s" }
+    checkedInStatus = { s -> "📍 $s" }
+    completedStatus = { s -> "✅ $s" }
+    pollutionTrendTitle = "Xu hướng ô nhiễm"
+    pollutionTrendSubtitle = "1 tháng · khoảng 7 ngày"
+    co2Legend = "CO₂"
+    ch4Legend = "CH₄"
+    noxLegend = "NOₓ"
+    percentYAxis = "%"
+
+    // ── Waste Sort ──────────────────────────────────────────────────────────────
+    wasteScanned = "Đã quét"
+    wasteSorted = "Đã phân loại"
+    wasteBroughtOut = "Đã đưa ra"
+    wasteCollected = "Đã thu gom"
+
+    // ── Waste Sort List ─────────────────────────────────────────────────────────
+    localScans = "Quét cục bộ"
+    scanCount = { n -> "$n lượt quét" }
+    uploadImage = "Tải ảnh lên"
+    takePhoto = "Chụp ảnh"
+    myScanReportsTitle = "Báo cáo quét của tôi"
+    reportCount = { n -> "$n báo cáo" }
+    noScanReports = "Không tìm thấy báo cáo quét"
+    fabCollapse = "✕"
+    fabExpand = "+"
+
+    // ── Scan Detail ─────────────────────────────────────────────────────────────
+    ecoScore = "Điểm sinh thái"
+    noScoreYet = "Chưa có điểm"
+    deltaPrefix = { d -> "+$d so với lần quét trước" }
+    markAsSorted = "Đánh dấu đã phân loại"
+    markAsBroughtOut = "Đánh dấu đã đưa ra"
+    waitingForCollector = "⏳  Đang chờ thu gom"
+    collectedComplete = "✅  Đã thu gom — hoàn thành!"
+    byCategory = "Theo loại"
+    categoryTab = { label, count -> "$label ($count)" }
+
+    // ── Error Log ───────────────────────────────────────────────────────────────
+    errorLog = { n -> "🔴  Nhật ký lỗi ($n)" }
+    clear = "Xóa"
+    noErrors = "Không có lỗi nào."
+    expandIndicator = "›"
+    message = "THÔNG ĐIỆP"
+    stackTrace = "DẤU VẾT NGĂN XẾP"
+    truncated = "(cắt ngắn)"
+    errorLevel = "L"
+    warningLevel = "C"
+
+    // ── Profile ──────────────────────────────────────────────────────────────────
+    profileUserIcon = "👤"
+    profileRoleHousehold = "🏠"
+    profileRoleCollector = "🚛"
+    profileRoleVolunteer = "🤝"
+    profileLocation = { loc -> "📍  $loc" }
+    plantRatio = "tỉ lệ thực vật"
+    greenSpend = "chi tiêu xanh"
+    habitProfile = "Hồ sơ thói quen"
+    profileMealsIcon = "🍽️"
+    profileBillsIcon = "🧾"
 }

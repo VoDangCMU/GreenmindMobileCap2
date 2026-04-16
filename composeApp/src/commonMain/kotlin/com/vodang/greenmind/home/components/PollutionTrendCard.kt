@@ -1,5 +1,7 @@
 package com.vodang.greenmind.home.components
 
+import com.vodang.greenmind.fmt
+import com.vodang.greenmind.i18n.LocalAppStrings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -52,6 +54,7 @@ private val noxColor = Color(0xFFF57F00)  // dark yellow
 
 @Composable
 fun PollutionTrendCard(modifier: Modifier = Modifier) {
+    val s = LocalAppStrings.current
     val textMeasurer = rememberTextMeasurer()
 
     Card(
@@ -80,13 +83,13 @@ fun PollutionTrendCard(modifier: Modifier = Modifier) {
                 }
                 Column {
                     Text(
-                        "Pollution Trend",
+                        s.pollutionTrendTitle,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1B1B1B),
                     )
                     Text(
-                        "1 month · 7-day intervals",
+                        s.pollutionTrendSubtitle,
                         fontSize = 11.sp,
                         color = Color.Gray,
                     )
@@ -98,9 +101,9 @@ fun PollutionTrendCard(modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                LegendItem("CO₂", co2Color)
-                LegendItem("CH₄", ch4Color)
-                LegendItem("NOₓ", noxColor)
+                LegendItem(s.co2Legend, co2Color)
+                LegendItem(s.ch4Legend, ch4Color)
+                LegendItem(s.noxLegend, noxColor)
             }
 
             // Area chart
@@ -145,6 +148,7 @@ private fun AreaChart(
     textMeasurer: androidx.compose.ui.text.TextMeasurer,
     modifier: Modifier = Modifier,
 ) {
+    val s = LocalAppStrings.current
     Canvas(modifier = modifier) {
         val n = points.size
         if (n == 0) return@Canvas
@@ -181,7 +185,7 @@ private fun AreaChart(
             )
 
             // Value label (right-aligned before the axis)
-            val label = "%.2f".format(value)
+            val label = s.percentYAxis
             val measured = textMeasurer.measure(label, axisLabelStyle)
             val lw = measured.size.width.toFloat()
             val lh = measured.size.height.toFloat()
@@ -257,7 +261,7 @@ private fun AreaChart(
                 drawCircle(color = Color.White, radius = 3f, center = Offset(cx, cy))
 
                 // Value label — placed above the dot
-                val label = "%.2f".format(v)
+                val label = "%.2f".fmt(v)
                 val measured = textMeasurer.measure(label, labelStyle)
                 val lw = measured.size.width.toFloat()
                 val lh = measured.size.height.toFloat()

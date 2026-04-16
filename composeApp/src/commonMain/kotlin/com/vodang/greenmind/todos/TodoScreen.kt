@@ -119,7 +119,7 @@ fun TodoScreen() {
                         newTodoText = ""
                     }
                 }) {
-                    Text("+", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(s.addTodo, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -136,7 +136,7 @@ fun TodoScreen() {
             ) {
                 Text(msg, color = Color(0xFFB71C1C), fontSize = 13.sp, modifier = Modifier.weight(1f))
                 TextButton(onClick = { TodoStore.clearError() }) {
-                    Text("✕", color = Color(0xFFB71C1C))
+                    Text(s.dismissError, color = Color(0xFFB71C1C))
                 }
             }
         }
@@ -149,7 +149,7 @@ fun TodoScreen() {
         } else if (todos.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("🌱", fontSize = 48.sp)
+                    Text(s.emptyTodosEmoji, fontSize = 48.sp)
                     Text(s.todosEmpty, color = Color.Gray, fontSize = 15.sp)
                 }
             }
@@ -261,7 +261,7 @@ private fun TodoItemContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "▸",
+                        s.expand,
                         fontSize = 14.sp,
                         color = green600,
                         modifier = Modifier.rotate(if (expanded) 90f else 0f)
@@ -293,7 +293,7 @@ private fun TodoItemContent(
                             modifier = Modifier.size(28.dp),
                             enabled = !isGenerating,
                         ) {
-                            Text("✨", fontSize = 13.sp)
+                            Text(s.aiWand, fontSize = 13.sp)
                         }
                     }
                 }
@@ -305,7 +305,7 @@ private fun TodoItemContent(
                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
                 modifier = Modifier.height(28.dp)
             ) {
-                Text("✕", fontSize = 12.sp, color = Color(0xFFBDBDBD))
+                Text(s.deleteTodo, fontSize = 12.sp, color = Color(0xFFBDBDBD))
             }
         }
 
@@ -380,7 +380,7 @@ private fun TodoItemContent(
                         contentPadding = PaddingValues(0.dp),
                         modifier = Modifier.size(34.dp)
                     ) {
-                        Text("+", fontSize = 18.sp, color = green800, fontWeight = FontWeight.Bold)
+                        Text(s.addSubtask, fontSize = 18.sp, color = green800, fontWeight = FontWeight.Bold)
                     }
                 }
             }

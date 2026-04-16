@@ -36,6 +36,16 @@ expect fun GarbageHeatMapView(
 
 data class RouteMapPoint(val lat: Double, val lng: Double, val label: String = "")
 
+data class CampaignMapPoint(val lat: Double, val lng: Double, val radius: Int)
+
+@Composable
+expect fun CampaignMapView(
+    campaign: CampaignMapPoint,
+    center: Location?,
+    zoomLevel: Float,
+    modifier: Modifier = Modifier,
+)
+
 @Composable
 expect fun RouteMapView(
     points: List<RouteMapPoint>,
@@ -165,6 +175,61 @@ fun buildLeafletHtml(
     var userDot=null;
     function updateView(lat,lng,zoom){
       map.setView([lat,lng],zoom,{animate:true});
+      if(userDot){userDot.setLatLng([lat,lng]);}
+      else{userDot=L.circleMarker([lat,lng],{radius:9,color:'#fff',weight:2,fillColor:'#1976D2',fillOpacity:1}).addTo(map);}
+    }
+  </script>
+</body>
+</html>"""
+}
+
+fun buildCampaignMapHtml(
+    campaignLat: Double,
+    campaignLng: Double,
+    radius: Int,
+    centerLat: Double,
+    centerLng: Double,
+    zoom: Double,
+): String {
+    return """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    html,body{margin:0;padding:0;width:100%;height:100%;}
+    #map{width:100%;height:100%;}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map=L.map('map',{zoomControl:false}).setView([$centerLat,$centerLng],$zoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      maxZoom:19,attribution:'© OSM contributors'
+    }).addTo(map);
+    // Campaign circle (radius in meters)
+    L.circle([$campaignLat,$campaignLng],{
+      radius:$radius,
+      color:'#2E7D32',weight:2,fillColor:'#4CAF50',fillOpacity:0.15
+    }).addTo(map);
+    // Campaign marker (green pin without emoji)
+    L.marker([$campaignLat,$campaignLng],{
+      icon:L.divIcon({
+        className:'',
+        html:'<div style="background:#2E7D32;width:24px;height:24px;border-radius:50% 50% 50% 0;border:2px solid white;transform:rotate(-45deg);box-shadow:0 2px 5px rgba(0,0,0,0.4);"></div>',
+        iconSize:[24,24],iconAnchor:[12,24]
+      })
+    }).addTo(map);
+    var userDot=null;
+    // Moves the map view only — does NOT touch the user dot
+    function focusCampaign(lat,lng,zoom){
+      map.setView([lat,lng],zoom,{animate:true});
+    }
+    // Updates the user location dot
+    function updateUserDot(lat,lng){
       if(userDot){userDot.setLatLng([lat,lng]);}
       else{userDot=L.circleMarker([lat,lng],{radius:9,color:'#fff',weight:2,fillColor:'#1976D2',fillOpacity:1}).addTo(map);}
     }

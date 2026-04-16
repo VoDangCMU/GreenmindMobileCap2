@@ -115,6 +115,79 @@ fun HeatMap(
     MapCore(points = points, modifier = modifier, height = height)
 }
 
+/** OSM map showing a campaign location with its radius circle, plus zoom and re-center controls. */
+@Composable
+fun CampaignMap(
+    campaignLat: Double,
+    campaignLng: Double,
+    radius: Int,
+    modifier: Modifier = Modifier,
+    height: Dp = 280.dp,
+) {
+    var center by remember { mutableStateOf<Location?>(null) }
+    var currentLocation by remember { mutableStateOf<Location?>(null) }
+    LaunchedEffect(Unit) {
+        Geo.service.locationUpdates.collect { loc ->
+            currentLocation = loc
+        }
+    }
+
+    // Focus on campaign location by default
+    LaunchedEffect(campaignLat, campaignLng) {
+        center = Location(campaignLat, campaignLng)
+    }
+
+    var zoomLevel by remember { mutableStateOf(14f) }
+
+    val scrollConsumer = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource) = available
+            override suspend fun onPreFling(available: Velocity) = available
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .nestedScroll(scrollConsumer)
+    ) {
+        CampaignMapView(
+            campaign = CampaignMapPoint(campaignLat, campaignLng, radius),
+            center = center,
+            zoomLevel = zoomLevel,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    clip = true
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                }
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(8.dp)
+                .shadow(2.dp, RoundedCornerShape(4.dp))
+                .background(Color.White, RoundedCornerShape(4.dp))
+                .width(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            MapControlButton(label = "⌖", color = Color(0xFF1565C0)) {
+                currentLocation?.let { center = it }
+            }
+            MapControlDivider()
+            MapControlButton(label = "+", color = Color(0xFF2E7D32)) {
+                if (zoomLevel < ZOOM_MAX) zoomLevel += ZOOM_STEP
+            }
+            MapControlDivider()
+            MapControlButton(label = "−", color = Color(0xFF2E7D32)) {
+                if (zoomLevel > ZOOM_MIN) zoomLevel -= ZOOM_STEP
+            }
+        }
+    }
+}
+
 @Composable
 private fun MapCore(
     points: List<GarbageMapPoint>,

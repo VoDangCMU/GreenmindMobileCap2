@@ -53,6 +53,7 @@ fun SurveyTakingScreen(
     val progress = (currentIndex + 1).toFloat() / questions.size
 
     val user by SettingsStore.user.collectAsState()
+    val roleSwitchEnabled by SettingsStore.roleSwitcherEnabled.collectAsState()
     val userType = UserType.HOUSEHOLD
 
     Column(
@@ -67,6 +68,7 @@ fun SurveyTakingScreen(
             user = user,
             userType = userType,
             onSwitchClick = {},
+            showRoleSwitcher = roleSwitchEnabled,
             scrolled = false,
         )
 

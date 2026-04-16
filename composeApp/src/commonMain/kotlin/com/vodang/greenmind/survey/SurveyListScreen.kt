@@ -87,7 +87,7 @@ private fun QuestionSetCard(set: QuestionSetDto, onTap: () -> Unit) {
                         .background(green50, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("📋", fontSize = 20.sp)
+                    Text(s.surveyBadgeIcon, fontSize = 20.sp)
                 }
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -121,7 +121,7 @@ private fun QuestionSetCard(set: QuestionSetDto, onTap: () -> Unit) {
             Spacer(Modifier.height(10.dp))
 
             Text(
-                text = "by ${set.owner.fullName}",
+                text = s.surveyBy(set.owner.fullName),
                 fontSize = 11.sp,
                 color = Color.Gray
             )

@@ -16,6 +16,7 @@ private const val KEY_LOCATION_INTERVAL  = "location_interval_ms"
 private const val KEY_MIN_MOVE_METERS    = "min_move_meters"
 private const val KEY_MAX_WALK_SPEED     = "max_walk_speed_ms"
 private const val KEY_LOCATION_ENABLED   = "location_enabled"
+private const val KEY_ENABLE_ROLE_SWITCHER = "enable_role_switcher"
 
 object SettingsStore {
 
@@ -85,10 +86,15 @@ object SettingsStore {
         settings.getBooleanOrNull(KEY_LOCATION_ENABLED) ?: true
     )
 
+    private val _roleSwitcherEnabled = MutableStateFlow(
+        settings.getBooleanOrNull(KEY_ENABLE_ROLE_SWITCHER) ?: true
+    )
+
     val locationIntervalMs: StateFlow<Long>    = _locationIntervalMs.asStateFlow()
     val minMoveMeters:      StateFlow<Float>   = _minMoveMeters.asStateFlow()
     val maxWalkSpeedMs:     StateFlow<Float>   = _maxWalkSpeedMs.asStateFlow()
     val locationEnabled:    StateFlow<Boolean> = _locationEnabled.asStateFlow()
+    val roleSwitcherEnabled: StateFlow<Boolean> = _roleSwitcherEnabled.asStateFlow()
 
     fun setLocationInterval(ms: Long) {
         settings.putLong(KEY_LOCATION_INTERVAL, ms)
@@ -105,6 +111,10 @@ object SettingsStore {
     fun setLocationEnabled(enabled: Boolean) {
         settings.putBoolean(KEY_LOCATION_ENABLED, enabled)
         _locationEnabled.value = enabled
+    }
+    fun setRoleSwitcherEnabled(enabled: Boolean) {
+        settings.putBoolean(KEY_ENABLE_ROLE_SWITCHER, enabled)
+        _roleSwitcherEnabled.value = enabled
     }
 
     init {

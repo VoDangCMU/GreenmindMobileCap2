@@ -1,6 +1,7 @@
 package com.vodang.greenmind.householdwaste
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +12,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,14 +24,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.households.DetectTrashHistoryDto
 import com.vodang.greenmind.api.households.GreenScoreEntryDto
-import com.vodang.greenmind.api.households.getCurrentUserHousehold
-import com.vodang.greenmind.api.households.getDetectHistoryByHousehold
+import com.vodang.greenmind.api.households.getDetectByHouseholdId
 import com.vodang.greenmind.api.households.getDetectHistoryByUser
 import com.vodang.greenmind.api.households.getGreenScoreByHousehold
-import com.vodang.greenmind.householdwaste.components.CreateHouseholdForm
+import com.vodang.greenmind.api.wastereport.WasteReportDto
+import com.vodang.greenmind.api.wastereport.getMyWasteReports
+import com.vodang.greenmind.householdwaste.components.CreateHouseholdScreen
+import com.vodang.greenmind.householdwaste.components.GreenScoreDetailSheet
+import com.vodang.greenmind.householdwaste.components.GreenScoreSection
+import com.vodang.greenmind.householdwaste.components.GroupedDetectScanDetailSheet
+import com.vodang.greenmind.householdwaste.components.GroupedDetectScanCard
+import com.vodang.greenmind.householdwaste.components.EmptyState
+import com.vodang.greenmind.householdwaste.components.SectionHeader
+import com.vodang.greenmind.householdwaste.components.ViewAllMode
+import com.vodang.greenmind.householdwaste.components.ViewAllRecordsScreen
+import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
-import com.vodang.greenmind.wastereport.NetworkImage
+import com.vodang.greenmind.wastereport.WasteReportCard
+import com.vodang.greenmind.wastereport.WasteReportDetailSheet
+import com.vodang.greenmind.platform.BackHandler
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
@@ -44,7 +58,8 @@ private val gray400  = Color(0xFF9CA3AF)
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 @Composable
-fun HouseholdWasteScreen(onBack: () -> Unit = {}) {
+fun HouseholdWasteScreen(onBack: () -> Unit = {}, onNavigateToWasteImpact: () -> Unit = {}) {
+    val s = LocalAppStrings.current
     var showSettings by remember { mutableStateOf(false) }
 
     if (showSettings) {
@@ -59,23 +74,29 @@ fun HouseholdWasteScreen(onBack: () -> Unit = {}) {
     var householdHistory  by remember { mutableStateOf<List<DetectTrashHistoryDto>>(emptyList()) }
     var userHistory       by remember { mutableStateOf<List<DetectTrashHistoryDto>>(emptyList()) }
     var greenScoreEntries by remember { mutableStateOf<List<GreenScoreEntryDto>>(emptyList()) }
+    var wasteReports      by remember { mutableStateOf<List<WasteReportDto>>(emptyList()) }
+    var selectedReport    by remember { mutableStateOf<WasteReportDto?>(null) }
+    var selectedScanGroup by remember { mutableStateOf<List<DetectTrashHistoryDto>?>(null) }
+    var selectedScore     by remember { mutableStateOf<GreenScoreEntryDto?>(null) }
     var isLoadingData     by remember { mutableStateOf(false) }
+    var viewAllMode       by remember { mutableStateOf(ViewAllMode.NONE) }
+    val refreshTrigger    by com.vodang.greenmind.store.WasteSortStore.refreshTrigger.collectAsState()
 
     LaunchedEffect(Unit) { HouseholdStore.fetchHousehold() }
 
-    LaunchedEffect(household) {
+    LaunchedEffect(household, refreshTrigger) {
         val h = household ?: return@LaunchedEffect
         val token = SettingsStore.getAccessToken() ?: return@LaunchedEffect
         isLoadingData = true
         try {
-            val (scanResp, userResp, scoreResp) = Triple(
-                runCatching { getDetectHistoryByHousehold(token) },
-                runCatching { getDetectHistoryByUser(token) },
-                runCatching { getGreenScoreByHousehold(token, h.id) }
-            )
-            scanResp.getOrNull()?.data?.let  { householdHistory  = it }
-            userResp.getOrNull()?.data?.let  { userHistory       = it }
+            val scanResp    = runCatching { getDetectByHouseholdId(token, h.id) }
+            val userResp    = runCatching { getDetectHistoryByUser(token) }
+            val scoreResp   = runCatching { getGreenScoreByHousehold(token, h.id) }
+            val reportsResp = runCatching { getMyWasteReports(token) }
+            scanResp.getOrNull()?.data?.let    { householdHistory  = it }
+            userResp.getOrNull()?.data?.let    { userHistory       = it }
             scoreResp.getOrNull()?.data?.greenScores?.let { greenScoreEntries = it }
+            reportsResp.getOrNull()?.data?.let { wasteReports      = it }
         } finally {
             isLoadingData = false
         }
@@ -96,6 +117,28 @@ fun HouseholdWasteScreen(onBack: () -> Unit = {}) {
     val h = household!!
     val currentScore = greenScoreEntries.lastOrNull()?.finalScore ?: h.scoreGreen
 
+    if (viewAllMode != ViewAllMode.NONE) {
+        BackHandler { viewAllMode = ViewAllMode.NONE }
+
+        val householdGroupsList = remember(householdHistory) { householdHistory.groupBy { it.imageUrl }.values.toList() }
+        val userGroupsList = remember(userHistory) { userHistory.groupBy { it.imageUrl }.values.toList() }
+        ViewAllRecordsScreen(
+            mode = viewAllMode,
+            householdGroups = householdGroupsList,
+            userGroups = userGroupsList,
+            wasteReports = wasteReports,
+            greenScores = greenScoreEntries,
+            onBack = { viewAllMode = ViewAllMode.NONE },
+            onReportClick = { selectedReport = it },
+            onScanGroupClick = { selectedScanGroup = it },
+            onScoreClick = { selectedScore = it }
+        )
+        selectedReport?.let { report -> WasteReportDetailSheet(report = report, onDismiss = { selectedReport = null }) }
+        selectedScanGroup?.let { group -> GroupedDetectScanDetailSheet(records = group, onDismiss = { selectedScanGroup = null }) }
+        selectedScore?.let { score -> GreenScoreDetailSheet(entry = score, onDismiss = { selectedScore = null }) }
+        return
+    }
+
     Box(Modifier.fillMaxSize().background(bgGray)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
 
@@ -107,39 +150,9 @@ fun HouseholdWasteScreen(onBack: () -> Unit = {}) {
                     .padding(horizontal = 20.dp, vertical = 20.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Household Dashboard", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(s.householdDashboard, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Text(h.address, fontSize = 13.sp, color = Color.White.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    val memberCount = h.members?.size ?: 0
-                    Text("$memberCount member${if (memberCount != 1) "s" else ""}", fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f))
-                }
-                Row(
-                    Modifier.align(Alignment.CenterEnd),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Settings button
-                    IconButton(
-                        onClick = { showSettings = true },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color.White.copy(alpha = 0.15f)),
-                    ) {
-                        Text("⚙", fontSize = 18.sp, color = Color.White)
-                    }
-                    // Current score badge
-                    Box(
-                        Modifier
-                            .size(72.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color.White.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("$currentScore", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                            Text("score", fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f))
-                        }
-                    }
+                    Text(s.memberCount(h.members?.size ?: 0), fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f))
                 }
             }
 
@@ -152,32 +165,87 @@ fun HouseholdWasteScreen(onBack: () -> Unit = {}) {
                     Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    // ── Section 1: Scan History ───────────────────────────────
-                    SectionHeader("📷  Scan History", householdHistory.size)
-                    if (householdHistory.isEmpty()) {
-                        EmptyState("No household scans yet")
-                    } else {
-                        householdHistory.forEach { ScanCard(it) }
-                    }
-
-                    HorizontalDivider(color = Color(0xFFE5E7EB))
-
-                    // ── Section 2: Green Score ────────────────────────────────
+                    // ── Section 1: Green Score ────────────────────────────────
                     SectionHeader("🌿  Green Score", greenScoreEntries.size)
                     if (greenScoreEntries.isEmpty()) {
-                        EmptyState("No score history yet")
+                        EmptyState(s.noScoreHistory)
                     } else {
-                        GreenScoreSection(greenScoreEntries)
+                        GreenScoreSection(greenScoreEntries, onOpenDetail = { selectedScore = it }, onViewAll = { viewAllMode = ViewAllMode.GREEN_SCORES })
+                    }
+
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(green50)
+                            .clickable { onNavigateToWasteImpact() }
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(s.viewWasteImpactAnalysis, fontSize = 13.sp, color = green700, fontWeight = FontWeight.Medium)
                     }
 
                     HorizontalDivider(color = Color(0xFFE5E7EB))
 
-                    // ── Section 3: My Reports ─────────────────────────────────
-                    SectionHeader("👤  My Reports", userHistory.size)
-                    if (userHistory.isEmpty()) {
-                        EmptyState("You haven't submitted any reports yet")
+                    // ── Section 2: Scan History ───────────────────────────────
+                    val householdGroups = householdHistory.groupBy { it.imageUrl }
+                    SectionHeader("📷  Scan History", householdGroups.size)
+                    if (householdGroups.isEmpty()) {
+                        EmptyState(s.noHouseholdScans)
                     } else {
-                        userHistory.forEach { ScanCard(it) }
+                        householdGroups.values.take(3).forEach { records ->
+                            GroupedDetectScanCard(records, onClick = { selectedScanGroup = records })
+                        }
+                        val rem = householdGroups.size - 3
+                        if (rem > 0) RemainingCard(rem, "scan", onClick = { viewAllMode = ViewAllMode.HOUSEHOLD_SCANS })
+                    }
+
+                    HorizontalDivider(color = Color(0xFFE5E7EB))
+
+                    // ── Section 3: My Scan Reports ────────────────────────────
+                    val userGroups = userHistory.groupBy { it.imageUrl }
+                    SectionHeader(s.myScanReports, userGroups.size)
+                    if (userGroups.isEmpty()) {
+                        EmptyState(s.myScanReports)
+                    } else {
+                        userGroups.values.take(3).forEach { records ->
+                            GroupedDetectScanCard(records, onClick = { selectedScanGroup = records })
+                        }
+                        val rem = userGroups.size - 3
+                        if (rem > 0) RemainingCard(rem, "scan", onClick = { viewAllMode = ViewAllMode.USER_SCANS })
+                    }
+
+                    HorizontalDivider(color = Color(0xFFE5E7EB))
+
+                    // ── Section 4: My Waste Reports ───────────────────────────
+                    SectionHeader(s.myWasteReports, wasteReports.size)
+                    if (wasteReports.isEmpty()) {
+                        EmptyState(s.noWasteReports)
+                    } else {
+                        wasteReports.take(3).forEach { report ->
+                            WasteReportCard(report = report, onClick = { selectedReport = report })
+                        }
+                        val remaining = wasteReports.size - 3
+                        if (remaining > 0) {
+                            RemainingCard(remaining, "report", onClick = { viewAllMode = ViewAllMode.WASTE_REPORTS })
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider(color = Color(0xFFE5E7EB))
+
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White)
+                            .clickable { showSettings = true }
+                            .padding(vertical = 16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(s.householdSettings, fontSize = 14.sp, color = green700, fontWeight = FontWeight.Medium)
                     }
 
                     Spacer(Modifier.navigationBarsPadding())
@@ -185,239 +253,37 @@ fun HouseholdWasteScreen(onBack: () -> Unit = {}) {
             }
         }
     }
-}
 
-// ── Section header ────────────────────────────────────────────────────────────
-
-@Composable
-private fun SectionHeader(title: String, count: Int) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = gray700)
-        Box(
-            Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFE5E7EB))
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-        ) {
-            Text("$count", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = gray700)
-        }
+    // Detail sheets — rendered outside the scroll container so they overlay correctly
+    selectedReport?.let { report ->
+        WasteReportDetailSheet(report = report, onDismiss = { selectedReport = null })
+    }
+    selectedScanGroup?.let { group ->
+        GroupedDetectScanDetailSheet(records = group, onDismiss = { selectedScanGroup = null })
+    }
+    selectedScore?.let { score ->
+        GreenScoreDetailSheet(entry = score, onDismiss = { selectedScore = null })
     }
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
+// ── Remaining card ────────────────────────────────────────────────────────────
 
 @Composable
-private fun EmptyState(message: String) {
+internal fun RemainingCard(remaining: Int, label: String, onClick: () -> Unit) {
     Box(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White)
-            .padding(vertical = 24.dp),
+            .background(Color(0xFFF0F4F0))
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(message, fontSize = 13.sp, color = gray400)
-    }
-}
-
-// ── Scan card ─────────────────────────────────────────────────────────────────
-
-@Composable
-private fun ScanCard(record: DetectTrashHistoryDto) {
-    val detectLabel = when (record.detectType) {
-        "detect_trash"            -> "Detect Trash"
-        "predict_pollutant_impact" -> "Pollutant Impact"
-        "total_mass"              -> "Total Mass"
-        else                      -> record.detectType ?: "Unknown"
-    }
-    val labelColor = when (record.detectType) {
-        "predict_pollutant_impact" -> Color(0xFFB45309)
-        "total_mass"               -> Color(0xFF1D4ED8)
-        else                       -> green700
-    }
-    val labelBg = when (record.detectType) {
-        "predict_pollutant_impact" -> Color(0xFFFEF3C7)
-        "total_mass"               -> Color(0xFFEFF6FF)
-        else                       -> green50
-    }
-
-    Card(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            NetworkImage(
-                url = record.imageUrl,
-                modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp))
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(labelBg)
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(detectLabel, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = labelColor)
-                    }
-                    Text(
-                        record.createdAt?.take(10) ?: "",
-                        fontSize = 10.sp,
-                        color = gray400
-                    )
-                }
-                Text(
-                    "${record.totalObjects ?: 0} objects detected",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = gray700
-                )
-                record.items?.take(3)?.joinToString(" · ") { "${it.quantity}× ${it.name}" }?.let {
-                    Text(it, fontSize = 11.sp, color = gray400, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                record.totalMassKg?.let {
-                    Text("⚖️ %.2f kg".format(it), fontSize = 11.sp, color = green700)
-                }
-            }
-        }
-    }
-}
-
-// ── Green score section ───────────────────────────────────────────────────────
-
-@Composable
-private fun GreenScoreSection(entries: List<GreenScoreEntryDto>) {
-    val latest = entries.last()
-
-    // Current score card
-    Card(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Current Score", fontSize = 12.sp, color = gray400)
-                Text("${latest.finalScore}", fontSize = 42.sp, fontWeight = FontWeight.ExtraBold, color = green700)
-                val deltaColor = if (latest.delta >= 0) green700 else red600
-                val deltaPrefix = if (latest.delta >= 0) "+" else ""
-                Text("$deltaPrefix${latest.delta} from last scan", fontSize = 12.sp, color = deltaColor)
-            }
-            // Score ring
-            Box(
-                Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(if (latest.finalScore >= 50) green50 else red50),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    if (latest.finalScore >= 70) "🌟" else if (latest.finalScore >= 40) "🌿" else "⚠️",
-                    fontSize = 32.sp
-                )
-            }
-        }
-    }
-
-    Spacer(Modifier.height(8.dp))
-
-    // Score history
-    Text("Score History", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700)
-    Spacer(Modifier.height(4.dp))
-
-    entries.reversed().forEach { entry ->
-        ScoreEntryRow(entry)
-        Spacer(Modifier.height(8.dp))
-    }
-}
-
-@Composable
-private fun ScoreEntryRow(entry: GreenScoreEntryDto) {
-    val isPositive = entry.delta >= 0
-    val deltaColor = if (isPositive) green700 else red600
-    val deltaBg    = if (isPositive) green50 else red50
-    val deltaText  = if (isPositive) "+${entry.delta}" else "${entry.delta}"
-
-    Card(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(entry.createdAt.take(10), fontSize = 11.sp, color = gray400)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${entry.previousScore} →", fontSize = 12.sp, color = gray400)
-                    Text("${entry.finalScore}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = gray700)
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(deltaBg)
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(deltaText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = deltaColor)
-                    }
-                }
-            }
-            entry.reasons?.forEach { reason ->
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("•", fontSize = 11.sp, color = gray400)
-                    Text(reason, fontSize = 11.sp, color = gray700)
-                }
-            }
-        }
-    }
-}
-
-// ── Create household screen ───────────────────────────────────────────────────
-
-@Composable
-private fun CreateHouseholdScreen(onBack: () -> Unit, onSuccess: () -> Unit) {
-    var isChecking by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        val token = SettingsStore.getAccessToken()
-        if (token != null) {
-            try {
-                val response = getCurrentUserHousehold(token)
-                val household = response.data.toHouseholdDto()
-                if (household != null) {
-                    HouseholdStore.setHousehold(household)
-                    return@LaunchedEffect
-                }
-            } catch (_: Exception) { }
-        }
-        isChecking = false
-    }
-
-    if (isChecking) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-
-    Column(
-        Modifier.fillMaxSize().background(Color(0xFFF5F5F5)).padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        CreateHouseholdForm(onSuccess = onSuccess, onCancel = onBack)
+        Text(
+            "+ $remaining more $label${if (remaining != 1) "s" else ""}  ·  View all",
+            fontSize = 12.sp,
+            color = gray400,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

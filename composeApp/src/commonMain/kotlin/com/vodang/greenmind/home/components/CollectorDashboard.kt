@@ -18,8 +18,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.auth.UserDto
-import com.vodang.greenmind.api.wastecollector.WasteCollectorReportDto
-import com.vodang.greenmind.api.wastecollector.getAssignedReports
+import com.vodang.greenmind.api.wastecollector.CollectorDetectRecordDto
+import com.vodang.greenmind.api.wastecollector.getBroughtOut
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.SettingsStore
 import kotlinx.coroutines.launch
@@ -31,15 +31,17 @@ private val amber600 = Color(0xFFFFB300)
 private val blue600 = Color(0xFF1976D2)
 private val blue50 = Color(0xFFE3F2FD)
 
-data class WastePoint(val id: Int, val reportId: String, val address: String, val zone: String, val collected: Boolean, val bags: Int)
+data class WastePoint(val id: Int, val reportId: String, val address: String, val zone: String, val collected: Boolean, val bags: Int, val lat: Double?, val lng: Double?)
 
-private fun WasteCollectorReportDto.toWastePoint(index: Int) = WastePoint(
+private fun CollectorDetectRecordDto.toWastePoint(index: Int, unknownLocation: String) = WastePoint(
     id = index,
     reportId = id,
-    address = description.ifBlank { code },
-    zone = wasteType,
-    collected = status == "done" || status == "resolved" || status == "completed",
-    bags = wasteKg.toInt(),
+    address = household?.address ?: unknownLocation,
+    zone = detectType,
+    collected = status == "picked_up" || status == "done" || status == "completed" || status == "resolved",
+    bags = totalObjects ?: totalMassKg?.toInt() ?: 0,
+    lat = household?.lat?.toDoubleOrNull(),
+    lng = household?.lng?.toDoubleOrNull(),
 )
 
 @Composable
@@ -47,7 +49,7 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
     val s = LocalAppStrings.current
 
     val scope = rememberCoroutineScope()
-    var reports by remember { mutableStateOf<List<WasteCollectorReportDto>>(emptyList()) }
+    var reports by remember { mutableStateOf<List<CollectorDetectRecordDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var checkInReportId by remember { mutableStateOf<String?>(null) }
@@ -55,7 +57,7 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
     LaunchedEffect(Unit) {
         val token = SettingsStore.getAccessToken() ?: run { isLoading = false; return@LaunchedEffect }
         try {
-            reports = getAssignedReports(token).data
+            reports = getBroughtOut(token).data
             errorMsg = null
         } catch (e: Throwable) {
             errorMsg = e.message
@@ -64,8 +66,14 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
         }
     }
 
-    val points = reports.mapIndexed { i, dto -> dto.toWastePoint(i) }
-    val routePoints = reports.map { RouteMapPoint(lat = it.lat, lng = it.lng, label = it.code) }
+    val points = reports.mapIndexed { i, dto -> dto.toWastePoint(i, s.unknownLocation) }
+    val routePoints = reports.mapNotNull {
+        val lat = it.household?.lat?.toDoubleOrNull()
+        val lng = it.household?.lng?.toDoubleOrNull()
+        if (lat != null && lng != null) {
+            RouteMapPoint(lat = lat, lng = lng, label = it.detectedBy?.fullName ?: "User")
+        } else null
+    }
     val collectedCount = points.count { it.collected }
     val totalCount = points.size
 
@@ -77,7 +85,9 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
         onSuccess = {
             checkInReportId = null
             scope.launch {
-                runCatching { reports = getAssignedReports(token).data }
+                runCatching { 
+                    reports = getBroughtOut(token).data
+                }
             }
         },
         onDismiss = { checkInReportId = null },
@@ -99,7 +109,7 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
             errorMsg != null -> {
                 SectionCard {
                     Text(
-                        "⚠️  $errorMsg",
+                        s.errorDisplay(errorMsg ?: ""),
                         fontSize = 13.sp,
                         color = Color(0xFFC62828),
                         textAlign = TextAlign.Center,

@@ -1,0 +1,345 @@
+package com.vodang.greenmind.home.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import com.vodang.greenmind.api.campaign.CampaignDto
+import com.vodang.greenmind.api.campaign.CampaignParticipant
+import com.vodang.greenmind.api.campaign.CampaignParticipantUser
+import com.vodang.greenmind.api.campaign.CampaignReport
+import com.vodang.greenmind.api.campaign.toCampaignParticipant
+import com.vodang.greenmind.api.participantcampaign.ParticipantCampaignDto
+import com.vodang.greenmind.api.participantcampaign.checkInCampaign
+import com.vodang.greenmind.api.participantcampaign.checkOutCampaign
+import com.vodang.greenmind.api.participantcampaign.registerCampaign
+import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.location.Geo
+import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.wastereport.NetworkImage
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
+
+private val green800v = Color(0xFF2E7D32)
+private val green600v = Color(0xFF388E3C)
+private val green50v  = Color(0xFFE8F5E9)
+private val teal600v  = Color(0xFF00897B)
+private val teal50v   = Color(0xFFE0F2F1)
+private val orange600v = Color(0xFFF57C00)
+private val orange50v  = Color(0xFFFFF3E0)
+private val blue600v  = Color(0xFF1976D2)
+private val blue50v   = Color(0xFFE3F2FD)
+
+@Composable
+fun CampaignDetailScreen(
+    campaign: CampaignDto,
+    accessToken: String,
+    onBack: () -> Unit,
+    onRegistered: (CampaignParticipant) -> Unit = {},
+) {
+    BackHandler(onBack = onBack)
+    val s = LocalAppStrings.current
+    val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
+
+    val access = remember { accessToken.ifBlank { SettingsStore.getAccessToken() ?: "" } }
+    val currentUser = remember { SettingsStore.getUser() }
+
+    var participant by remember { mutableStateOf<CampaignParticipant?>(null) }
+
+    LaunchedEffect(campaign, currentUser) {
+        participant = campaign.participants.find { it.user.id == currentUser?.id }
+    }
+
+    var isLoading by remember { mutableStateOf(false) }
+    var isBusy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    val status = participant?.status
+    val isActive = campaign.status.equals("ACTIVE", ignoreCase = true) ||
+            campaign.status.equals("IN_PROGRESS", ignoreCase = true)
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .verticalScroll(scrollState)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        // Back button
+        TextButton(onClick = onBack, modifier = Modifier.padding(0.dp)) {
+            Text("\u2190 Back", fontSize = 14.sp, color = green800v)
+        }
+
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isActive) green50v else Color(0xFFF5F5F5)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(if (isActive) s.campaignActive else s.campaignInactive, fontSize = 22.sp)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(campaign.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF212121))
+                Spacer(Modifier.height(4.dp))
+                Text(s.dateRange(formatDate(campaign.startDate), formatDate(campaign.endDate)),
+                    fontSize = 13.sp, color = Color.Gray)
+            }
+        }
+
+        // Description
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBF9)),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Description", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                Text(campaign.description, fontSize = 14.sp, color = Color(0xFF616161), lineHeight = 20.sp)
+            }
+        }
+
+        // Location info
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBF9)),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Location", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                Text(s.locationRadius(campaign.lat, campaign.lng, campaign.radius), fontSize = 13.sp, color = Color.Gray)
+            }
+        }
+
+        // Map
+        CampaignMap(
+            campaignLat = campaign.lat,
+            campaignLng = campaign.lng,
+            radius = campaign.radius,
+            height = 240.dp,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        // Error
+        if (error != null) {
+            Text(error!!, fontSize = 12.sp, color = Color(0xFFB71C1C))
+        }
+
+        // Action button
+        if (isBusy || isLoading) {
+            Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = green800v, modifier = Modifier.size(24.dp))
+            }
+        } else {
+            when (status) {
+                null -> ActionButton(s.volunteerJoinButton, green800v, Modifier.fillMaxWidth(), enabled = isActive) {
+                    scope.launch {
+                        isBusy = true; error = null
+                        try {
+                            val result = registerCampaign(access, campaign.id)
+                            val converted = result.toCampaignParticipant(
+                                CampaignParticipantUser(
+                                    id = currentUser?.id ?: "",
+                                    fullName = currentUser?.fullName ?: "",
+                                    email = currentUser?.email ?: "",
+                                    phoneNumber = null,
+                                )
+                            )
+                            participant = converted
+                            onRegistered(converted)
+                        } catch (e: Throwable) {
+                            error = e.message
+                        }
+                        isBusy = false
+                    }
+                }
+                "REGISTERED" -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatusBadge(s.registeredStatus(s.volunteerRegistered), green600v, green50v)
+                        ActionButton(s.volunteerCheckIn, teal600v, Modifier.weight(1f)) {
+                            scope.launch {
+                                val p = participant ?: return@launch
+                                isBusy = true; error = null
+                                try {
+                                    val loc = Geo.service.locationUpdates.firstOrNull()
+                                    val lat = loc?.latitude ?: 0.0
+                                    val lng = loc?.longitude ?: 0.0
+                                    val result = checkInCampaign(access, campaign.id, lat, lng)
+                                    val converted = result.toCampaignParticipant(p.user)
+                                    participant = converted
+                                    onRegistered(converted)
+                                } catch (e: Throwable) {
+                                    error = e.message
+                                }
+                                isBusy = false
+                            }
+                        }
+                    }
+                }
+                "CHECKED_IN" -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatusBadge(s.checkedInStatus(s.volunteerCheckedIn), teal600v, teal50v)
+                        ActionButton(s.volunteerCheckOut, orange600v, Modifier.weight(1f)) {
+                            scope.launch {
+                                val p = participant ?: return@launch
+                                isBusy = true; error = null
+                                try {
+                                    val loc = Geo.service.locationUpdates.firstOrNull()
+                                    val lat = loc?.latitude ?: 0.0
+                                    val lng = loc?.longitude ?: 0.0
+                                    val result = checkOutCampaign(access, campaign.id, lat, lng)
+                                    val converted = result.toCampaignParticipant(p.user)
+                                    participant = converted
+                                    onRegistered(converted)
+                                } catch (e: Throwable) {
+                                    error = e.message
+                                }
+                                isBusy = false
+                            }
+                        }
+                    }
+                }
+                "CHECKED_OUT", "COMPLETED" -> {
+                    StatusBadge(s.completedStatus(s.volunteerCheckedOut), blue600v, blue50v)
+                }
+                else -> {
+                    StatusBadge(status, Color.Gray, Color(0xFFF5F5F5))
+                }
+            }
+        }
+
+        // Reports / Evidence images
+        if (campaign.reports.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBF9)),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        "Evidence (${campaign.reports.size})",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF424242),
+                    )
+                    campaign.reports.forEach { report ->
+                        ReportEvidenceItem(report)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReportEvidenceItem(report: CampaignReport) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Report header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(report.code, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF424242))
+            val statusColor = when (report.status.uppercase()) {
+                "RESOLVED" -> green800v
+                "PENDING" -> orange600v
+                else -> Color.Gray
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(statusColor.copy(alpha = 0.1f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(report.status, fontSize = 10.sp, color = statusColor, fontWeight = FontWeight.Medium)
+            }
+        }
+
+        if (report.description.isNotBlank()) {
+            Text(report.description, fontSize = 11.sp, color = Color.Gray, maxLines = 2)
+        }
+
+        // Report image
+        NetworkImage(
+            url = report.imageUrl,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop,
+        )
+
+        // Evidence image (collection proof)
+        if (!report.imageEvidenceUrl.isNullOrBlank()) {
+            Text("Collection Evidence", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF616161))
+            NetworkImage(
+                url = report.imageEvidenceUrl,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop,
+            )
+        }
+
+        HorizontalDivider(color = Color(0xFFEEEEEE))
+    }
+}
+
+@Composable
+private fun ActionButton(
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(48.dp),
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors(containerColor = color, disabledContainerColor = color.copy(alpha = 0.4f)),
+        shape = RoundedCornerShape(10.dp),
+    ) {
+        Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+    }
+}
+
+@Composable
+private fun StatusBadge(label: String, textColor: Color, bgColor: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bgColor)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(label, fontSize = 12.sp, color = textColor, fontWeight = FontWeight.Medium)
+    }
+}
+
+private fun formatDate(iso: String): String =
+    if (iso.length >= 10) iso.substring(0, 10) else iso

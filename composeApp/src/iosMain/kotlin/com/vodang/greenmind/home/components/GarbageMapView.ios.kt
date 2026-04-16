@@ -65,3 +65,30 @@ actual fun GarbageHeatMapView(
         }
     )
 }
+
+@OptIn(ExperimentalForeignApi::class)
+@Composable
+actual fun CampaignMapView(
+    campaign: CampaignMapPoint,
+    center: Location?,
+    zoomLevel: Float,
+    modifier: Modifier,
+) {
+    val html = remember(campaign) {
+        buildCampaignMapHtml(campaign.lat, campaign.lng, campaign.radius, campaign.lat, campaign.lng, zoomLevel.toDouble())
+    }
+
+    UIKitView(
+        modifier = modifier,
+        factory = {
+            WKWebView(frame = CGRectZero.readValue(), configuration = WKWebViewConfiguration()).apply {
+                loadHTMLString(html, baseURL = NSURL.URLWithString("https://localhost/"))
+            }
+        },
+        update = { webView ->
+            val lat = center?.latitude ?: campaign.lat
+            val lng = center?.longitude ?: campaign.lng
+            webView.evaluateJavaScript("focusCampaign($lat,$lng,$zoomLevel);", completionHandler = null)
+        }
+    )
+}

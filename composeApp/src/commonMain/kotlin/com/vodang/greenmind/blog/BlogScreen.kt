@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -23,25 +22,28 @@ import com.vodang.greenmind.api.blog.BlogDto
 import com.vodang.greenmind.api.blog.LeaderboardEntryDto
 import com.vodang.greenmind.api.blog.getBlogs
 import com.vodang.greenmind.api.blog.getLeaderboard
+import com.vodang.greenmind.api.blog.getMyBlogs
+import com.vodang.greenmind.api.blog.toggleBlogLike
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.platform.BackHandler
 import com.vodang.greenmind.store.SettingsStore
 import kotlinx.coroutines.launch
 
-// ── Palette ───────────────────────────────────────────────────────────────────
+// -- Palette (green scheme preserved) ------------------------------------------
 
-private val green800  = Color(0xFF2E7D32)
-private val green700  = Color(0xFF388E3C)
-private val green600  = Color(0xFF43A047)
-private val green50   = Color(0xFFE8F5E9)
-private val green100  = Color(0xFFC8E6C9)
-private val bgGray    = Color(0xFFF3F4F6)
-private val gray700   = Color(0xFF374151)
-private val gray500   = Color(0xFF6B7280)
-private val gray400   = Color(0xFF9CA3AF)
-private val gray100   = Color(0xFFF3F4F6)
+private val green800 = Color(0xFF2E7D32)
+private val green600 = Color(0xFF43A047)
+private val green50  = Color(0xFFE8F5E9)
+private val green100 = Color(0xFFC8E6C9)
+private val feedBg   = Color(0xFFEEF0F3)
+private val gray700  = Color(0xFF374151)
+private val gray500  = Color(0xFF6B7280)
+private val gray400  = Color(0xFF9CA3AF)
+private val gray100  = Color(0xFFF3F4F6)
+private val divider  = Color(0xFFE4E6EB)
+private val red500   = Color(0xFFE53935)
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 private fun formatDateShort(iso: String): String = try {
     val parts = iso.substringBefore('T').split('-')
@@ -55,17 +57,7 @@ private fun authorInitials(name: String, username: String): String =
     name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercaseChar() }.joinToString("")
         .ifBlank { username.take(2).uppercase() }
 
-// Tag accent colours — cycles through a small palette
-private val tagColors = listOf(
-    Color(0xFF1D4ED8) to Color(0xFFEFF6FF),
-    Color(0xFF065F46) to Color(0xFFECFDF5),
-    Color(0xFF92400E) to Color(0xFFFEF3C7),
-    Color(0xFF7C3AED) to Color(0xFFF5F3FF),
-    Color(0xFF9F1239) to Color(0xFFFFF1F2),
-)
-private fun tagPalette(index: Int) = tagColors[index % tagColors.size]
-
-// ── Screen ────────────────────────────────────────────────────────────────────
+// -- Screen --------------------------------------------------------------------
 
 @Composable
 fun BlogScreen() {
@@ -76,10 +68,12 @@ fun BlogScreen() {
     var selectedBlogId by remember { mutableStateOf<String?>(null) }
     var showCreate     by remember { mutableStateOf(false) }
     var listRefreshKey by remember { mutableIntStateOf(0) }
+    var likedPosts     by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    var likeCounts     by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    var reloadTrigger  by remember { mutableIntStateOf(0) }
 
     val token = accessToken ?: return
 
-    // Intercept system back within sub-views so they pop back to the list
     BackHandler(enabled = showCreate) { showCreate = false }
     BackHandler(enabled = selectedBlogId != null) { selectedBlogId = null }
 
@@ -87,7 +81,7 @@ fun BlogScreen() {
         CreateBlogScreen(
             accessToken = token,
             onBack = { showCreate = false },
-            onCreated = { showCreate = false; listRefreshKey++ },
+            onCreated = { showCreate = false; listRefreshKey++; likedPosts = emptyMap(); likeCounts = emptyMap() },
         )
         return
     }
@@ -96,90 +90,124 @@ fun BlogScreen() {
         BlogDetailScreen(
             blogId = blogId,
             accessToken = token,
-            onBack = { selectedBlogId = null },
+            onBack = { selectedBlogId = null; reloadTrigger++ },
+            onBlogLiked = { id, liked, count ->
+                likedPosts = likedPosts + (id to liked)
+                likeCounts = likeCounts + (id to count)
+            },
+            onBlogDeleted = {
+                selectedBlogId = null
+                likedPosts = likedPosts - blogId
+                likeCounts = likeCounts - blogId
+                reloadTrigger++
+            },
         )
         return
     }
 
-    Box(Modifier.fillMaxSize().background(bgGray)) {
-        Column(Modifier.fillMaxSize()) {
-
-            // ── Tab row ───────────────────────────────────────────────────────
-            PrimaryTabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = Color.White,
-                contentColor = green800,
-            ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick  = { selectedTab = 0 },
-                    text = {
-                        Text(
-                            s.blogTabPosts,
-                            fontSize = 14.sp,
-                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
-                        )
-                    }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick  = { selectedTab = 1 },
-                    text = {
-                        Text(
-                            s.blogTabLeaderboard,
-                            fontSize = 14.sp,
-                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
-                        )
-                    }
-                )
-            }
-
-            when (selectedTab) {
-                0 -> BlogListTab(
-                    accessToken  = token,
-                    refreshKey   = listRefreshKey,
-                    onSelectBlog = { selectedBlogId = it },
-                )
-                1 -> LeaderboardTab(accessToken = token)
-            }
+    Column(Modifier.fillMaxSize().background(feedBg)) {
+        // -- Tab row -------------------------------------------------------
+        PrimaryTabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = Color.White,
+            contentColor = green800,
+        ) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick  = { selectedTab = 0 },
+                text = {
+                    Text(
+                        s.blogTabPosts,
+                        fontSize = 14.sp,
+                        fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick  = { selectedTab = 1 },
+                text = {
+                    Text(
+                        s.blogTabLeaderboard,
+                        fontSize = 14.sp,
+                        fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+            )
         }
 
-        // FAB
-        if (selectedTab == 0) {
-            ExtendedFloatingActionButton(
-                onClick = { showCreate = true },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 20.dp, bottom = 24.dp)
-                    .navigationBarsPadding(),
-                containerColor = green800,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp),
-                icon = { Text("+", fontSize = 20.sp, fontWeight = FontWeight.Light) },
-                text = { Text("New Post", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
+        when (selectedTab) {
+            0 -> BlogListTab(
+                accessToken  = token,
+                refreshKey   = listRefreshKey,
+                reloadTrigger = reloadTrigger,
+                onSelectBlog = { selectedBlogId = it },
+                onCreatePost = { showCreate = true },
+                likedPosts   = likedPosts,
+                likeCounts   = likeCounts,
             )
+            1 -> LeaderboardTab(accessToken = token)
         }
     }
 }
 
-// ── Blog list tab ─────────────────────────────────────────────────────────────
+// -- "Create post" prompt (Facebook-style) -------------------------------------
+
+@Composable
+private fun CreatePostPrompt(onTap: () -> Unit) {
+    val user = SettingsStore.getUser()
+    val initials = authorInitials(user?.fullName ?: "", user?.username ?: "?")
+    val s = LocalAppStrings.current
+
+    Surface(modifier = Modifier.fillMaxWidth(), color = Color.White) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onTap)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(green100),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(initials, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = green800)
+            }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(gray100)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Text(s.blogCreateContentHint, fontSize = 14.sp, color = gray400)
+            }
+        }
+    }
+}
+
+// -- Blog list tab -------------------------------------------------------------
 
 @Composable
 private fun BlogListTab(
     accessToken: String,
     refreshKey: Int,
+    reloadTrigger: Int,
     onSelectBlog: (String) -> Unit,
+    onCreatePost: () -> Unit,
+    likedPosts: Map<String, Boolean>,
+    likeCounts: Map<String, Int>,
 ) {
     val s     = LocalAppStrings.current
     val scope = rememberCoroutineScope()
 
-    var posts       by remember { mutableStateOf<List<BlogDto>>(emptyList()) }
-    var isLoading   by remember { mutableStateOf(true) }
+    var posts         by remember { mutableStateOf<List<BlogDto>>(emptyList()) }
+    var isLoading     by remember { mutableStateOf(true) }
     var isLoadingMore by remember { mutableStateOf(false) }
-    var error       by remember { mutableStateOf<String?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
-    var currentPage by remember { mutableIntStateOf(1) }
-    var totalPages  by remember { mutableIntStateOf(1) }
+    var error         by remember { mutableStateOf<String?>(null) }
+    var currentPage   by remember { mutableIntStateOf(1) }
+    var totalPages    by remember { mutableIntStateOf(1) }
 
     fun load(page: Int, query: String, append: Boolean = false) {
         scope.launch {
@@ -198,243 +226,270 @@ private fun BlogListTab(
         }
     }
 
-    LaunchedEffect(refreshKey) { load(1, "") }
+    LaunchedEffect(refreshKey) {
+        load(1, "")
+    }
 
-    var searchJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    LaunchedEffect(reloadTrigger) {
+        load(1, "")
+    }
 
-    Column(Modifier.fillMaxSize()) {
-        // Search bar
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { q ->
-                searchQuery = q
-                searchJob?.cancel()
-                searchJob = scope.launch {
-                    kotlinx.coroutines.delay(400)
-                    currentPage = 1
-                    load(1, q)
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            placeholder = { Text(s.blogSearchHint, fontSize = 14.sp, color = gray400) },
-            leadingIcon = { Text("🔍", fontSize = 16.sp) },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor   = green800,
-                unfocusedBorderColor = Color(0xFFE5E7EB),
-                focusedContainerColor   = Color.White,
-                unfocusedContainerColor = Color.White,
-            ),
-        )
-
-        when {
-            isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = green800)
-            }
-
-            error != null -> Box(
-                Modifier.fillMaxSize().padding(32.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text("😕", fontSize = 40.sp)
-                    Text(error!!, fontSize = 14.sp, color = gray500, textAlign = TextAlign.Center)
-                    Button(
-                        onClick = { load(1, searchQuery) },
-                        colors  = ButtonDefaults.buttonColors(containerColor = green800),
-                        shape   = RoundedCornerShape(10.dp),
-                    ) { Text(s.blogRetry) }
+    fun toggleLike(postId: String) {
+        val post = posts.find { it.id == postId } ?: return
+        val effectiveLiked = likedPosts[postId] ?: post.isLiked || post.liked
+        // Optimistic update
+        posts = posts.map {
+            if (it.id == postId) it.copy(
+                isLiked = !effectiveLiked,
+                likeCount = (it.likeCount + if (!effectiveLiked) 1 else -1).coerceAtLeast(0),
+            ) else it
+        }
+        scope.launch {
+            try {
+                toggleBlogLike(postId, accessToken)
+            } catch (e: Throwable) {
+                // Revert on failure
+                posts = posts.map {
+                    if (it.id == postId) it.copy(isLiked = effectiveLiked, likeCount = it.likeCount + if (effectiveLiked) 1 else -1)
+                    else it
                 }
             }
+        }
+    }
 
-            posts.isEmpty() -> Box(
-                Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
+
+    when {
+        isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = green800)
+        }
+
+        error != null -> Box(
+            Modifier.fillMaxSize().padding(32.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text("📰", fontSize = 48.sp)
-                    Text(s.blogEmpty, fontSize = 14.sp, color = gray500)
-                }
+                Text("\uD83D\uDE15", fontSize = 40.sp)
+                Text(error!!, fontSize = 14.sp, color = gray500, textAlign = TextAlign.Center)
+                Button(
+                    onClick = { load(1, "") },
+                    colors  = ButtonDefaults.buttonColors(containerColor = green800),
+                    shape   = RoundedCornerShape(10.dp),
+                ) { Text(s.blogRetry) }
+            }
+        }
+
+        posts.isEmpty() -> Box(
+            Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("\uD83D\uDCF0", fontSize = 48.sp)
+                Text(s.blogEmpty, fontSize = 14.sp, color = gray500)
+            }
+        }
+
+        else -> LazyColumn(Modifier.fillMaxSize()) {
+            // -- "What's on your mind?" row --------------------------------
+            item {
+                CreatePostPrompt(onTap = onCreatePost)
+                Spacer(Modifier.height(8.dp))
             }
 
-            else -> LazyColumn(
-                Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(posts, key = { it.id }) { post ->
-                    BlogCard(post = post, onClick = { onSelectBlog(post.id) })
-                }
+            // -- Posts (edge-to-edge white blocks separated by gray gap) ---
+            items(posts, key = { it.id }) { post ->
+                val effectiveLiked = likedPosts[post.id] ?: post.isLiked || post.liked
+                val effectiveCount = likeCounts[post.id] ?: post.likeCount
+                BlogCard(
+                    post = post,
+                    effectiveLiked = effectiveLiked,
+                    effectiveLikeCount = effectiveCount,
+                    onClick = { onSelectBlog(post.id) },
+                    onLike = { toggleLike(post.id) },
+                )
+                Spacer(Modifier.height(8.dp))
+            }
 
-                if (currentPage < totalPages) {
-                    item {
-                        Box(
-                            Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (isLoadingMore) {
-                                CircularProgressIndicator(color = green800, modifier = Modifier.size(24.dp))
-                            } else {
-                                OutlinedButton(
-                                    onClick = { load(currentPage + 1, searchQuery, append = true) },
-                                    shape   = RoundedCornerShape(10.dp),
-                                    colors  = ButtonDefaults.outlinedButtonColors(contentColor = green800),
-                                ) {
-                                    Text(s.blogLoadMore)
-                                }
-                            }
+            // -- Load more -------------------------------------------------
+            if (currentPage < totalPages) {
+                item {
+                    Box(
+                        Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (isLoadingMore) {
+                            CircularProgressIndicator(color = green800, modifier = Modifier.size(24.dp))
+                        } else {
+                            OutlinedButton(
+                                onClick = { load(currentPage + 1, "", append = true) },
+                                shape   = RoundedCornerShape(20.dp),
+                                colors  = ButtonDefaults.outlinedButtonColors(contentColor = green800),
+                            ) { Text(s.blogLoadMore) }
                         }
                     }
                 }
-
-                item { Spacer(Modifier.navigationBarsPadding()) }
             }
+
+            item { Spacer(Modifier.navigationBarsPadding()) }
         }
     }
 }
 
-// ── Blog card ─────────────────────────────────────────────────────────────────
+// -- Blog card (Facebook post style) -------------------------------------------
 
 @Composable
-private fun BlogCard(post: BlogDto, onClick: () -> Unit) {
+private fun BlogCard(
+    post: BlogDto,
+    effectiveLiked: Boolean,
+    effectiveLikeCount: Int,
+    onClick: () -> Unit,
+    onLike: () -> Unit,
+) {
+    val s = LocalAppStrings.current
     val initials = authorInitials(
         post.author?.fullName ?: "",
         post.author?.username ?: "?",
     )
     val readMin = estimateReadMinutes(post.content)
 
-    Card(
-        modifier  = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape     = RoundedCornerShape(14.dp),
-        colors    = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        color = Color.White,
     ) {
         Column {
-            // Coloured top accent bar
-            Box(
+            // -- Header: avatar \u00B7 name \u00B7 date ------------------------------
+            Row(
                 Modifier
                     .fillMaxWidth()
-                    .height(4.dp)
-                    .background(
-                        Brush.horizontalGradient(listOf(green700, green600))
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape).background(green100),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(initials, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = green800)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        post.author?.fullName ?: post.author?.username ?: "",
+                        fontSize   = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = Color(0xFF050505),
                     )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(formatDateShort(post.createdAt), fontSize = 12.sp, color = gray500)
+                        Text("\u00B7", fontSize = 12.sp, color = gray500)
+                        Text("\uD83D\uDD50 ${readMin}m", fontSize = 12.sp, color = gray500)
+                    }
+                }
+            }
+
+            // -- Title -----------------------------------------------------
+            Text(
+                post.title,
+                modifier   = Modifier.padding(horizontal = 16.dp),
+                fontSize   = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color      = Color(0xFF050505),
+                maxLines   = 2,
+                overflow   = TextOverflow.Ellipsis,
+                lineHeight = 22.sp,
             )
 
-            Column(
-                Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // Title
+            // -- Body excerpt ----------------------------------------------
+            if (!post.content.isNullOrBlank()) {
+                Spacer(Modifier.height(4.dp))
+                val excerpt = if (post.content.length > 150) post.content.take(150) + "..." else post.content
                 Text(
-                    post.title,
-                    fontSize   = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = Color(0xFF111827),
-                    maxLines   = 2,
+                    excerpt,
+                    modifier   = Modifier.padding(horizontal = 16.dp),
+                    fontSize   = 14.sp,
+                    color      = Color(0xFF333333),
+                    maxLines   = 4,
                     overflow   = TextOverflow.Ellipsis,
-                    lineHeight = 22.sp,
+                    lineHeight = 21.sp,
                 )
+            }
 
-                // Excerpt
-                if (!post.content.isNullOrBlank()) {
-                    Text(
-                        post.content.take(120).let { if (post.content.length > 120) "$it…" else it },
-                        fontSize  = 13.sp,
-                        color     = gray500,
-                        maxLines  = 2,
-                        overflow  = TextOverflow.Ellipsis,
-                        lineHeight = 19.sp,
-                    )
-                }
-
-                // Tags
-                if (post.tags.isNotEmpty()) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        post.tags.take(3).forEachIndexed { i, tag ->
-                            val (fg, bg) = tagPalette(i)
-                            Box(
-                                Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(bg)
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
-                            ) {
-                                Text(tag, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = fg)
-                            }
-                        }
-                    }
-                }
-
-                HorizontalDivider(color = Color(0xFFF3F4F6), thickness = 1.dp)
-
-                // Footer: author + stats
+            // -- Tags as #hashtags -----------------------------------------
+            if (post.tags.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
                 Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        // Author avatar
-                        Box(
-                            Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(green100),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(initials, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = green800)
-                        }
-                        Column {
-                            Text(
-                                post.author?.fullName ?: post.author?.username ?: "",
-                                fontSize   = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color      = gray700,
-                            )
-                            Text(
-                                formatDateShort(post.createdAt),
-                                fontSize = 10.sp,
-                                color    = gray400,
-                            )
-                        }
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        // Read time
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text("🕐", fontSize = 10.sp)
-                            Text("${readMin}m", fontSize = 10.sp, color = gray400)
-                        }
-                        // Likes
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(if (post.liked) "♥" else "♡", fontSize = 12.sp, color = if (post.liked) Color(0xFFE53935) else gray400)
-                            Text("${post.likeCount}", fontSize = 11.sp, color = gray400)
-                        }
+                    post.tags.take(4).forEach { tag ->
+                        Text("#$tag", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = green800)
                     }
                 }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // -- Like count summary (e.g. "\u2665 12") -------------------------
+            if (effectiveLikeCount > 0) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text("\u2665", fontSize = 14.sp, color = if (effectiveLiked) red500 else gray500)
+                    Text("$effectiveLikeCount", fontSize = 13.sp, color = gray500)
+                }
+                Spacer(Modifier.height(6.dp))
+            }
+
+            // -- Divider ---------------------------------------------------
+            HorizontalDivider(Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = divider)
+
+            // -- Action bar: Like \u00B7 Read -----------------------------------
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                TextButton(onClick = onLike, modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            if (effectiveLiked) "\u2665" else "\u2661",
+                            fontSize = 18.sp,
+                            color = if (effectiveLiked) red500 else gray500,
+                        )
+                        Text(
+                            if (effectiveLiked) s.blogLiked else s.blogLike,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (effectiveLiked) red500 else gray500,
+                        )
+                    }
+                }
+                //TextButton(onClick = onClick, modifier = Modifier.weight(1f)) {
+                //    Row(
+                //        verticalAlignment = Alignment.CenterVertically,
+                //        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                //    ) {
+                //        Text("\uD83D\uDCD6", fontSize = 16.sp)
+                //        Text(s.blogLoadMore, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray500)
+                //    }
+                //}
             }
         }
     }
 }
 
-// ── Leaderboard tab ───────────────────────────────────────────────────────────
+// -- Leaderboard tab -----------------------------------------------------------
 
 @Composable
 private fun LeaderboardTab(accessToken: String) {
@@ -457,7 +512,6 @@ private fun LeaderboardTab(accessToken: String) {
     LaunchedEffect(Unit) { load() }
 
     Column(Modifier.fillMaxSize()) {
-        // Section header
         Box(
             Modifier
                 .fillMaxWidth()
@@ -497,7 +551,7 @@ private fun LeaderboardTab(accessToken: String) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("🏆", fontSize = 40.sp)
+                    Text("\uD83C\uDFC6", fontSize = 40.sp)
                     Text(s.leaderboardEmpty, fontSize = 14.sp, color = gray500)
                 }
             }
@@ -507,7 +561,6 @@ private fun LeaderboardTab(accessToken: String) {
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // Podium for top 3
                 val top3 = entries.take(3)
                 if (top3.size == 3) {
                     item { PodiumRow(top3) }
@@ -525,14 +578,13 @@ private fun LeaderboardTab(accessToken: String) {
     }
 }
 
-// ── Podium ────────────────────────────────────────────────────────────────────
+// -- Podium --------------------------------------------------------------------
 
 @Composable
 private fun PodiumRow(top3: List<LeaderboardEntryDto>) {
-    // Order: 2nd | 1st | 3rd
-    val order = listOf(top3[1], top3[0], top3[2])
+    val order   = listOf(top3[1], top3[0], top3[2])
     val heights = listOf(72.dp, 96.dp, 56.dp)
-    val medals  = listOf("🥈", "🥇", "🥉")
+    val medals  = listOf("\uD83E\uDD48", "\uD83E\uDD47", "\uD83E\uDD49")
     val bgColors = listOf(Color(0xFFB0BEC5), Color(0xFFFFD700), Color(0xFFBF8970))
 
     Card(
@@ -553,7 +605,6 @@ private fun PodiumRow(top3: List<LeaderboardEntryDto>) {
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(medals[i], fontSize = 28.sp)
-                        // Avatar
                         val initials = authorInitials(entry.fullName, entry.username)
                         Box(
                             Modifier.size(44.dp).clip(CircleShape).background(bgColors[i]),
@@ -567,7 +618,6 @@ private fun PodiumRow(top3: List<LeaderboardEntryDto>) {
                             fontWeight = FontWeight.SemiBold,
                             color = gray700,
                         )
-                        // Podium block
                         Box(
                             Modifier.width(80.dp).height(heights[i])
                                 .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
@@ -576,11 +626,7 @@ private fun PodiumRow(top3: List<LeaderboardEntryDto>) {
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("#${entry.rank}", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = bgColors[i])
-                                Text(
-                                    "${entry.reportCount} rpts",
-                                    fontSize = 10.sp,
-                                    color = gray500,
-                                )
+                                Text("${entry.reportCount} rpts", fontSize = 10.sp, color = gray500)
                             }
                         }
                     }
@@ -590,7 +636,7 @@ private fun PodiumRow(top3: List<LeaderboardEntryDto>) {
     }
 }
 
-// ── Leaderboard row (rank 4+) ─────────────────────────────────────────────────
+// -- Leaderboard row (rank 4+) -------------------------------------------------
 
 @Composable
 private fun LeaderboardRow(entry: LeaderboardEntryDto) {
@@ -607,18 +653,13 @@ private fun LeaderboardRow(entry: LeaderboardEntryDto) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Rank badge
             Box(
-                Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(gray100),
+                Modifier.size(36.dp).clip(CircleShape).background(gray100),
                 contentAlignment = Alignment.Center,
             ) {
                 Text("#${entry.rank}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = gray500)
             }
 
-            // Author avatar
             val initials = authorInitials(entry.fullName, entry.username)
             Box(
                 Modifier.size(36.dp).clip(CircleShape).background(green100),

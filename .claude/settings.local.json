@@ -44,7 +44,25 @@
       "Bash(xargs javap:*)",
       "Bash(xargs wc:*)",
       "Bash(grep -E \"\\\\.\\(kt|kts\\)$\")",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(./gradlew :composeApp:compileKotlinDesktop --stacktrace)",
+      "Bash(./gradlew :composeApp:compileKotlinDesktop)",
+      "Bash(./gradlew :composeApp:tasks --group=\"compose desktop\")",
+      "Bash(./gradlew :composeApp:compileKotlinDesktop :composeApp:compileDebugKotlinAndroid)",
+      "Bash(./gradlew :composeApp:compileDebugKotlin --daemon)",
+      "Bash(node:*)",
+      "Bash(wc:*)",
+      "Bash(./gradlew :composeApp:installDebug)",
+      "Bash(./gradlew :composeApp:compileDebugKotlinAndroid --no-daemon -q)",
+      "Bash(./gradlew :composeApp:compileDebugKotlinIosSimulatorArm64 --no-daemon -q)",
+      "Bash(./gradlew :composeApp:tasks --no-daemon -q)",
+      "Bash(./gradlew :composeApp:compileKotlinIosSimulatorArm64 --no-daemon -q)",
+      "WebFetch(domain:demo.playwright.dev)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(./gradlew :composeApp:compileDebugKotlinAndroid --no-daemon)"
     ]
   }
 }

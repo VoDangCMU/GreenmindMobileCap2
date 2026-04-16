@@ -4,6 +4,7 @@ import com.vodang.greenmind.api.BASE_URL
 import com.vodang.greenmind.api.httpClient
 import com.vodang.greenmind.api.auth.ApiException
 import com.vodang.greenmind.api.auth.ErrorResponse
+import com.vodang.greenmind.api.participantcampaign.ParticipantCampaignDto
 import com.vodang.greenmind.util.AppLogger
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -15,7 +16,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class CampaignDto(
-    val id: String = "",
+    val id: String,
     val name: String,
     val description: String,
     val startDate: String,
@@ -23,8 +24,61 @@ data class CampaignDto(
     val lat: Double,
     val lng: Double,
     val radius: Int,
-    val reportIds: List<String> = emptyList(),
-    val status: String? = null,
+    val status: String,
+    val createdByUserId: String,
+    val createdAt: String,
+    val updatedAt: String,
+    val reports: List<CampaignReport> = emptyList(),
+    val createdBy: CampaignCreator? = null,
+    val participants: List<CampaignParticipant> = emptyList(),
+    val participantsCount: Int = 0,
+)
+
+@Serializable
+data class CampaignReport(
+    val id: String,
+    val code: String,
+    val description: String,
+    val imageUrl: String,
+    val segmentedImageUrl: String? = null,
+    val depthImageUrl: String? = null,
+    val heatmapUrl: String? = null,
+    val segmentRatio: Double? = null,
+    val pollutionScore: Double? = null,
+    val pollutionLevel: String? = null,
+    val lat: Double,
+    val lng: Double,
+    val wasteType: String,
+    val wardName: String,
+    val status: String,
+    val reportedByUserId: String,
+    val imageEvidenceUrl: String? = null,
+    val createdAt: String,
+    val resolvedAt: String? = null,
+    val campaignId: String,
+)
+
+@Serializable
+data class CampaignCreator(
+    val id: String,
+    val fullName: String,
+)
+
+@Serializable
+data class CampaignParticipant(
+    val id: String,
+    val status: String,
+    val checkInTime: String? = null,
+    val checkOutTime: String? = null,
+    val user: CampaignParticipantUser,
+)
+
+@Serializable
+data class CampaignParticipantUser(
+    val id: String,
+    val fullName: String,
+    val email: String,
+    val phoneNumber: String? = null,
 )
 
 @Serializable
@@ -186,3 +240,12 @@ suspend fun updateCampaignStatus(accessToken: String, id: String, status: String
         throw ApiException(0, e.message ?: "Network error")
     }
 }
+
+/** Converts ParticipantCampaignDto (API response) to CampaignParticipant (UI model) */
+fun ParticipantCampaignDto.toCampaignParticipant(user: CampaignParticipantUser) = CampaignParticipant(
+    id = id,
+    status = status,
+    checkInTime = checkInTime,
+    checkOutTime = checkOutTime,
+    user = user,
+)

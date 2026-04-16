@@ -1,5 +1,6 @@
 package com.vodang.greenmind.bill
 
+import com.vodang.greenmind.fmt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -47,7 +48,7 @@ private fun currencySymbol(currency: String?): String = when (currency?.uppercas
 }
 
 private fun formatAmount(amount: Double, symbol: String = "$"): String =
-    "$symbol${"%.2f".format(amount)}"
+    "$symbol${"%.2f".fmt(amount)}"
 
 @Composable
 fun BillListScreen(onScanClick: () -> Unit) {

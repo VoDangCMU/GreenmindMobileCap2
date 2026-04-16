@@ -13,6 +13,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.i18n.LocalAppStrings
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.vodang.greenmind.location.Geo
+import com.vodang.greenmind.store.haversineMeters
 
 private val green800c = Color(0xFF2E7D32)
 private val green50c  = Color(0xFFE8F5E9)
@@ -39,8 +43,38 @@ fun CheckInCard(points: List<WastePoint>, onCheckInClick: (reportId: String) -> 
                 }
             }
             Spacer(Modifier.height(10.dp))
-            Surface(shape = RoundedCornerShape(10.dp), color = green800c, modifier = Modifier.fillMaxWidth(), onClick = { onCheckInClick(nextPoint.reportId) }) {
-                Text(s.checkInButton, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 14.dp))
+            
+            val currentLoc by Geo.service.locationUpdates.collectAsState(initial = null)
+            val nextLat = nextPoint.lat
+            val nextLng = nextPoint.lng
+            
+            var isTooFar = false
+            var distanceMeters: Double? = null
+            
+            if (currentLoc != null && nextLat != null && nextLng != null) {
+                distanceMeters = haversineMeters(currentLoc!!.latitude, currentLoc!!.longitude, nextLat, nextLng)
+                isTooFar = distanceMeters > 50.0
+            }
+            
+            val btnColor = if (nextLat != null && currentLoc == null) Color.Gray
+                           else if (isTooFar) Color.Gray
+                           else green800c
+                           
+            val btnText = if (nextLat != null && currentLoc == null) "Đang lấy vị trí..."
+                          else if (isTooFar) "Khoảng cách quá xa (${distanceMeters?.toInt()}m)"
+                          else s.checkInButton
+
+            Surface(
+                shape = RoundedCornerShape(10.dp), 
+                color = btnColor, 
+                modifier = Modifier.fillMaxWidth(), 
+                onClick = { 
+                    if (nextLat == null || (currentLoc != null && !isTooFar)) {
+                        onCheckInClick(nextPoint.reportId) 
+                    }
+                }
+            ) {
+                Text(btnText, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 14.dp))
             }
         }
     }

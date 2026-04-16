@@ -17,6 +17,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.api.households.DetectTrashHistoryDto
+import com.vodang.greenmind.householdwaste.components.GroupedDetectScanCard
+import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.wastesort.WasteSortEntry
 import com.vodang.greenmind.wastesort.green600
 import com.vodang.greenmind.wastesort.green800
@@ -24,10 +27,14 @@ import com.vodang.greenmind.wastesort.green800
 @Composable
 fun WasteSortListScreen(
     entries: List<WasteSortEntry>,
+    apiHistory: List<DetectTrashHistoryDto> = emptyList(),
+    isLoadingHistory: Boolean = false,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
     onCardClick: (WasteSortEntry) -> Unit,
+    onApiScanClick: (List<DetectTrashHistoryDto>) -> Unit = {},
 ) {
+    val s = LocalAppStrings.current
     var fabExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -49,12 +56,12 @@ fun WasteSortListScreen(
                     ) {
                         MiniFabRow(
                             icon = "🖼",
-                            label = "Upload image",
+                            label = s.uploadImage,
                             onClick = { fabExpanded = false; onGalleryClick() },
                         )
                         MiniFabRow(
                             icon = "📷",
-                            label = "Take a photo",
+                            label = s.takePhoto,
                             onClick = { fabExpanded = false; onCameraClick() },
                         )
                     }
@@ -68,7 +75,7 @@ fun WasteSortListScreen(
                     shape = CircleShape,
                 ) {
                     Text(
-                        if (fabExpanded) "✕" else "+",
+                        if (fabExpanded) s.fabCollapse else s.fabExpand,
                         fontSize = if (fabExpanded) 20.sp else 28.sp,
                         fontWeight = FontWeight.Light,
                     )
@@ -85,6 +92,7 @@ fun WasteSortListScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 24.dp),
         ) {
+            // ── Local scan history header ─────────────────────────────────
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -92,13 +100,13 @@ fun WasteSortListScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        "Scan History",
+                        s.localScans,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1B1B1B),
                     )
                     Text(
-                        "${entries.size} scans",
+                        s.scanCount(entries.size),
                         fontSize = 12.sp,
                         color = Color.Gray,
                     )
@@ -112,6 +120,68 @@ fun WasteSortListScreen(
                     ScanCard(entry = entry, onClick = { onCardClick(entry) })
                 }
             }
+
+            // ── Server scan history section ───────────────────────────────
+            item {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        s.myScanReportsTitle,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1B1B1B),
+                    )
+                    if (isLoadingHistory) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = green800,
+                        )
+                    } else {
+                        val groupCount = apiHistory.groupBy { it.imageUrl }.size
+                        Text(
+                            s.reportCount(groupCount),
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                        )
+                    }
+                }
+            }
+
+            if (!isLoadingHistory) {
+                val grouped = apiHistory.groupBy { it.imageUrl }
+                if (grouped.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White)
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                s.noScanReports,
+                                fontSize = 13.sp,
+                                color = Color.Gray,
+                            )
+                        }
+                    }
+                } else {
+                    items(grouped.entries.toList(), key = { it.key }) { (_, records) ->
+                        GroupedDetectScanCard(
+                            records = records,
+                            onClick = { onApiScanClick(records) },
+                        )
+                    }
+                }
+            }
+
+            item { Spacer(Modifier.height(72.dp)) }
         }
     }
 }

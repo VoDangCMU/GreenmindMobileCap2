@@ -23,11 +23,16 @@ import com.vodang.greenmind.api.households.DetectImageUrlRequest
 import com.vodang.greenmind.api.households.detectTrashOnly
 import com.vodang.greenmind.api.households.predictPollutant
 import com.vodang.greenmind.api.households.detectTotalMass
+import com.vodang.greenmind.api.households.getGreenScoreByHousehold
+import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.api.upload.requestAndUpload
 import com.vodang.greenmind.api.wastedetect.WasteDetectImpact
 import com.vodang.greenmind.api.wastedetect.WasteDetectItem
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.api.wastesort.DetectTrashResponse
+import com.vodang.greenmind.api.wastesort.detectTrash
+import com.vodang.greenmind.api.wastesort.predictTrashSeg
+import kotlinx.coroutines.async
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WasteSortStore
 import com.vodang.greenmind.util.AppLogger
@@ -81,30 +86,80 @@ private fun WasteSortScanContent(
                 return@launch
             }
             try {
-                // 1. Upload image so the backend can process it by URL
-                val upload  = requestAndUpload(
-                    accessToken = token,
-                    filename    = "waste_scan_${System.currentTimeMillis()}.jpg",
-                    fileBytes   = bytes,
-                    contentType = "image/jpeg",
-                )
+                val filename = "waste_scan_${System.currentTimeMillis()}.jpg"
+
+                // 1. Three parallel calls — each catches internally so a failure in one
+                //    never cancels siblings (regular Job parent would propagate unhandled
+                //    async-child exceptions and cancel the whole launch block).
+                //
+                //  • /detect-trash-ver2  → authoritative recyclable/residual categories + annotated image
+                //  • /predict_trash_seg  → per-object segment crop images per category
+                //  • upload              → hosted URL for the backend history endpoints
+                val ver2Deferred = async {
+                    try {
+                        detectTrash(imageBytes = bytes, filename = filename)
+                    } catch (e: Throwable) {
+                        AppLogger.e("HouseholdScan", "detectTrash ver2 failed: ${e.message}")
+                        null
+                    }
+                }
+                val segDeferred = async {
+                    try {
+                        predictTrashSeg(imageBytes = bytes, filename = filename)
+                    } catch (e: Throwable) {
+                        AppLogger.e("HouseholdScan", "predictTrashSeg failed: ${e.message}")
+                        null
+                    }
+                }
+                val uploadDeferred = async {
+                    requestAndUpload(
+                        accessToken = token,
+                        filename    = filename,
+                        fileBytes   = bytes,
+                        contentType = "image/jpeg",
+                    )
+                }
+
+                val ver2Result = ver2Deferred.await()
+                val segResult  = segDeferred.await()
+                val upload     = uploadDeferred.await()
+
                 val request = DetectImageUrlRequest(imageUrl = upload.imageUrl)
 
-                // 2. Primary scan via backend /households/detect-trash
+                // 2. Backend detect-trash for metadata / history entry
                 val detectResult = detectTrashOnly(token, request)
                 val dto          = detectResult.data
-                val displayUrl   = dto.annotatedImageUrl ?: dto.aiAnalysis ?: dto.imageUrl
 
-                // Build grouped from item names (backend has item list, not per-item segments)
-                val grouped = dto.items
-                    ?.groupBy { it.name }
-                    ?.mapValues { listOf(displayUrl) }
-                    ?: emptyMap()
+                // Prefer ver2 annotated image, then seg image, then backend URLs
+                val displayUrl = ver2Result?.imageUrl
+                    ?: segResult?.imageUrl
+                    ?: dto.annotatedImageUrl
+                    ?: dto.aiAnalysis
+                    ?: dto.imageUrl
+
+                // Build grouped:
+                //  - ver2 defines the category keys (recyclable / residual)
+                //  - within each category use predictTrashSeg crop images when available,
+                //    otherwise fall back to ver2's own image list
+                //  - if ver2 also failed, fall back to predictTrashSeg alone or item names
+                val grouped: Map<String, List<String>> = when {
+                    ver2Result != null && ver2Result.grouped.isNotEmpty() -> {
+                        ver2Result.grouped.mapValues { (cat, ver2Urls) ->
+                            segResult?.grouped?.get(cat)?.takeIf { it.isNotEmpty() } ?: ver2Urls
+                        }
+                    }
+                    segResult != null && segResult.grouped.isNotEmpty() -> segResult.grouped
+                    else -> dto.items
+                        ?.groupBy { it.name }
+                        ?.mapValues { listOf(displayUrl) }
+                        ?: emptyMap()
+                }
 
                 val response = DetectTrashResponse(
-                    totalObjects = dto.totalObjects ?: 0,
+                    totalObjects = ver2Result?.totalObjects ?: segResult?.totalObjects ?: dto.totalObjects ?: 0,
                     imageUrl     = displayUrl,
                     grouped      = grouped,
+                    backendId    = dto.id,
                 )
                 onResult(response)
 
@@ -119,20 +174,20 @@ private fun WasteSortScanContent(
                         val impact    = pollDto.impact
                         if (pollution != null && impact != null) {
                             val pollutionMap = buildMap<String, Double> {
-                                pollution.cd?.let               { put("Cd", it.toDouble()) }
-                                pollution.hg?.let               { put("Hg", it.toDouble()) }
-                                pollution.pb?.let               { put("Pb", it.toDouble()) }
-                                pollution.ch4?.let              { put("CH4", it.toDouble()) }
+                                pollution.cd?.let               { put("Cd", it) }
+                                pollution.hg?.let               { put("Hg", it) }
+                                pollution.pb?.let               { put("Pb", it) }
+                                pollution.ch4?.let              { put("CH4", it) }
                                 pollution.co2?.let              { put("CO2", it) }
                                 pollution.nox?.let              { put("NOx", it) }
                                 pollution.so2?.let              { put("SO2", it) }
-                                pollution.pm25?.let             { put("PM2.5", it.toDouble()) }
+                                pollution.pm25?.let             { put("PM2.5", it) }
                                 pollution.dioxin?.let           { put("dioxin", it) }
-                                pollution.nitrate?.let          { put("nitrate", it.toDouble()) }
+                                pollution.nitrate?.let          { put("nitrate", it) }
                                 pollution.styrene?.let          { put("styrene", it) }
                                 pollution.microplastic?.let     { put("microplastic", it) }
                                 pollution.toxicChemicals?.let   { put("toxic_chemicals", it) }
-                                pollution.chemicalResidue?.let  { put("chemical_residue", it.toDouble()) }
+                                pollution.chemicalResidue?.let  { put("chemical_residue", it) }
                                 pollution.nonBiodegradable?.let { put("non_biodegradable", it) }
                             }
                             WasteSortStore.updatePollutant(
@@ -167,6 +222,18 @@ private fun WasteSortScanContent(
                         AppLogger.i("HouseholdScan", "detectTotalMass ok id=${massResult.data.id} mass=${massResult.data.totalMassKg}")
                     } catch (e: Throwable) {
                         AppLogger.e("HouseholdScan", "detectTotalMass failed: ${e.message}")
+                    }
+
+                    val householdId = HouseholdStore.household.value?.id
+                    if (!householdId.isNullOrBlank()) {
+                        try {
+                            val greenScore = getGreenScoreByHousehold(token, householdId)
+                            AppLogger.i("HouseholdScan", "getGreenScore ok householdId=$householdId scores=${greenScore.data.greenScores.size}")
+                        } catch (e: Throwable) {
+                            AppLogger.e("HouseholdScan", "getGreenScore failed: ${e.message}")
+                        }
+                    } else {
+                        AppLogger.w("HouseholdScan", "getGreenScore skipped — no householdId")
                     }
                 }
             } catch (e: Throwable) {

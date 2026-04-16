@@ -10,6 +10,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 
 // ── DTOs ─────────────────────────────────────────────────────────────────────
 
@@ -71,6 +72,60 @@ data class UpdateStatusResponse(
     val collectorId: String,
     val imageEvidenceUrl: String,
     val resolvedAt: String,
+)
+
+@Serializable
+data class CollectorDetectUserDto(
+    val id: String,
+    val fullName: String
+)
+
+@Serializable
+data class CollectorDetectHouseholdDto(
+    val id: String,
+    val address: String,
+    val lat: String,
+    val lng: String
+)
+
+@Serializable
+data class CollectorDetectItemDto(
+    val name: String,
+    val area: Int? = null,
+    val quantity: Int? = null,
+    @SerialName("mass_kg") val massKg: Double? = null
+)
+
+@Serializable
+data class CollectorDetectRecordDto(
+    val id: String,
+    val imageUrl: String,
+    val items: List<CollectorDetectItemDto>? = null,
+    val totalObjects: Int? = null,
+    val totalMassKg: Double? = null,
+    val detectType: String,
+    val status: String? = null,
+    val createdAt: String,
+    val detectedBy: CollectorDetectUserDto? = null,
+    val collectedBy: CollectorDetectUserDto? = null,
+    val household: CollectorDetectHouseholdDto? = null
+)
+
+@Serializable
+data class CollectorDetectListResponse(
+    val message: String,
+    val data: List<CollectorDetectRecordDto>
+)
+
+@Serializable
+data class CollectorCheckinRequest(
+    val imageUrl: String
+)
+
+@Serializable
+data class CollectorCheckinResponse(
+    val message: String,
+    val data: CollectorDetectRecordDto
 )
 
 // ── API calls ─────────────────────────────────────────────────────────────────
@@ -143,6 +198,74 @@ suspend fun updateReportStatus(
     } catch (e: ApiException) { throw e }
     catch (e: Throwable) {
         AppLogger.e("WasteCollector", "updateReportStatus error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
+/** GET /households/detects/{type} — all detects by type */
+suspend fun getAllDetectsByType(accessToken: String, type: String): CollectorDetectListResponse {
+    AppLogger.i("WasteCollector", "getAllDetectsByType type=$type")
+    try {
+        val resp = httpClient.get("$BASE_URL/households/detects/$type") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("WasteCollector", "getAllDetectsByType → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("WasteCollector", "getAllDetectsByType failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("WasteCollector", "getAllDetectsByType error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
+/** GET /collectors/get-brought-out */
+suspend fun getBroughtOut(accessToken: String): CollectorDetectListResponse {
+    AppLogger.i("WasteCollector", "getBroughtOut")
+    try {
+        val resp = httpClient.get("$BASE_URL/collectors/get-brought-out") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("WasteCollector", "getBroughtOut → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("WasteCollector", "getBroughtOut failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("WasteCollector", "getBroughtOut error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
+/** POST /collectors/pickups/{id}/checkin */
+suspend fun checkinPickup(accessToken: String, id: String, request: CollectorCheckinRequest): CollectorCheckinResponse {
+    AppLogger.i("WasteCollector", "checkinPickup id=$id")
+    try {
+        val resp = httpClient.post("$BASE_URL/collectors/pickups/$id/checkin") {
+            header("Authorization", "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        AppLogger.d("WasteCollector", "checkinPickup → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("WasteCollector", "checkinPickup failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("WasteCollector", "checkinPickup error: ${e.message}")
         throw ApiException(0, e.message ?: "Network error")
     }
 }

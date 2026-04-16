@@ -37,6 +37,28 @@ data class LocationRequest(
 
 // ── API calls ─────────────────────────────────────────────────────────────────
 
+/** GET /participant-campaigns/my — returns all participation records for the current user */
+suspend fun getMyParticipations(accessToken: String): List<ParticipantCampaignDto> {
+    AppLogger.i("ParticipantCampaign", "getMyParticipations")
+    try {
+        val resp = httpClient.get("$BASE_URL/participant-campaigns/my") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("ParticipantCampaign", "getMyParticipations → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("ParticipantCampaign", "getMyParticipations failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("ParticipantCampaign", "getMyParticipations error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
 /** POST /participant-campaigns/{id}/register */
 suspend fun registerCampaign(accessToken: String, campaignId: String): ParticipantCampaignDto {
     AppLogger.i("ParticipantCampaign", "registerCampaign campaignId=$campaignId")
@@ -62,13 +84,13 @@ suspend fun registerCampaign(accessToken: String, campaignId: String): Participa
 /** POST /participant-campaigns/{id}/checkin */
 suspend fun checkInCampaign(
     accessToken: String,
-    participantId: String,
+    campaignId: String,
     lat: Double,
     lng: Double,
 ): ParticipantCampaignDto {
-    AppLogger.i("ParticipantCampaign", "checkInCampaign participantId=$participantId lat=$lat lng=$lng")
+    AppLogger.i("ParticipantCampaign", "checkInCampaign campaignId=$campaignId lat=$lat lng=$lng")
     try {
-        val resp = httpClient.post("$BASE_URL/participant-campaigns/$participantId/checkin") {
+        val resp = httpClient.post("$BASE_URL/participant-campaigns/$campaignId/checkin") {
             header("Authorization", "Bearer $accessToken")
             contentType(ContentType.Application.Json)
             setBody(LocationRequest(lat, lng))
@@ -91,13 +113,13 @@ suspend fun checkInCampaign(
 /** POST /participant-campaigns/{id}/checkout */
 suspend fun checkOutCampaign(
     accessToken: String,
-    participantId: String,
+    campaignId: String,
     lat: Double,
     lng: Double,
 ): ParticipantCampaignDto {
-    AppLogger.i("ParticipantCampaign", "checkOutCampaign participantId=$participantId lat=$lat lng=$lng")
+    AppLogger.i("ParticipantCampaign", "checkOutCampaign campaignId=$campaignId lat=$lat lng=$lng")
     try {
-        val resp = httpClient.post("$BASE_URL/participant-campaigns/$participantId/checkout") {
+        val resp = httpClient.post("$BASE_URL/participant-campaigns/$campaignId/checkout") {
             header("Authorization", "Bearer $accessToken")
             contentType(ContentType.Application.Json)
             setBody(LocationRequest(lat, lng))

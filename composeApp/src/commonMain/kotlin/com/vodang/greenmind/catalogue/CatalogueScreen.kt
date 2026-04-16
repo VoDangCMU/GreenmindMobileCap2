@@ -60,7 +60,7 @@ fun CatalogueScreen(onWasteReport: () -> Unit, onPreAppSurvey: () -> Unit = {}) 
         FeatureEntry("🍽️", s.scanMeal,        s.scanMealDesc),
         FeatureEntry("🧾", s.scanBill,         s.scanBillDesc),
         FeatureEntry("🚶", s.walkDistance,     s.walkValue),
-        FeatureEntry("☣️", "Environmental Impact", "Shows CO₂, microplastic, and pollution scores from waste scans"),
+        FeatureEntry("☣️", s.environmentalImpact, s.environmentalImpactDesc),
     )
     val collectorFeatures = listOf(
         FeatureEntry("🗺️", s.heatmapFeatureLabel,  s.heatmapFeatureDesc),
@@ -85,7 +85,7 @@ fun CatalogueScreen(onWasteReport: () -> Unit, onPreAppSurvey: () -> Unit = {}) 
     ) {
             CatalogueSection(
                 roleIcon = "👥",
-                roleLabel = "All users",
+                roleLabel = s.allUsersLabel,
                 roleColor = Color(0xFF1565C0),
                 roleBg = Color(0xFFE3F2FD),
                 features = allFeatures

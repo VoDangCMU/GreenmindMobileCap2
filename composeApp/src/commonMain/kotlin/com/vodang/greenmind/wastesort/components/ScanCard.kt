@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -18,11 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.wastereport.NetworkImage
 import com.vodang.greenmind.wastesort.WasteSortEntry
-import com.vodang.greenmind.wastesort.categoryBg
-import com.vodang.greenmind.wastesort.categoryColor
-import com.vodang.greenmind.wastesort.categoryEmoji
-import com.vodang.greenmind.wastesort.categoryLabel
+import com.vodang.greenmind.wastesort.WasteSortStatus
 import com.vodang.greenmind.wastesort.green50
+import com.vodang.greenmind.wastesort.label
 import com.vodang.greenmind.wastesort.green800
 
 @Composable
@@ -40,53 +37,37 @@ fun ScanCard(entry: WasteSortEntry, onClick: () -> Unit) {
                 url = entry.imageUrl,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .heightIn(max = 160.dp)
                     .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
             )
 
-            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(green50)
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                    ) {
-                        Text(
-                            "♻️  ${entry.totalObjects} objects detected",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = green800,
-                        )
-                    }
-                    Text(entry.createdAt, fontSize = 11.sp, color = Color.Gray)
-                }
-
-                // Category summary
-                if (entry.grouped.isNotEmpty()) {
-                    HorizontalDivider(color = Color(0xFFEEEEEE))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        entry.grouped.entries.forEach { (cat, urls) ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(categoryBg(cat))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                            ) {
-                                Text(
-                                    "${categoryEmoji(cat)} ${urls.size} ${categoryLabel(cat)}",
-                                    fontSize = 12.sp,
-                                    color = categoryColor(cat),
-                                    fontWeight = FontWeight.Medium,
-                                )
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            when (entry.status) {
+                                WasteSortStatus.SCANNED    -> Color(0xFFEEEEEE)
+                                WasteSortStatus.SORTED     -> green50
+                                WasteSortStatus.BRINGOUTED -> Color(0xFFE3F2FD)
+                                WasteSortStatus.COLLECTED  -> Color(0xFF2E7D32).copy(alpha = 0.15f)
                             }
-                        }
-                    }
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        entry.status.label,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = when (entry.status) {
+                            WasteSortStatus.SCANNED    -> Color(0xFF616161)
+                            WasteSortStatus.SORTED     -> green800
+                            WasteSortStatus.BRINGOUTED -> Color(0xFF1565C0)
+                            WasteSortStatus.COLLECTED  -> green800
+                        },
+                    )
                 }
+                Text(entry.createdAt, fontSize = 11.sp, color = Color.Gray)
             }
         }
     }

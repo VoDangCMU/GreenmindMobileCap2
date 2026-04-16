@@ -3,7 +3,6 @@ package com.vodang.greenmind.householdwaste
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -17,15 +16,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.households.HouseholdDto
-import com.vodang.greenmind.api.households.HouseholdMemberDto
 import com.vodang.greenmind.api.households.addMemberToHousehold
 import com.vodang.greenmind.api.households.removeMemberFromHousehold
+import com.vodang.greenmind.householdwaste.components.MemberRow
+import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
 import kotlinx.coroutines.launch
 
 private val green700  = Color(0xFF2E7D32)
-private val green50s  = Color(0xFFE8F5E9)
 private val gray700s  = Color(0xFF374151)
 private val gray400s  = Color(0xFF9CA3AF)
 private val red600s   = Color(0xFFDC2626)
@@ -33,6 +32,7 @@ private val red50s    = Color(0xFFFEF2F2)
 
 @Composable
 fun HouseholdSettingsScreen(onBack: () -> Unit) {
+    val s = LocalAppStrings.current
     val household by HouseholdStore.household.collectAsState()
     val h = household ?: run { onBack(); return }
     val token = SettingsStore.getAccessToken() ?: run { onBack(); return }
@@ -68,11 +68,11 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     IconButton(onClick = onBack) {
-                        Text("←", fontSize = 22.sp, color = Color.White)
+                        Text(s.backArrow, fontSize = 22.sp, color = Color.White)
                     }
                     Column {
                         Text(
-                            "Household Settings",
+                            s.householdSettings,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -108,7 +108,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            "Add Member",
+                            s.addMember,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = gray700s
@@ -120,14 +120,14 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                                 addError = null
                                 addSuccess = false
                             },
-                            label = { Text("User ID") },
-                            placeholder = { Text("Enter the member's user ID") },
+                            label = { Text(s.userId) },
+                            placeholder = { Text(s.userIdPlaceholder) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             isError = addError != null,
                             supportingText = when {
                                 addError != null -> { { Text(addError!!, color = red600s) } }
-                                addSuccess -> { { Text("Member added successfully", color = green700) } }
+                                addSuccess -> { { Text(s.memberAddedSuccess, color = green700) } }
                                 else -> null
                             },
                             shape = RoundedCornerShape(10.dp),
@@ -139,7 +139,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                         Button(
                             onClick = {
                                 val uid = addUserId.trim()
-                                if (uid.isBlank()) { addError = "User ID cannot be empty"; return@Button }
+                                if (uid.isBlank()) { addError = s.userIdCannotBeEmpty; return@Button }
                                 scope.launch {
                                     isAdding = true
                                     addError = null
@@ -149,7 +149,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                                         addSuccess = true
                                         HouseholdStore.fetchHousehold()
                                     } catch (e: Throwable) {
-                                        addError = e.message ?: "Failed to add member"
+                                        addError = s.failedToAddMember
                                     } finally {
                                         isAdding = false
                                     }
@@ -168,7 +168,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                                 )
                                 Spacer(Modifier.width(8.dp))
                             }
-                            Text("Add Member")
+                            Text(s.addMember)
                         }
                     }
                 }
@@ -179,7 +179,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        "Members",
+                        s.members,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = gray700s
@@ -218,7 +218,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                             .padding(vertical = 32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No members yet", fontSize = 13.sp, color = gray400s)
+                        Text(s.noMembersYet, fontSize = 13.sp, color = gray400s)
                     }
                 } else {
                     members.forEach { member ->
@@ -234,7 +234,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                                         members = members.filter { it.id != member.id }
                                         HouseholdStore.fetchHousehold()
                                     } catch (e: Throwable) {
-                                        removeError = e.message ?: "Failed to remove member"
+                                        removeError = s.failedToRemoveMember
                                     } finally {
                                         removingId = null
                                     }
@@ -245,98 +245,6 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                 }
 
                 Spacer(Modifier.navigationBarsPadding())
-            }
-        }
-    }
-}
-
-@Composable
-private fun MemberRow(
-    member: HouseholdMemberDto,
-    isRemoving: Boolean,
-    onRemove: () -> Unit,
-) {
-    val initials = member.fullName
-        .split(" ")
-        .take(2)
-        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-        .joinToString("")
-        .ifBlank { member.username.take(2).uppercase() }
-
-    Card(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Avatar circle
-            Box(
-                Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(green50s),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(initials, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = green700)
-            }
-
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    member.fullName,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = gray700s,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    "@${member.username}",
-                    fontSize = 12.sp,
-                    color = gray400s
-                )
-                Text(
-                    member.email,
-                    fontSize = 11.sp,
-                    color = gray400s,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Role badge
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(green50s)
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    member.role.replaceFirstChar { it.uppercaseChar() },
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = green700
-                )
-            }
-
-            // Remove button
-            if (isRemoving) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = red600s
-                )
-            } else {
-                IconButton(
-                    onClick = onRemove,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Text("✕", fontSize = 14.sp, color = red600s)
-                }
             }
         }
     }

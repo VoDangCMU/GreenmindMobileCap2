@@ -95,7 +95,7 @@ fun ProfileScreen() {
                             .border(3.dp, Color.White.copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("👤", fontSize = 52.sp)
+                        Text(s.profileUserIcon, fontSize = 52.sp)
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(
@@ -113,9 +113,9 @@ fun ProfileScreen() {
                     Spacer(Modifier.height(12.dp))
                     // Role badge
                     val roleIcon = when (user?.role?.lowercase()) {
-                        "collector" -> "🚛"
-                        "volunteer" -> "🤝"
-                        else        -> "🏠"
+                        "collector" -> s.profileRoleCollector
+                        "volunteer" -> s.profileRoleVolunteer
+                        else        -> s.profileRoleHousehold
                     }
                     Surface(
                         shape = RoundedCornerShape(20.dp),
@@ -132,7 +132,7 @@ fun ProfileScreen() {
                     if (!user?.location.isNullOrBlank()) {
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "📍  ${user?.location}",
+                            text = s.profileLocation(user?.location ?: ""),
                             fontSize = 13.sp,
                             color = Color.White.copy(alpha = 0.75f),
                         )
@@ -216,7 +216,7 @@ fun ProfileScreen() {
                         countLabel = s.mealsToday(todayMeals.size),
                         ratioValue = avgPlant,
                         ratioText = "$avgPlant%",
-                        ratioSubtitle = "plant ratio",
+                        ratioSubtitle = s.plantRatio,
                         bg = Color(0xFFE8F5E9),
                         accent = green800,
                         modifier = Modifier.weight(1f),
@@ -226,7 +226,7 @@ fun ProfileScreen() {
                         countLabel = s.billsToday(todayBills.size),
                         ratioValue = avgGreen,
                         ratioText = "$avgGreen%",
-                        ratioSubtitle = "green spend",
+                        ratioSubtitle = s.greenSpend,
                         bg = Color(0xFFFFF8E1),
                         accent = Color(0xFFF57F17),
                         modifier = Modifier.weight(1f),
@@ -236,8 +236,7 @@ fun ProfileScreen() {
                 // Habit Profile (pre-app survey)
                 val sv = survey
                 if (sv != null) {
-                    val isVi = s.langCode == "vi"
-                    HabitProfileSection(sv = sv, isVi = isVi, green800 = green800)
+                    HabitProfileSection(sv = sv, s = s, green800 = green800)
                 }
 
                 Spacer(Modifier.height(32.dp))
@@ -302,7 +301,8 @@ private data class HabitRow(val emoji: String, val labelEn: String, val labelVi:
 private fun scaleDisplay(value: Int, max: Int = 5): String = "●".repeat(value) + "○".repeat(max - value)
 
 @Composable
-private fun HabitProfileSection(sv: com.vodang.greenmind.api.preappsurvey.PreAppSurveyDto, isVi: Boolean, green800: Color) {
+private fun HabitProfileSection(sv: com.vodang.greenmind.api.preappsurvey.PreAppSurveyDto, s: com.vodang.greenmind.i18n.AppStrings, green800: Color) {
+    val isVi = s.langCode == "vi"
     val rows = buildList {
         add(HabitRow("💸", "Daily Spending",     "Chi tiêu hàng ngày",
             "${sv.dailySpending} ${if (isVi) "đ/ngày" else "VND/day"}"))
@@ -333,7 +333,7 @@ private fun HabitProfileSection(sv: com.vodang.greenmind.api.preappsurvey.PreApp
     }
 
     Text(
-        text = if (isVi) "Hồ sơ thói quen" else "Habit Profile",
+        text = s.habitProfile,
         fontSize = 14.sp,
         fontWeight = FontWeight.SemiBold,
         color = Color.Gray,

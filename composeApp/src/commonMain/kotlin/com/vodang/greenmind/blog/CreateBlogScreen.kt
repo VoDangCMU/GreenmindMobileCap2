@@ -3,12 +3,14 @@ package com.vodang.greenmind.blog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -16,9 +18,13 @@ import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.blog.CreateBlogRequest
 import com.vodang.greenmind.api.blog.createBlog
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.store.SettingsStore
 import kotlinx.coroutines.launch
 
-private val green800 = Color(0xFF2E7D32)
+private val green800  = Color(0xFF2E7D32)
+private val green100  = Color(0xFFC8E6C9)
+private val divider   = Color(0xFFE4E6EB)
+private val gray400   = Color(0xFF9CA3AF)
 
 @Composable
 fun CreateBlogScreen(
@@ -28,6 +34,7 @@ fun CreateBlogScreen(
 ) {
     val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
+    val user = SettingsStore.getUser()
 
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
@@ -35,153 +42,160 @@ fun CreateBlogScreen(
     var isSubmitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
-        // Top bar
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 8.dp, vertical = 10.dp)
+    val initials = (user?.fullName ?: "")
+        .split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercaseChar() }
+        .joinToString("").ifBlank { (user?.username ?: "?").take(2).uppercase() }
+
+    Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
+        // -- Top bar (FB-style: Cancel \u00B7 Create Post \u00B7 Post) ---------------
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.White,
+            shadowElevation = 1.dp,
         ) {
-            TextButton(
-                onClick = onBack,
-                modifier = Modifier.align(Alignment.CenterStart),
-                enabled = !isSubmitting,
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("← ${s.back}", color = green800, fontSize = 13.sp)
+                TextButton(onClick = onBack, enabled = !isSubmitting) {
+                    Text("\u2190 ${s.back}", color = green800, fontSize = 14.sp)
+                }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    s.blogCreate,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF050505),
+                )
+                Spacer(Modifier.weight(1f))
+                Button(
+                    onClick = {
+                        val trimTitle = title.trim()
+                        val trimContent = content.trim()
+                        if (trimTitle.isEmpty() || trimContent.isEmpty()) {
+                            error = s.blogCreateErrorEmpty
+                            return@Button
+                        }
+                        val tags = tagsRaw.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                        scope.launch {
+                            isSubmitting = true; error = null
+                            try {
+                                createBlog(accessToken, CreateBlogRequest(trimTitle, trimContent, tags))
+                                onCreated()
+                            } catch (e: Throwable) {
+                                error = e.message ?: s.blogErrorLoad
+                            }
+                            isSubmitting = false
+                        }
+                    },
+                    enabled = !isSubmitting && title.isNotBlank() && content.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = green800,
+                        disabledContainerColor = green800.copy(alpha = 0.4f),
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(
+                        if (isSubmitting) s.blogCreateSubmitting else s.blogCreateSubmit,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+        }
+
+        // -- Author row ----------------------------------------------------
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(green100),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(initials, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = green800)
             }
             Text(
-                s.blogCreate,
-                modifier = Modifier.align(Alignment.Center),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF212121),
+                user?.fullName ?: user?.username ?: "",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF050505),
             )
         }
 
+        HorizontalDivider(thickness = 1.dp, color = divider)
+
+        // -- Form fields ---------------------------------------------------
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Title field
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(s.blogCreateTitle, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF424242))
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { if (it.length <= 500) title = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(s.blogCreateTitleHint, fontSize = 14.sp) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = green800,
-                        unfocusedBorderColor = Color(0xFFDDDDDD),
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                    ),
-                    supportingText = { Text("${title.length}/500", fontSize = 11.sp, color = Color.Gray) },
-                )
-            }
+            // Title
+            OutlinedTextField(
+                value = title,
+                onValueChange = { if (it.length <= 500) title = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(s.blogCreateTitleHint, fontSize = 16.sp, color = gray400) },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor   = green800,
+                    unfocusedBorderColor = divider,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                ),
+                supportingText = { Text("${title.length}/500", fontSize = 11.sp, color = Color.Gray) },
+            )
 
-            // Content field
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(s.blogCreateContent, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF424242))
-                OutlinedTextField(
-                    value = content,
-                    onValueChange = { content = it },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
-                    placeholder = { Text(s.blogCreateContentHint, fontSize = 14.sp) },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = green800,
-                        unfocusedBorderColor = Color(0xFFDDDDDD),
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                    ),
-                    minLines = 8,
-                )
-            }
+            // Content (large area like FB's "What's on your mind?")
+            OutlinedTextField(
+                value = content,
+                onValueChange = { content = it },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 180.dp),
+                placeholder = { Text(s.blogCreateContentHint, fontSize = 15.sp, color = gray400) },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor   = green800,
+                    unfocusedBorderColor = divider,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                ),
+                minLines = 6,
+            )
 
-            // Tags field
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(s.blogCreateTags, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF424242))
-                OutlinedTextField(
-                    value = tagsRaw,
-                    onValueChange = { tagsRaw = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(s.blogCreateTagsHint, fontSize = 14.sp) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = green800,
-                        unfocusedBorderColor = Color(0xFFDDDDDD),
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                    ),
-                )
-            }
+            // Tags
+            OutlinedTextField(
+                value = tagsRaw,
+                onValueChange = { tagsRaw = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(s.blogCreateTagsHint, fontSize = 14.sp, color = gray400) },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                leadingIcon = { Text("#", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = green800) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor   = green800,
+                    unfocusedBorderColor = divider,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                ),
+            )
 
             // Error
             if (error != null) {
-                Text(
-                    error!!,
-                    fontSize = 13.sp,
-                    color = Color(0xFFC62828),
-                )
-            }
-
-            // Submit button
-            Button(
-                onClick = {
-                    val trimTitle = title.trim()
-                    val trimContent = content.trim()
-                    if (trimTitle.isEmpty() || trimContent.isEmpty()) {
-                        error = s.blogCreateErrorEmpty
-                        return@Button
-                    }
-                    val tags = tagsRaw.split(',')
-                        .map { it.trim() }
-                        .filter { it.isNotEmpty() }
-                    scope.launch {
-                        isSubmitting = true
-                        error = null
-                        try {
-                            createBlog(
-                                accessToken = accessToken,
-                                request = CreateBlogRequest(
-                                    title = trimTitle,
-                                    content = trimContent,
-                                    tags = tags,
-                                )
-                            )
-                            onCreated()
-                        } catch (e: Throwable) {
-                            error = e.message ?: s.blogErrorLoad
-                        }
-                        isSubmitting = false
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isSubmitting,
-                colors = ButtonDefaults.buttonColors(containerColor = green800),
-                shape = RoundedCornerShape(10.dp),
-            ) {
-                if (isSubmitting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                }
-                Text(
-                    if (isSubmitting) s.blogCreateSubmitting else s.blogCreateSubmit,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Text(error!!, fontSize = 13.sp, color = Color(0xFFC62828))
             }
         }
     }

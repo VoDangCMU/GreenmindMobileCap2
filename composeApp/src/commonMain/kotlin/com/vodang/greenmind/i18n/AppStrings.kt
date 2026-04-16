@@ -103,6 +103,7 @@ class AppStrings(val langCode: String) {
     var scanBill: String = ""
     var scanBillDesc: String = ""
     var wasteImpactTitle: String = ""
+    var greenScoreTitle: String = ""
     var wasteImpactDesc: String = ""
     var wasteImpactTotalReports: String = ""
     var wasteImpactTotalKg: String = ""
@@ -220,6 +221,8 @@ class AppStrings(val langCode: String) {
     var settingsLocation: String = ""
     var settingsTrackingEnabled: String = ""
     var settingsTrackingEnabledDesc: String = ""
+    var settingsEnableRoleSwitcher: String = ""
+    var settingsEnableRoleSwitcherDesc: String = ""
     var settingsInterval: String = ""
     var settingsIntervalDesc: String = ""
     var settingsMinMove: String = ""
@@ -263,6 +266,16 @@ class AppStrings(val langCode: String) {
     var blogCreateSubmitting: String = ""
     var blogCreateSuccess: String = ""
     var blogCreateErrorEmpty: String = ""
+    var blogEdit: String = ""
+    var blogDelete: String = ""
+    var blogDeleteTitle: String = ""
+    var blogDeleteConfirm: String = ""
+    var blogEditComment: String = ""
+    var blogDeleteCommentTitle: String = ""
+    var blogDeleteCommentConfirm: String = ""
+    var blogCommentsLabel: String = ""
+    var blogCommentsTitle: (Int) -> String = { "" }
+    var blogAddCommentHint: String = ""
     var surveyMinutes: (Int) -> String = { p0 -> "" }
     var surveyQuestions: (Int) -> String = { p0 -> "" }
     var surveyCompleted: String = ""
@@ -349,6 +362,281 @@ class AppStrings(val langCode: String) {
     var preAppSurveyDone: String = ""
     var preAppSurveyDoneDesc: String = ""
     var preAppSurveyStartButton: String = ""
+
+    // ── General / shared ──────────────────────────────────────────────────────────
+    var backArrow: String = ""
+    var menuIcon: String = ""
+    var userFallback: String = ""
+    var roleSwitch: String = ""
+    var retry: String = ""
+    var chevronRight: String = ""
+    var stationaryLabel: String = ""
+    var hour: String = ""
+    var minute: String = ""
+    var updateTime: String = ""
+    var updating: String = ""
+    var updateAll: String = ""
+    var noRecordsYet: String = ""
+    var googleLogo: String = ""
+    var searchIcon: String = ""
+    var flagEmoji: String = ""
+    var checkmark: String = ""
+
+    // ── Splash ────────────────────────────────────────────────────────────────────
+    var splashLogo: String = ""
+
+    // ── Blog ──────────────────────────────────────────────────────────────────────
+    var noContentAvailable: String = ""
+
+    // ── Settings ─────────────────────────────────────────────────────────────────
+    var metricsAutoUpdate: String = ""
+    var autoUpdateMetrics: String = ""
+    var autoUpdateMetricsDesc: String = ""
+    var updateTimeDesc: String = ""
+    var dailySpending: String = ""
+    var nightOut: String = ""
+    var spendVariability: String = ""
+    var brandNovelty: String = ""
+    var listAdherence: String = ""
+    var dailyDistance: String = ""
+    var novelLocationRatio: String = ""
+    var publicTransitRatio: String = ""
+    var interval15s: String = ""
+    var interval30s: String = ""
+    var interval55s: String = ""
+    var interval2m: String = ""
+    var interval5m: String = ""
+    var speedWalk: String = ""
+    var speedRun: String = ""
+    var speedCycle: String = ""
+    var greenMind: String = ""
+    var version: String = ""
+    var noGpsRecords: String = ""
+
+    // ── Household Dashboard ──────────────────────────────────────────────────────
+    var householdDashboard: String = ""
+    var memberCount: (Int) -> String = { _ -> "" }
+    var noScoreHistory: String = ""
+    var viewWasteImpactAnalysis: String = ""
+    var noHouseholdScans: String = ""
+    var noWasteReports: String = ""
+    var householdSettings: String = ""
+    var currentScore: String = ""
+    var deltaFromLastScan: (String) -> String = { _ -> "" }
+    var scoreHistory: String = ""
+    var scoreTransition: (Int, Int) -> String = { _, _ -> "" }
+    var scoreLabel: (Int) -> String = { _ -> "" }
+    var detectedItems: String = ""
+    var scoreBreakdown: String = ""
+    var noDetailAvailable: String = ""
+    var scanHistoryScreen: String = ""
+    var myScanReports: String = ""
+    var myWasteReports: String = ""
+
+    // ── Create Household Modal ────────────────────────────────────────────────────
+    var setLocation: String = ""
+    var houseNumberOptional: String = ""
+    var houseNumberPlaceholder: String = ""
+    var addressFromGps: String = ""
+    var coordinatesFromGps: (Double, Double) -> String = { _, _ -> "" }
+    var locationRequired: String = ""
+    var locationPermissionNotGranted: String = ""
+    var grantLocationPermission: String = ""
+    var locationTrackingOff: String = ""
+    var enableLocationTracking: String = ""
+    var waitingForGps: String = ""
+
+    // ── Household Settings ────────────────────────────────────────────────────────
+    var householdSettingsTitle: String = ""
+    var addMember: String = ""
+    var userId: String = ""
+    var userIdPlaceholder: String = ""
+    var memberAddedSuccess: String = ""
+    var userIdCannotBeEmpty: String = ""
+    var failedToAddMember: String = ""
+    var members: String = ""
+    var noMembersYet: String = ""
+    var failedToRemoveMember: String = ""
+    var removeMember: String = ""
+
+    // ── Catalogue ─────────────────────────────────────────────────────────────────
+    var environmentalImpact: String = ""
+    var environmentalImpactDesc: String = ""
+    var allUsersLabel: String = ""
+
+    // ── Energy ────────────────────────────────────────────────────────────────────
+    var kWh: String = ""
+    var vsYesterday: (String) -> String = { _ -> "" }
+
+    // ── Meal Detail ──────────────────────────────────────────────────────────────
+    var plant: String = ""
+    var unnamedMeal: String = ""
+    var thresholdLow: String = ""
+    var thresholdOk: String = ""
+    var thresholdGood: String = ""
+    var thresholdRange: (String, String, String) -> String = { _, _, _ -> "" }
+    var aimForPlant: String = ""
+
+    // ── Meal List ────────────────────────────────────────────────────────────────
+    var emptyMealEmoji: String = ""
+    var scanMealEmoji: String = ""
+
+    // ── Todos ────────────────────────────────────────────────────────────────────
+    var addTodo: String = ""
+    var dismissError: String = ""
+    var emptyTodosEmoji: String = ""
+    var expand: String = ""
+    var aiWand: String = ""
+    var deleteTodo: String = ""
+    var addSubtask: String = ""
+
+    // ── Survey ───────────────────────────────────────────────────────────────────
+    var pleaseSelectAnswer: String = ""
+    var errorSubmitting: String = ""
+    var networkError: String = ""
+    var surveyBy: (String) -> String = { _ -> "" }
+
+    // ── Waste Impact ──────────────────────────────────────────────────────────────
+    var refresh: String = ""
+    var scans: String = ""
+    var itemsDetected: String = ""
+    var avgEcoScore: String = ""
+    var greenScoreDescription: String = ""
+    var basedOnScans: (Int) -> String = { _ -> "" }
+    var averagePollutionImpact: String = ""
+    var topPollutantsAvg: String = ""
+    var pollutantBreakdownAvg: String = ""
+    var scanDetail: String = ""
+    var pollutionImpact: String = ""
+    var objects: String = ""
+    var ecoScoreLabel: (Int) -> String = { _ -> "" }
+    var air: String = ""
+    var water: String = ""
+    var soil: String = ""
+    var excellentMinimalImpact: String = ""
+    var goodLowImpact: String = ""
+    var fairModerateImpact: String = ""
+    var poorHighImpact: String = ""
+    var scanHistoryRow: (Int, String) -> String = { _, _ -> "" }
+    var noEcoScore: String = ""
+    var pollutantCO2: String = ""
+    var pollutantDioxin: String = ""
+    var pollutantMicroplastic: String = ""
+    var pollutantToxic: String = ""
+    var pollutantNonBiodegradable: String = ""
+    var pollutantNOx: String = ""
+    var pollutantSO2: String = ""
+    var pollutantCH4: String = ""
+    var pollutantPM25: String = ""
+    var pollutantLead: String = ""
+    var pollutantMercury: String = ""
+    var pollutantCadmium: String = ""
+    var pollutantNitrate: String = ""
+    var pollutantChemicalResidue: String = ""
+    var pollutantStyrene: String = ""
+    var airIcon: String = ""
+    var waterPollutionLabel: String = ""
+    var soilPollutionLabel: String = ""
+    var greenScoreHistory: String = ""
+    var scanHistoryTitle: String = ""
+
+    // ── Waste Analytics ─────────────────────────────────────────────────────────
+    var wasteAnalyticsTitle: String = ""
+    var householdTrends: (String) -> String = { _ -> "" }
+    var totalWaste: String = ""
+    var peak: (String) -> String = { _ -> "" }
+    var avgAir: String = ""
+    var pollutionImpactTrends: String = ""
+    var airWaterSoil: String = ""
+    var keyPollutants: String = ""
+    var co2DioxinMicroplastic: String = ""
+    var insight: String = ""
+    var wasteVolume: String = ""
+    var kilograms: String = ""
+    var valueLabelKg: (Double) -> String = { _ -> "" }
+    var seriesHidden: String = ""
+    var noSeriesSelected: String = ""
+    var seriesAir: String = ""
+    var seriesWater: String = ""
+    var seriesSoil: String = ""
+    var seriesCO2: String = ""
+    var seriesDioxin: String = ""
+    var seriesMicroplastic: String = ""
+    var periodHour: String = ""
+    var periodDay: String = ""
+    var periodWeek: String = ""
+    var periodMonth: String = ""
+    var periodLabel: (String) -> String = { _ -> "" }
+
+    // ── Home components ──────────────────────────────────────────────────────────
+    var surveyBadgeIcon: String = ""
+    var errorDisplay: (String) -> String = { _ -> "" }
+    var unknownLocation: String = ""
+    var campaignActive: String = ""
+    var campaignInactive: String = ""
+    var campaignDescription: (String) -> String = { _ -> "" }
+    var dateRange: (String, String) -> String = { _, _ -> "" }
+    var locationRadius: (Double, Double, Int) -> String = { _, _, _ -> "" }
+    var registeredStatus: (String) -> String = { _ -> "" }
+    var checkedInStatus: (String) -> String = { _ -> "" }
+    var completedStatus: (String) -> String = { _ -> "" }
+    var pollutionTrendTitle: String = ""
+    var pollutionTrendSubtitle: String = ""
+    var co2Legend: String = ""
+    var ch4Legend: String = ""
+    var noxLegend: String = ""
+    var percentYAxis: String = ""
+
+    // ── Waste Sort ───────────────────────────────────────────────────────────────
+    var wasteScanned: String = ""
+    var wasteSorted: String = ""
+    var wasteBroughtOut: String = ""
+    var wasteCollected: String = ""
+
+    // ── Waste Sort List ──────────────────────────────────────────────────────────
+    var localScans: String = ""
+    var scanCount: (Int) -> String = { _ -> "" }
+    var uploadImage: String = ""
+    var takePhoto: String = ""
+    var myScanReportsTitle: String = ""
+    var reportCount: (Int) -> String = { _ -> "" }
+    var noScanReports: String = ""
+    var fabCollapse: String = ""
+    var fabExpand: String = ""
+
+    // ── Scan Detail ──────────────────────────────────────────────────────────────
+    var ecoScore: String = ""
+    var noScoreYet: String = ""
+    var deltaPrefix: (Int) -> String = { _ -> "" }
+    var markAsSorted: String = ""
+    var markAsBroughtOut: String = ""
+    var waitingForCollector: String = ""
+    var collectedComplete: String = ""
+    var byCategory: String = ""
+    var categoryTab: (String, Int) -> String = { _, _ -> "" }
+
+    // ── Error Log ────────────────────────────────────────────────────────────────
+    var errorLog: (Int) -> String = { _ -> "" }
+    var clear: String = ""
+    var noErrors: String = ""
+    var expandIndicator: String = ""
+    var message: String = ""
+    var stackTrace: String = ""
+    var truncated: String = ""
+    var errorLevel: String = ""
+    var warningLevel: String = ""
+
+    // ── Profile ─────────────────────────────────────────────────────────────────
+    var profileUserIcon: String = ""
+    var profileRoleHousehold: String = ""
+    var profileRoleCollector: String = ""
+    var profileRoleVolunteer: String = ""
+    var profileLocation: (String) -> String = { _ -> "" }
+    var plantRatio: String = ""
+    var greenSpend: String = ""
+    var habitProfile: String = ""
+    var profileMealsIcon: String = ""
+    var profileBillsIcon: String = ""
 }
 
 val LocalAppStrings = compositionLocalOf<AppStrings> { EnStrings }

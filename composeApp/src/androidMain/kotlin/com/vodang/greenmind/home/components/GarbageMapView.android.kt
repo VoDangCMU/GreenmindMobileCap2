@@ -13,9 +13,11 @@ import android.webkit.WebViewClient
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import com.vodang.greenmind.location.Geo
 import com.vodang.greenmind.location.Location
 
 private const val TAG = "GM_MAP"
+private const val CAMPAIGN_TAG = "GM_CAMPAIGN"
 private const val ROUTE_TAG = "GM_ROUTE"
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -157,6 +159,87 @@ actual fun RouteMapView(
         },
         onRelease = { webView ->
             Log.d(ROUTE_TAG, "WEBVIEW_RELEASE")
+            webViewRef.value = null
+            webView.stopLoading()
+            webView.destroy()
+        }
+    )
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+actual fun CampaignMapView(
+    campaign: CampaignMapPoint,
+    center: Location?,
+    zoomLevel: Float,
+    modifier: Modifier,
+) {
+    val webViewRef = remember { mutableStateOf<WebView?>(null) }
+    var currentLocation by remember { mutableStateOf<Location?>(null) }
+
+    // Update user dot when location changes
+    LaunchedEffect(webViewRef.value, currentLocation) {
+        val wv = webViewRef.value ?: return@LaunchedEffect
+        currentLocation?.let { loc ->
+            wv.evaluateJavascript("updateUserDot(${loc.latitude},${loc.longitude});", null)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        Geo.service.locationUpdates.collect { loc ->
+            currentLocation = loc
+        }
+    }
+
+    // Focus map on center (campaign location) — does NOT move user dot
+    LaunchedEffect(webViewRef.value, center, zoomLevel) {
+        val wv = webViewRef.value ?: return@LaunchedEffect
+        val lat = center?.latitude ?: campaign.lat
+        val lng = center?.longitude ?: campaign.lng
+        wv.evaluateJavascript("focusCampaign($lat,$lng,$zoomLevel);", null)
+    }
+
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            WebView(ctx).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                setOnTouchListener { v, event ->
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE ->
+                            v.parent?.requestDisallowInterceptTouchEvent(true)
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                            v.parent?.requestDisallowInterceptTouchEvent(false)
+                    }
+                    false
+                }
+                webChromeClient = object : WebChromeClient() {
+                    override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
+                        Log.d(CAMPAIGN_TAG, "JS ${msg.message()}")
+                        return true
+                    }
+                }
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        webViewRef.value = view
+                    }
+                }
+                loadDataWithBaseURL(
+                    null,
+                    buildCampaignMapHtml(
+                        campaign.lat, campaign.lng, campaign.radius,
+                        campaign.lat, campaign.lng, zoomLevel.toDouble(),
+                    ),
+                    "text/html", "UTF-8", null
+                )
+            }
+        },
+        onRelease = { webView ->
             webViewRef.value = null
             webView.stopLoading()
             webView.destroy()

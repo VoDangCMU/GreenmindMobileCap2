@@ -37,6 +37,7 @@ fun SettingsScreen() {
     val maxSpeed        by SettingsStore.maxWalkSpeedMs.collectAsState()
     val trackingEnabled by SettingsStore.locationEnabled.collectAsState()
     val language        by SettingsStore.language.collectAsState()
+    val roleSwitcherEnabled by SettingsStore.roleSwitcherEnabled.collectAsState()
     val recentTicks     by LocationTrackingStore.recentTicks.collectAsState()
 
     // Local slider state — committed to store only on finger-lift to avoid excessive writes
@@ -52,18 +53,18 @@ fun SettingsScreen() {
     val metricsScope = rememberCoroutineScope()
 
     val intervalOptions = listOf(
-        15_000L  to "15s",
-        30_000L  to "30s",
-        55_000L  to "55s",
-        120_000L to "2m",
-        300_000L to "5m",
+        15_000L  to s.interval15s,
+        30_000L  to s.interval30s,
+        55_000L  to s.interval55s,
+        120_000L to s.interval2m,
+        300_000L to s.interval5m,
     )
 
     // Speed presets: value (m/s) → label
     val speedPresets = listOf(
-        2.5f  to "🚶 ${s.settingsSpeedWalk}",
-        7.0f  to "🏃 ${s.settingsSpeedRun}",
-        15.0f to "🚴 ${s.settingsSpeedCycle}",
+        2.5f  to "${s.speedWalk} ${s.settingsSpeedWalk}",
+        7.0f  to "${s.speedRun} ${s.settingsSpeedRun}",
+        15.0f to "${s.speedCycle} ${s.settingsSpeedCycle}",
     )
     val selectedSpeedIdx = speedPresets.indices.minByOrNull {
         kotlin.math.abs(speedPresets[it].first - maxSpeed)
@@ -191,7 +192,7 @@ fun SettingsScreen() {
                 OceanScoreCard()
 
                 // ── Metrics Auto Update ───────────────────────────────────────
-                SettingsSectionHeader("📊  Metrics Auto Update")
+                SettingsSectionHeader("📊  ${s.metricsAutoUpdate}")
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -206,8 +207,8 @@ fun SettingsScreen() {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Auto Update Metrics", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-                                Text("Automatically refresh all metrics daily", fontSize = 12.sp, color = Color.Gray)
+                                Text(s.autoUpdateMetrics, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                                Text(s.autoUpdateMetricsDesc, fontSize = 12.sp, color = Color.Gray)
                             }
                             Switch(
                                 checked = metricsAutoEnabled,
@@ -228,8 +229,8 @@ fun SettingsScreen() {
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("Update time", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-                                    Text("Daily refresh will run at this time", fontSize = 12.sp, color = Color.Gray)
+                                    Text(s.updateTime, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                                    Text(s.updateTimeDesc, fontSize = 12.sp, color = Color.Gray)
                                 }
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
@@ -250,14 +251,14 @@ fun SettingsScreen() {
 
                         // Update All button
                         val metrics = listOf(
-                            Triple("daily_spending",         "💸", "Daily Spending"),
-                            Triple("night_out",              "🌙", "Night Out"),
-                            Triple("spend_variability",      "📊", "Spend Variability"),
-                            Triple("brand_novelty",          "🛍️", "Brand Novelty"),
-                            Triple("list_adherence",         "📋", "List Adherence"),
-                            Triple("daily_distance",         "🚶", "Daily Distance"),
-                            Triple("novel_location_ratio",   "📍", "Novel Location Ratio"),
-                            Triple("public_transit_ratio",   "🚌", "Public Transit Ratio"),
+                            Triple("daily_spending",         "💸", s.dailySpending),
+                            Triple("night_out",              "🌙", s.nightOut),
+                            Triple("spend_variability",      "📊", s.spendVariability),
+                            Triple("brand_novelty",          "🛍️", s.brandNovelty),
+                            Triple("list_adherence",         "📋", s.listAdherence),
+                            Triple("daily_distance",         "🚶", s.dailyDistance),
+                            Triple("novel_location_ratio",   "📍", s.novelLocationRatio),
+                            Triple("public_transit_ratio",   "🚌", s.publicTransitRatio),
                         )
                         val allKeys = metrics.map { it.first }.toSet()
                         val isRefreshingAll = allKeys.all { it in refreshingMetrics }
@@ -279,9 +280,9 @@ fun SettingsScreen() {
                             if (isRefreshingAll) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Updating…", fontSize = 13.sp)
+                                Text(s.updating, fontSize = 13.sp)
                             } else {
-                                Text("↺  Update All", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text(s.updateAll, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
 
@@ -336,7 +337,7 @@ fun SettingsScreen() {
                 }
 
                 // ── Recent GPS ticks ──────────────────────────────────────────
-                SettingsSectionHeader("📡  Recent GPS records")
+                SettingsSectionHeader("📡  ${s.settingsLocation} records")
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -346,7 +347,7 @@ fun SettingsScreen() {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                         if (recentTicks.isEmpty()) {
                             Text(
-                                "No records yet — tracking will populate this list.",
+                                s.noGpsRecords,
                                 fontSize = 13.sp,
                                 color = Color.Gray,
                             )
@@ -380,6 +381,21 @@ fun SettingsScreen() {
                             subtitle = currentLangLabel,
                             onClick = { showLangPicker = true },
                         )
+                        // Role switcher toggle
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(s.settingsEnableRoleSwitcher, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                                Text(s.settingsEnableRoleSwitcherDesc, fontSize = 12.sp, color = Color.Gray)
+                            }
+                            Switch(
+                                checked = roleSwitcherEnabled,
+                                onCheckedChange = { SettingsStore.setRoleSwitcherEnabled(it) },
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = green800),
+                            )
+                        }
                     }
                 }
 
@@ -398,8 +414,8 @@ fun SettingsScreen() {
                         ) {
                             Text("🌱", fontSize = 22.sp)
                             Spacer(Modifier.width(10.dp))
-                            Text("GreenMind", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = green800, modifier = Modifier.weight(1f))
-                            Text("v1.0.0", fontSize = 13.sp, color = Color.Gray)
+                            Text(s.greenMind, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = green800, modifier = Modifier.weight(1f))
+                            Text(s.version, fontSize = 13.sp, color = Color.Gray)
                         }
 
                         HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
@@ -460,6 +476,7 @@ private fun SettingsSectionHeader(title: String) {
 
 @Composable
 private fun GpsTickRow(tick: GpsTick) {
+    val s = LocalAppStrings.current
     // Format HH:mm:ss from epoch millis (UTC — avoids expect/actual for time formatting)
     val totalSec = (tick.timestampMs / 1000L).toInt()
     val hh = (totalSec / 3600) % 24
@@ -467,7 +484,7 @@ private fun GpsTickRow(tick: GpsTick) {
     val ss = totalSec % 60
     val timeLabel = "%02d:%02d:%02d".fmt(hh, mm, ss)
 
-    val distLabel = if (tick.distanceMeters < 1.0) "stationary"
+    val distLabel = if (tick.distanceMeters < 1.0) s.stationaryLabel
                     else "${tick.distanceMeters.fmt(0)} m"
 
     val addrShort = if (tick.address.length > 40) tick.address.take(37) + "…" else tick.address
@@ -517,6 +534,7 @@ private fun MetricsTimePickerDialog(
     onConfirm: (Int, Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val s = LocalAppStrings.current
     var h by remember { mutableStateOf(hour) }
     var m by remember { mutableStateOf(minute) }
     val minuteOptions = listOf(0, 15, 30, 45)
@@ -528,10 +546,10 @@ private fun MetricsTimePickerDialog(
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         ) {
             Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Update Time", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF212121))
+                Text(s.updateTime, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF212121))
 
                 // Hour selector
-                Text("Hour", fontSize = 13.sp, color = Color.Gray)
+                Text(s.hour, fontSize = 13.sp, color = Color.Gray)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
@@ -560,7 +578,7 @@ private fun MetricsTimePickerDialog(
                 }
 
                 // Minute selector
-                Text("Minute", fontSize = 13.sp, color = Color.Gray)
+                Text(s.minute, fontSize = 13.sp, color = Color.Gray)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     minuteOptions.forEach { opt ->
                         val selected = m == opt
@@ -585,12 +603,12 @@ private fun MetricsTimePickerDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                 ) {
-                    TextButton(onClick = onDismiss) { Text("Cancel", color = Color.Gray) }
+                    TextButton(onClick = onDismiss) { Text(s.cancel, color = Color.Gray) }
                     Button(
                         onClick = { onConfirm(h, m) },
                         colors = ButtonDefaults.buttonColors(containerColor = green800),
                         shape = RoundedCornerShape(10.dp),
-                    ) { Text("Set") }
+                    ) { Text(s.save) }
                 }
             }
         }
@@ -599,6 +617,7 @@ private fun MetricsTimePickerDialog(
 
 @Composable
 private fun SettingsNavRow(icon: String, title: String, subtitle: String, onClick: () -> Unit) {
+    val s = LocalAppStrings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -610,6 +629,6 @@ private fun SettingsNavRow(icon: String, title: String, subtitle: String, onClic
         Text(icon, fontSize = 20.sp)
         Text(title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF212121), modifier = Modifier.weight(1f))
         Text(subtitle, fontSize = 13.sp, color = Color.Gray)
-        Text("›", fontSize = 18.sp, color = Color.LightGray)
+        Text(s.chevronRight, fontSize = 18.sp, color = Color.LightGray)
     }
 }

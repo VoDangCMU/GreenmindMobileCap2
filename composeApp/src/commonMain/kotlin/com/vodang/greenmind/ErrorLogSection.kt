@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.store.ErrorLevel
 import com.vodang.greenmind.store.ErrorLogEntry
 import com.vodang.greenmind.store.ErrorLogStore
+import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.fmt
 
 private val red700   = Color(0xFFC62828)
 private val red50    = Color(0xFFFFEBEE)
@@ -33,7 +35,7 @@ private fun formatTime(epochMs: Long): String {
     val hh = (totalSec / 3600) % 24
     val mm = (totalSec / 60) % 60
     val ss = totalSec % 60
-    return "%02d:%02d:%02d".format(hh, mm, ss)
+    return "%02d:%02d:%02d".fmt(hh, mm, ss)
 }
 
 // ── Public section composable ─────────────────────────────────────────────────
@@ -41,6 +43,7 @@ private fun formatTime(epochMs: Long): String {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ErrorLogSection() {
+    val s = LocalAppStrings.current
     val entries by ErrorLogStore.entries.collectAsState()
     var detailEntry by remember { mutableStateOf<ErrorLogEntry?>(null) }
 
@@ -55,7 +58,7 @@ fun ErrorLogSection() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "🔴  Error Log (${entries.size})",
+            text = s.errorLog(entries.size),
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = gray700,
@@ -66,7 +69,7 @@ fun ErrorLogSection() {
                 onClick = { ErrorLogStore.clear() },
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
             ) {
-                Text("Clear", fontSize = 12.sp, color = red700)
+                Text(s.clear, fontSize = 12.sp, color = red700)
             }
         }
     }
@@ -111,7 +114,7 @@ fun ErrorLogSection() {
         Column(modifier = Modifier.padding(vertical = 4.dp)) {
             if (entries.isEmpty()) {
                 Text(
-                    "No errors logged.",
+                    s.noErrors,
                     fontSize = 13.sp,
                     color = Color.Gray,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -142,9 +145,10 @@ fun ErrorLogSection() {
 
 @Composable
 private fun ErrorEntryRow(entry: ErrorLogEntry, onClick: () -> Unit) {
+    val s = LocalAppStrings.current
     val levelColor = if (entry.level == ErrorLevel.E) red700 else amber700
     val levelBg    = if (entry.level == ErrorLevel.E) red50  else amber50
-    val levelLabel = entry.level.name          // "E" or "W"
+    val levelLabel = if (entry.level == ErrorLevel.E) s.errorLevel else s.warningLevel
 
     Row(
         modifier = Modifier
@@ -188,7 +192,7 @@ private fun ErrorEntryRow(entry: ErrorLogEntry, onClick: () -> Unit) {
         }
         // Expand indicator — only show when there is a stack trace
         if (entry.stackTrace != null) {
-            Text("›", fontSize = 16.sp, color = Color.LightGray)
+            Text(s.expandIndicator, fontSize = 16.sp, color = Color.LightGray)
         }
     }
 }
@@ -197,6 +201,7 @@ private fun ErrorEntryRow(entry: ErrorLogEntry, onClick: () -> Unit) {
 
 @Composable
 private fun ErrorEntryDetail(entry: ErrorLogEntry) {
+    val s = LocalAppStrings.current
     val levelColor = if (entry.level == ErrorLevel.E) red700 else amber700
     val levelBg    = if (entry.level == ErrorLevel.E) red50  else amber50
 
@@ -237,13 +242,13 @@ private fun ErrorEntryDetail(entry: ErrorLogEntry) {
         }
 
         // Message
-        ErrorDetailHeader("MESSAGE")
+        ErrorDetailHeader(s.message)
         ErrorCodeBlock(entry.message)
 
         // Stack trace (if present)
         if (entry.stackTrace != null) {
             HorizontalDivider(color = Color(0xFFEEEEEE))
-            ErrorDetailHeader("STACK TRACE")
+            ErrorDetailHeader(s.stackTrace)
             ErrorCodeBlock(entry.stackTrace, maxChars = 6000)
         }
     }
@@ -262,7 +267,8 @@ private fun ErrorDetailHeader(title: String) {
 
 @Composable
 private fun ErrorCodeBlock(text: String, maxChars: Int = Int.MAX_VALUE) {
-    val display = if (text.length > maxChars) text.take(maxChars) + "\n…(truncated)" else text
+    val s = LocalAppStrings.current
+    val display = if (text.length > maxChars) text.take(maxChars) + "\n…${s.truncated}" else text
     Box(
         modifier = Modifier
             .fillMaxWidth()

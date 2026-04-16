@@ -19,22 +19,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.households.DetectTrashHistoryDto
-import com.vodang.greenmind.api.households.getDetectHistoryByHousehold
+import com.vodang.greenmind.api.households.GreenScoreEntryDto
 import com.vodang.greenmind.api.households.getDetectHistoryByUser
+import com.vodang.greenmind.api.households.getGreenScoreByHousehold
 import com.vodang.greenmind.api.wastedetect.WasteDetectImpact
 import com.vodang.greenmind.api.wastedetect.WasteDetectItem
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.fmt
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.platform.BackHandler
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
-import com.vodang.greenmind.store.WasteSortStore
-import com.vodang.greenmind.wastereport.NetworkImage
+import com.vodang.greenmind.wasteimpact.components.HeroStat
+import com.vodang.greenmind.wasteimpact.components.ImpactMeter
+import com.vodang.greenmind.wasteimpact.components.ImpactSummary
+import com.vodang.greenmind.wasteimpact.components.PollutantBar
+import com.vodang.greenmind.wasteimpact.components.ScanDetailScreen
+import com.vodang.greenmind.wasteimpact.components.ScanHistoryRow
+import com.vodang.greenmind.wasteimpact.components.ecoScoreColor
+import com.vodang.greenmind.wasteimpact.components.ecoScoreLabel
 import com.vodang.greenmind.wastesort.WasteSortEntry
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-// ── Palette ───────────────────────────────────────────────────────────────────
+// ── Palette (re-used from components; duplicated here to avoid circular imports) ──
 private val orange700  = Color(0xFFE65100)
 private val orange600  = Color(0xFFF4511E)
 private val orange400  = Color(0xFFFF7043)
@@ -70,20 +77,20 @@ private val pollutantLabel = mapOf(
 private fun DetectTrashHistoryDto.toWasteSortEntry(): WasteSortEntry {
     val pollutionMap: Map<String, Double>? = pollution?.let { p ->
         buildMap {
-            p.cd?.let          { put("Cd", it.toDouble()) }
-            p.hg?.let          { put("Hg", it.toDouble()) }
-            p.pb?.let          { put("Pb", it.toDouble()) }
-            p.ch4?.let         { put("CH4", it.toDouble()) }
+            p.cd?.let          { put("Cd", it) }
+            p.hg?.let          { put("Hg", it) }
+            p.pb?.let          { put("Pb", it) }
+            p.ch4?.let         { put("CH4", it) }
             p.co2?.let         { put("CO2", it) }
             p.nox?.let         { put("NOx", it) }
             p.so2?.let         { put("SO2", it) }
-            p.pm25?.let        { put("PM2.5", it.toDouble()) }
+            p.pm25?.let        { put("PM2.5", it) }
             p.dioxin?.let      { put("dioxin", it) }
-            p.nitrate?.let     { put("nitrate", it.toDouble()) }
+            p.nitrate?.let     { put("nitrate", it) }
             p.styrene?.let     { put("styrene", it) }
             p.microplastic?.let { put("microplastic", it) }
             p.toxicChemicals?.let   { put("toxic_chemicals", it) }
-            p.chemicalResidue?.let  { put("chemical_residue", it.toDouble()) }
+            p.chemicalResidue?.let  { put("chemical_residue", it) }
             p.nonBiodegradable?.let { put("non_biodegradable", it) }
         }
     }
@@ -114,47 +121,96 @@ private fun DetectTrashHistoryDto.toWasteSortEntry(): WasteSortEntry {
     )
 }
 
+// ── Impact aggregation ────────────────────────────────────────────────────────
+
+private val allPollutantKeys = listOf(
+    "CO2", "CH4", "PM2.5", "NOx", "SO2",
+    "Pb", "Hg", "Cd",
+    "nitrate", "chemical_residue", "microplastic",
+    "dioxin", "toxic_chemicals", "non_biodegradable", "styrene",
+)
+
+/**
+ * Derives [ImpactSummary] from a list of scan entries.
+ *
+ * Current algorithm: simple arithmetic mean across all scans that carry
+ * pollution data.  Replace only the lines marked [ALGO] to plug in a
+ * weighted, decay-based, or model-driven approach later.
+ */
+private fun aggregateImpact(entries: List<WasteSortEntry>): ImpactSummary {
+    val withImpact = entries.filter { it.pollutantResult != null }
+
+    // TODO(ALGO): replace AVG with a smarter eco score formula (e.g. weighted by scan recency)
+    val ecoScore = if (withImpact.isEmpty()) null
+                   else withImpact.mapNotNull { it.pollutantResult?.ecoScore }
+                       .average().roundToInt()
+
+    // TODO(ALGO): replace AVG with a better impact aggregation (e.g. decay-weighted, model-driven)
+    fun avgImpact(selector: (com.vodang.greenmind.api.wastedetect.WasteDetectImpact) -> Double?): Double? {
+        if (withImpact.isEmpty()) return null
+        val values = withImpact.mapNotNull { it.pollutantResult?.impact?.let(selector) }
+        return if (values.isEmpty()) null else values.average()
+    }
+    val air   = avgImpact { it.airPollution }
+    val water = avgImpact { it.waterPollution }
+    val soil  = avgImpact { it.soilPollution }
+
+    // TODO(ALGO): replace AVG with a better per-pollutant aggregation (e.g. peak, percentile, trend)
+    val pollutants = mutableMapOf<String, Double>()
+    allPollutantKeys.forEach { k -> pollutants[k] = 0.0 }
+    if (withImpact.isNotEmpty()) {
+        withImpact.forEach { entry ->
+            entry.pollutantResult?.pollution?.forEach { (k, v) ->
+                pollutants[k] = (pollutants[k] ?: 0.0) + v
+            }
+        }
+        val count = withImpact.size.toDouble()
+        pollutants.keys.toList().forEach { k -> pollutants[k] = (pollutants[k] ?: 0.0) / count }
+    }
+
+    return ImpactSummary(
+        totalScans = entries.size,
+        totalItems = entries.sumOf { it.totalObjects },
+        ecoScore   = ecoScore,
+        air        = air,
+        water      = water,
+        soil       = soil,
+        pollutants = pollutants,
+    )
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 @Composable
 fun WasteImpactScreen() {
-    val s         = LocalAppStrings.current
-    val scope     = rememberCoroutineScope()
-    val token     = SettingsStore.getAccessToken()
-    val household by HouseholdStore.household.collectAsState()
-    val localEntries by WasteSortStore.entries.collectAsState()
+    val s     = LocalAppStrings.current
+    val token = SettingsStore.getAccessToken()
 
-    var apiEntries  by remember { mutableStateOf<List<WasteSortEntry>>(emptyList()) }
-    var isLoading   by remember { mutableStateOf(false) }
-    var error       by remember { mutableStateOf<String?>(null) }
-    var refreshKey  by remember { mutableIntStateOf(0) }
+    var apiEntries    by remember { mutableStateOf<List<WasteSortEntry>>(emptyList()) }
+    var greenScoreEntries by remember { mutableStateOf<List<GreenScoreEntryDto>>(emptyList()) }
+    var isLoading     by remember { mutableStateOf(false) }
+    var error         by remember { mutableStateOf<String?>(null) }
+    var refreshKey    by remember { mutableIntStateOf(0) }
     var selectedEntry by remember { mutableStateOf<WasteSortEntry?>(null) }
 
-    // Fetch household + user scan history from backend
-    LaunchedEffect(refreshKey, token) {
+    val household by HouseholdStore.household.collectAsState()
+
+    // Fetch user's scan history + green score from the server
+    LaunchedEffect(refreshKey, token, household) {
         val t = token ?: return@LaunchedEffect
         isLoading = true
         error = null
         try {
-            val results = mutableListOf<DetectTrashHistoryDto>()
-
-            // Household history (if household exists)
-            if (household != null) {
-                runCatching { getDetectHistoryByHousehold(t) }
-                    .getOrNull()?.data?.let { results += it }
-            }
-
-            // User personal history (always)
-            runCatching { getDetectHistoryByUser(t) }
-                .getOrNull()?.data?.let { results += it }
-
-            // Dedup by id, keep only records that have pollution data (predict_pollutant_impact)
-            val seen = mutableSetOf<String>()
-            apiEntries = results
-                .filter { it.detectType == "predict_pollutant_impact" || it.pollution != null }
-                .filter { seen.add(it.id) }
+            apiEntries = getDetectHistoryByUser(t).data
+                .filter { it.pollution != null || it.impact != null }
                 .map { it.toWasteSortEntry() }
                 .sortedByDescending { it.createdAt }
+            // Fetch green score if household is available
+            val hId = household?.id
+            if (hId != null) {
+                val scoreResp = runCatching { getGreenScoreByHousehold(t, hId) }
+                scoreResp.getOrNull()?.data?.greenScores?.let { greenScoreEntries = it }
+            }
         } catch (e: Throwable) {
             error = e.message ?: s.wasteImpactError
         } finally {
@@ -162,9 +218,9 @@ fun WasteImpactScreen() {
         }
     }
 
-    // Merge: API entries + local entries not yet on server (by id dedup, API wins)
-    val apiIds = apiEntries.map { it.id }.toSet()
-    val mergedEntries = apiEntries + localEntries.filter { it.id !in apiIds }
+    val mergedEntries = apiEntries
+
+    BackHandler(enabled = selectedEntry != null) { selectedEntry = null }
 
     val current = selectedEntry
     if (current != null) {
@@ -206,63 +262,38 @@ fun WasteImpactScreen() {
             }
 
             else -> WasteImpactContent(
-                entries      = mergedEntries,
-                onEntryClick = { selectedEntry = it },
-                onRefresh    = { refreshKey++ },
+                entries           = mergedEntries,
+                greenScoreEntries = greenScoreEntries,
+                onEntryClick      = { selectedEntry = it },
+                onRefresh         = { refreshKey++ },
             )
         }
     }
 }
 
-// ── Content ───────────────────────────────────────────────────────────────────
+// ── Content ────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun WasteImpactContent(
     entries: List<WasteSortEntry>,
+    greenScoreEntries: List<GreenScoreEntryDto> = emptyList(),
     onEntryClick: (WasteSortEntry) -> Unit,
     onRefresh: () -> Unit = {},
 ) {
     val s = LocalAppStrings.current
 
-    // Only entries that have pollutant data
-    val withImpact = entries.filter { it.pollutantResult != null }
+    val summary = aggregateImpact(entries)
 
-    val totalScans   = entries.size
-    val totalItems   = entries.sumOf { it.totalObjects }
-    val avgEcoScore  = if (withImpact.isEmpty()) null
-                       else withImpact.mapNotNull { it.pollutantResult?.ecoScore }.average().roundToInt()
-
-    // Average air / water / soil across scans that have impact data
-    val avgAir   = if (withImpact.isEmpty()) null
-                   else withImpact.mapNotNull { it.pollutantResult?.impact?.airPollution }.average()
-    val avgWater = if (withImpact.isEmpty()) null
-                   else withImpact.mapNotNull { it.pollutantResult?.impact?.waterPollution }.average()
-    val avgSoil  = if (withImpact.isEmpty()) null
-                   else withImpact.mapNotNull { it.pollutantResult?.impact?.soilPollution }.average()
-
-    // All known pollutant keys in display order
-    val allPollutantKeys = listOf(
-        "CO2", "CH4", "PM2.5", "NOx", "SO2",
-        "Pb", "Hg", "Cd",
-        "nitrate", "chemical_residue", "microplastic",
-        "dioxin", "toxic_chemicals", "non_biodegradable", "styrene",
-    )
-
-    // Aggregate pollutants — average values across all scans
-    val aggregatedMap: Map<String, Double> = run {
-        val map = mutableMapOf<String, Double>()
-        allPollutantKeys.forEach { k -> map[k] = 0.0 }
-        if (withImpact.isNotEmpty()) {
-            withImpact.forEach { entry ->
-                entry.pollutantResult?.pollution?.forEach { (k, v) ->
-                    map[k] = (map[k] ?: 0.0) + v
-                }
-            }
-            val count = withImpact.size.toDouble()
-            map.keys.toList().forEach { k -> map[k] = (map[k] ?: 0.0) / count }
-        }
-        map
-    }
+    val totalScans       = summary.totalScans
+    val totalItems       = summary.totalItems
+    // Use actual green score from API if available, otherwise fall back to computed eco score
+    val latestGreenScore = greenScoreEntries.lastOrNull()
+    val avgEcoScore      = latestGreenScore?.finalScore ?: summary.ecoScore
+    val totalAir         = summary.air
+    val totalWater       = summary.water
+    val totalSoil        = summary.soil
+    val aggregatedMap    = summary.pollutants
+    val withImpact       = entries.filter { it.pollutantResult != null }
 
     // Top active pollutants for the bar chart (non-zero, top 6)
     val aggregatedPollutants: List<Pair<String, Double>> =
@@ -310,18 +341,18 @@ private fun WasteImpactContent(
                                 .clickable { onRefresh() }
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
-                            Text("↻ Refresh", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text(s.refresh, fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
                         }
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        HeroStat("$totalScans", "Scans", Modifier.weight(1f).fillMaxHeight())
-                        HeroStat("$totalItems", "Items detected", Modifier.weight(1f).fillMaxHeight())
+                        HeroStat("$totalScans", s.scans, Modifier.weight(1f).fillMaxHeight())
+                        HeroStat("$totalItems", s.itemsDetected, Modifier.weight(1f).fillMaxHeight())
                         HeroStat(
-                            value = if (avgEcoScore != null) "$avgEcoScore%" else "—",
-                            label = "Avg eco score",
+                            value = if (avgEcoScore != null) "$avgEcoScore" else s.noEcoScore,
+                            label = if (latestGreenScore != null) s.greenScoreTitle else s.avgEcoScore,
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
@@ -339,7 +370,7 @@ private fun WasteImpactContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "Eco Score",
+                        if (latestGreenScore != null) s.greenScoreTitle else s.ecoScoreLabel(avgEcoScore),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF424242)
@@ -378,16 +409,76 @@ private fun WasteImpactContent(
                         }
                     }
                     Text(
-                        "Based on ${withImpact.size} scan${if (withImpact.size != 1) "s" else ""} with impact data",
+                        if (latestGreenScore != null)
+                            s.greenScoreDescription
+                        else
+                            s.basedOnScans(withImpact.size),
                         fontSize = 11.sp,
                         color = Color.Gray
                     )
+                    // Show delta from green score API
+                    if (latestGreenScore != null) {
+                        val delta = latestGreenScore.delta
+                        val deltaColor = if (delta >= 0) green800 else red600
+                        val deltaPrefix = if (delta >= 0) "+" else ""
+                        Text(
+                            "${latestGreenScore.previousScore} → ${latestGreenScore.finalScore}  ($deltaPrefix$delta)",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = deltaColor
+                        )
+                    }
                 }
             }
         }
 
-        // ── Avg pollution impact ───────────────────────────────────────────────
-        if (avgAir != null && avgWater != null && avgSoil != null) {
+        // ── Green Score History ────────────────────────────────────────────────
+        if (greenScoreEntries.size > 1) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        s.greenScoreHistory,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF424242)
+                    )
+                    greenScoreEntries.reversed().forEach { entry ->
+                        val isPositive = entry.delta >= 0
+                        val deltaColor = if (isPositive) green800 else red600
+                        val deltaBg = if (isPositive) green50 else Color(0xFFFEF2F2)
+                        val deltaText = if (isPositive) "+${entry.delta}" else "${entry.delta}"
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(entry.createdAt.take(10), fontSize = 11.sp, color = Color.Gray)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("${entry.previousScore} →", fontSize = 12.sp, color = Color.Gray)
+                                Text("${entry.finalScore}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF424242))
+                                Box(
+                                    Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(deltaBg)
+                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                ) {
+                                    Text(deltaText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = deltaColor)
+                                }
+                            }
+                        }
+                        HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)
+                    }
+                }
+            }
+        }
+
+        // ── Total pollution impact ────────────────────────────────────────────
+        if (totalAir != null && totalWater != null && totalSoil != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -396,14 +487,14 @@ private fun WasteImpactContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Average Pollution Impact",
+                        s.averagePollutionImpact,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF424242)
                     )
-                    ImpactMeter("💨", "Air pollution",   avgAir.toFloat())
-                    ImpactMeter("💧", "Water pollution", avgWater.toFloat())
-                    ImpactMeter("🌱", "Soil pollution",  avgSoil.toFloat())
+                    ImpactMeter(s.airIcon, s.air,   totalAir.toFloat())
+                    ImpactMeter("💧", s.waterPollutionLabel, totalWater.toFloat())
+                    ImpactMeter("🌱", s.soilPollutionLabel,  totalSoil.toFloat())
                 }
             }
         }
@@ -418,16 +509,17 @@ private fun WasteImpactContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Top Pollutants",
+                        s.topPollutantsAvg,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF424242)
                     )
                     val maxVal = aggregatedPollutants.first().second
                     aggregatedPollutants.forEachIndexed { idx, (key, value) ->
-                        val barColor = when (idx) {
-                            0 -> orange700; 1 -> orange600; 2 -> orange400
-                            3 -> blue600;   4 -> red600;    else -> Color(0xFF455A64)
+                        val barColor = when {
+                            value < 0.5  -> green800
+                            value <= 0.7 -> amber
+                            else         -> red600
                         }
                         PollutantBar(
                             rank     = idx + 1,
@@ -450,7 +542,7 @@ private fun WasteImpactContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Pollutant Breakdown",
+                        s.pollutantBreakdownAvg,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF424242)
@@ -514,7 +606,7 @@ private fun WasteImpactContent(
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    "Scan History",
+                    s.scanHistoryTitle,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF424242)
@@ -546,397 +638,5 @@ private fun WasteImpactContent(
         }
 
         Spacer(Modifier.navigationBarsPadding())
-    }
-}
-
-// ── Sub-composables ───────────────────────────────────────────────────────────
-
-@Composable
-private fun HeroStat(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.15f))
-            .padding(10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Text(value, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        Text(label, fontSize = 10.sp, color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center)
-    }
-}
-
-@Composable
-private fun ImpactMeter(icon: String, label: String, value: Float) {
-    val progress = value.coerceIn(0f, 1f)
-    val pct = (value * 100).roundToInt()
-    val barColor = when {
-        value < 0.5f -> green800
-        value <= 0.7f -> amber
-        else -> red600
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(icon, fontSize = 14.sp)
-                Text(label, fontSize = 12.sp, color = Color(0xFF424242))
-            }
-            Text("$pct%", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = barColor)
-        }
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(6.dp)),
-            color = barColor,
-            trackColor = barColor.copy(alpha = 0.12f),
-        )
-    }
-}
-
-@Composable
-private fun PollutantBar(rank: Int, label: String, value: Double, barColor: Color) {
-    val progress = value.toFloat().coerceIn(0f, 1f)
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(barColor.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("$rank", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = barColor)
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(label, fontSize = 12.sp, color = Color(0xFF212121), fontWeight = FontWeight.Medium)
-                Text(
-                    value.fmt(2),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = barColor
-                )
-            }
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                color = barColor,
-                trackColor = barColor.copy(alpha = 0.10f)
-            )
-        }
-    }
-}
-
-private fun ecoScoreColor(score: Int): Color = when {
-    score >= 60 -> Color(0xFF2E7D32)
-    score >= 35 -> Color(0xFFE65100)
-    else        -> Color(0xFFC62828)
-}
-
-private fun ecoScoreLabel(score: Int): String = when {
-    score >= 80 -> "Excellent — minimal impact"
-    score >= 60 -> "Good — low impact"
-    score >= 35 -> "Fair — moderate impact"
-    else        -> "Poor — high environmental impact"
-}
-
-// ── Scan history row ──────────────────────────────────────────────────────────
-
-@Composable
-private fun ScanHistoryRow(entry: WasteSortEntry, onClick: () -> Unit) {
-    val ecoScore = entry.pollutantResult?.ecoScore
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Thumbnail
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFFF0F0F0))
-        ) {
-            NetworkImage(
-                url = entry.imageUrl,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
-        // Info
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                entry.createdAt,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF212121)
-            )
-            Text(
-                "${entry.totalObjects} items · by ${entry.scannedBy}",
-                fontSize = 11.sp,
-                color = Color.Gray
-            )
-        }
-
-        // Eco score badge
-        if (ecoScore != null) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(ecoScoreColor(ecoScore).copy(alpha = 0.1f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    "$ecoScore%",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = ecoScoreColor(ecoScore)
-                )
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFEEEEEE))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text("—", fontSize = 12.sp, color = Color.Gray)
-            }
-        }
-
-        Text("›", fontSize = 18.sp, color = Color(0xFFBDBDBD))
-    }
-}
-
-// ── Scan detail screen ────────────────────────────────────────────────────────
-
-@Composable
-private fun ScanDetailScreen(entry: WasteSortEntry, onBack: () -> Unit) {
-    val result = entry.pollutantResult
-    val allPollutantKeys = listOf(
-        "CO2", "CH4", "PM2.5", "NOx", "SO2",
-        "Pb", "Hg", "Cd",
-        "nitrate", "chemical_residue", "microplastic",
-        "dioxin", "toxic_chemicals", "non_biodegradable", "styrene",
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(bgGray)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            // ── Top bar ───────────────────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                TextButton(onClick = onBack) {
-                    Text("← Back", fontSize = 14.sp, color = orange700)
-                }
-                Column {
-                    Text(
-                        "Scan Detail",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF212121)
-                    )
-                    Text(entry.createdAt, fontSize = 11.sp, color = Color.Gray)
-                }
-            }
-
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // ── Scan image ────────────────────────────────────────────────
-                val imgUrl = result?.imageUrl ?: entry.imageUrl
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFFEEEEEE))
-                ) {
-                    NetworkImage(url = imgUrl, modifier = Modifier.fillMaxSize())
-                }
-
-                // ── Summary chip row ──────────────────────────────────────────
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    SummaryChip("${entry.totalObjects}", "Objects", orange600, Modifier.weight(1f).fillMaxHeight())
-                    if (result != null) {
-                        SummaryChip("${result.ecoScore}%", "Eco score", ecoScoreColor(result.ecoScore), Modifier.weight(1f).fillMaxHeight())
-                    }
-                    SummaryChip(entry.scannedBy, "By", Color(0xFF455A64), Modifier.weight(1f).fillMaxHeight())
-                }
-
-                // ── Detected items ────────────────────────────────────────────
-                if (result != null && result.items.isNotEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                "Detected Items",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF424242)
-                            )
-                            result.items.forEachIndexed { idx, item ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(28.dp)
-                                            .clip(CircleShape)
-                                            .background(orange600.copy(alpha = 0.1f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("${idx + 1}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = orange600)
-                                    }
-                                    Text(item.name, fontSize = 13.sp, modifier = Modifier.weight(1f), color = Color(0xFF212121))
-                                    Text(
-                                        "×${item.quantity}",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = orange700
-                                    )
-                                }
-                                if (idx < result.items.lastIndex) {
-                                    HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ── Impact ────────────────────────────────────────────────────
-                if (result != null) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(
-                                "Pollution Impact",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF424242)
-                            )
-                            ImpactMeter("💨", "Air pollution",   result.impact.airPollution.toFloat())
-                            ImpactMeter("💧", "Water pollution", result.impact.waterPollution.toFloat())
-                            ImpactMeter("🌱", "Soil pollution",  result.impact.soilPollution.toFloat())
-                        }
-                    }
-                }
-
-                // ── Pollutant breakdown ───────────────────────────────────────
-                if (result != null) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                "Pollutant Breakdown",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF424242)
-                            )
-                            allPollutantKeys.forEach { key ->
-                                val value = result.pollution[key] ?: 0.0
-                                val active = value > 0.0
-                                val labelColor = if (active) orange700 else Color(0xFF9E9E9E)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(if (active) orange700 else Color(0xFFE0E0E0))
-                                    )
-                                    Text(
-                                        pollutantLabel[key] ?: key,
-                                        fontSize = 12.sp,
-                                        color = Color(0xFF424242),
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        if (active) value.fmt(3) else "0",
-                                        fontSize = 12.sp,
-                                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-                                        color = labelColor
-                                    )
-                                }
-                                if (active) {
-                                    LinearProgressIndicator(
-                                        progress = { value.toFloat().coerceIn(0f, 1f) },
-                                        modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)),
-                                        color = orange700,
-                                        trackColor = orange700.copy(alpha = 0.08f)
-                                    )
-                                }
-                                if (key != allPollutantKeys.last()) {
-                                    HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.navigationBarsPadding())
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryChip(value: String, label: String, color: Color, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.1f))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Text(value, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = color, textAlign = TextAlign.Center)
-        Text(label, fontSize = 10.sp, color = color.copy(alpha = 0.8f), textAlign = TextAlign.Center)
     }
 }

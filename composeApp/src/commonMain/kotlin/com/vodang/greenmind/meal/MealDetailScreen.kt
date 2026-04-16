@@ -91,7 +91,7 @@ fun MealDetailScreen(meal: MealRecord, onBack: () -> Unit) {
                     .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
-                Text("←", fontSize = 18.sp, color = Color.White)
+                Text(s.backArrow, fontSize = 18.sp, color = Color.White)
             }
 
             // Ratio badge over image
@@ -115,7 +115,7 @@ fun MealDetailScreen(meal: MealRecord, onBack: () -> Unit) {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "plant",
+                        s.plant,
                         color = Color.White.copy(alpha = 0.85f),
                         fontSize = 11.sp
                     )
@@ -143,7 +143,7 @@ fun MealDetailScreen(meal: MealRecord, onBack: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        meal.description.ifBlank { "Unnamed meal" },
+                        meal.description.ifBlank { s.unnamedMeal },
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1B1B1B)
@@ -187,9 +187,9 @@ fun MealDetailScreen(meal: MealRecord, onBack: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        RatioThreshold(label = "Low",  threshold = "< 40%",  active = meal.plantRatio < 40,  activeColor = red)
-                        RatioThreshold(label = "OK",   threshold = "40–69%", active = meal.plantRatio in 40..69, activeColor = orange)
-                        RatioThreshold(label = "Good", threshold = "≥ 70%",  active = meal.plantRatio >= 70, activeColor = green800)
+                        RatioThreshold(label = "Low",  threshold = s.thresholdLow,  active = meal.plantRatio < 40,  activeColor = red)
+                        RatioThreshold(label = "OK",   threshold = s.thresholdOk,   active = meal.plantRatio in 40..69, activeColor = orange)
+                        RatioThreshold(label = "Good", threshold = s.thresholdGood,  active = meal.plantRatio >= 70, activeColor = green800)
                     }
                 }
             }
@@ -203,7 +203,7 @@ fun MealDetailScreen(meal: MealRecord, onBack: () -> Unit) {
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 Text(
-                    "🌿  Aim for at least 70% plant-based food to reduce your carbon footprint.",
+                    s.aimForPlant,
                     fontSize = 12.sp,
                     color = green800,
                     lineHeight = 18.sp

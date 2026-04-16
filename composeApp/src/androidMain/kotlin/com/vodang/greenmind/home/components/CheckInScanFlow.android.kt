@@ -19,8 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.vodang.greenmind.api.upload.requestAndUpload
-import com.vodang.greenmind.api.wastecollector.UpdateStatusRequest
-import com.vodang.greenmind.api.wastecollector.updateReportStatus
+import com.vodang.greenmind.api.wastecollector.CollectorCheckinRequest
+import com.vodang.greenmind.api.wastecollector.checkinPickup
 import com.vodang.greenmind.permission.CameraPermissionGate
 import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.launch
@@ -82,11 +82,11 @@ private fun CheckInScanContent(
                 val upload   = requestAndUpload(accessToken, filename, bytes, "image/jpeg")
 
                 phase = Phase.PATCHING
-                AppLogger.i("CheckIn", "Patching status report=$reportId url=${upload.imageUrl}")
-                updateReportStatus(
+                AppLogger.i("CheckIn", "Calling checkinPickup report=$reportId url=${upload.imageUrl}")
+                checkinPickup(
                     accessToken = accessToken,
                     id = reportId!!,
-                    request = UpdateStatusRequest(status = "done", imageEvidenceUrl = upload.imageUrl),
+                    request = CollectorCheckinRequest(imageUrl = upload.imageUrl),
                 )
 
                 AppLogger.i("CheckIn", "Check-in complete for report $reportId")

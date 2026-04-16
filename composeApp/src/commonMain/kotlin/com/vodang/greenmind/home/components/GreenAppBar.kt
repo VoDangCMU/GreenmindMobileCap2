@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.i18n.LocalAppStrings
 
 private val green800 = Color(0xFF2E7D32)
 private val green50  = Color(0xFFE8F5E9)
@@ -39,6 +40,7 @@ fun GreenAppBar(
     scrolled: Boolean = false,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
+    val s = LocalAppStrings.current
     val bgColor by animateColorAsState(
         targetValue = if (scrolled) Color.White else Color.Transparent,
         animationSpec = tween(200),
@@ -65,7 +67,7 @@ fun GreenAppBar(
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("←", fontSize = 18.sp, color = green800, fontWeight = FontWeight.Bold)
+                Text(s.backArrow, fontSize = 18.sp, color = green800, fontWeight = FontWeight.Bold)
             }
         }
         Column(modifier = Modifier.weight(1f)) {

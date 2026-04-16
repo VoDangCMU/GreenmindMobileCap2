@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.auth.UserDto
@@ -18,17 +19,52 @@ import com.vodang.greenmind.i18n.LocalAppStrings
 private val green100 = Color(0xFFC8E6C9)
 
 @Composable
-fun ProfilePlaceholder(user: UserDto? = null, onEditClick: () -> Unit = {}) {
+fun ProfilePlaceholder(
+    user: UserDto? = null,
+    onEditClick: () -> Unit = {},
+    compact: Boolean = false,
+) {
     val s = LocalAppStrings.current
-    Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(Modifier.height(32.dp))
-        Box(modifier = Modifier.size(96.dp).background(green100, CircleShape), contentAlignment = Alignment.Center) {
-            Text("👤", fontSize = 48.sp)
+
+    val avatarSize  = if (compact) 48.dp  else 96.dp
+    val avatarFont  = if (compact) 24.sp  else 48.sp
+    val nameFont    = if (compact) 14.sp  else 20.sp
+    val emailFont   = if (compact) 11.sp  else 14.sp
+    val topSpacer   = if (compact) 8.dp   else 32.dp
+    val midSpacer   = if (compact) 8.dp   else 16.dp
+    val botSpacer   = if (compact) 8.dp   else 32.dp
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(if (compact) 12.dp else 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(Modifier.height(topSpacer))
+        Box(
+            modifier = Modifier
+                .size(avatarSize)
+                .background(green100, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("👤", fontSize = avatarFont)
         }
-        Spacer(Modifier.height(16.dp))
-        Text(user?.fullName ?: s.profileName, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Text(user?.email ?: s.profileEmail, fontSize = 14.sp, color = Color.Gray)
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(midSpacer))
+        Text(
+            text = user?.fullName ?: s.profileName,
+            fontSize = nameFont,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = user?.email ?: s.profileEmail,
+            fontSize = emailFont,
+            color = Color.Gray,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(botSpacer))
         SectionCard(modifier = Modifier.clickable { onEditClick() }) {
             Text(s.editProfile, fontWeight = FontWeight.Medium)
         }

@@ -52,7 +52,7 @@ private fun PreAppSurveyBadge(onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Text("📋", fontSize = 32.sp)
+                Text(s.surveyBadgeIcon, fontSize = 32.sp)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = s.preAppSurveyBadgeTitle,
