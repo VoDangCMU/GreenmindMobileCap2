@@ -5,9 +5,13 @@ import com.vodang.greenmind.i18n.LocalAppStrings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -79,7 +83,7 @@ fun PollutionTrendCard(modifier: Modifier = Modifier) {
                         .background(Color(0xFFFFEBEE)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("📈", fontSize = 20.sp)
+                    Icon(Icons.Filled.TrendingUp, contentDescription = null, modifier = Modifier.size(22.dp), tint = Color(0xFFC62828))
                 }
                 Column {
                     Text(

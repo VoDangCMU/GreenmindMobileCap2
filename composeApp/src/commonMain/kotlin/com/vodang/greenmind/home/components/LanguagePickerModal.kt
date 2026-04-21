@@ -4,7 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -71,7 +75,7 @@ fun LanguagePickerModal(
                         color = if (selected) green800 else Color.Black,
                         modifier = Modifier.weight(1f)
                     )
-                    if (selected) Text("✓", fontSize = 16.sp, color = green800, fontWeight = FontWeight.Bold)
+                    if (selected) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp), tint = green800)
                 }
             }
         }

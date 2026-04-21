@@ -57,7 +57,9 @@ class AppStrings(val langCode: String) {
     var register: String = ""
     var alreadyHaveAccount: String = ""
     var home: String = ""
+    var wasteScan: String = ""
     var todos: String = ""
+    var household: String = ""
     var surveys: String = ""
     var blog: String = ""
     var settings: String = ""
@@ -75,6 +77,10 @@ class AppStrings(val langCode: String) {
     var langVietnamese: String = ""
     var langEnglish: String = ""
     var todayOverview: String = ""
+    var greenScoreShort: String = ""
+    var walkDistanceShort: String = ""
+    var energyShort: String = ""
+    var wasteKgShort: String = ""
     var wasteSort: String = ""
     var wasteSortValue: String = ""
     var garbageDrop: String = ""
@@ -102,6 +108,8 @@ class AppStrings(val langCode: String) {
     var scanMealDesc: String = ""
     var scanBill: String = ""
     var scanBillDesc: String = ""
+    var campaignsTitle: String = ""
+    var campaignsDesc: String = ""
     var wasteImpactTitle: String = ""
     var greenScoreTitle: String = ""
     var wasteImpactDesc: String = ""
@@ -276,6 +284,10 @@ class AppStrings(val langCode: String) {
     var blogCommentsLabel: String = ""
     var blogCommentsTitle: (Int) -> String = { "" }
     var blogAddCommentHint: String = ""
+    var blogCommentLabel: String = ""
+    var blogComments: String = ""
+    var blogSponsored: String = ""
+    var blogSponsoredCta: String = ""
     var surveyMinutes: (Int) -> String = { p0 -> "" }
     var surveyQuestions: (Int) -> String = { p0 -> "" }
     var surveyCompleted: String = ""
@@ -317,6 +329,8 @@ class AppStrings(val langCode: String) {
     var wasteReportCapture: String = ""
     var wasteReportRetake: String = ""
     var wasteReportSubmit: String = ""
+    var wasteReportCamera: String = ""
+    var wasteReportGallery: String = ""
     var wasteReportUploading: String = ""
     var wasteReportNoteLabel: String = ""
     var wasteReportNoteHint: String = ""
@@ -574,6 +588,10 @@ class AppStrings(val langCode: String) {
     var unknownLocation: String = ""
     var campaignActive: String = ""
     var campaignInactive: String = ""
+    var campaignsAllTab: String = ""
+    var campaignsMyTab: String = ""
+    var campaignsActiveTab: String = ""
+    var campaignsHistoryTab: String = ""
     var campaignDescription: (String) -> String = { _ -> "" }
     var dateRange: (String, String) -> String = { _, _ -> "" }
     var locationRadius: (Double, Double, Int) -> String = { _, _, _ -> "" }
@@ -592,6 +610,23 @@ class AppStrings(val langCode: String) {
     var wasteSorted: String = ""
     var wasteBroughtOut: String = ""
     var wasteCollected: String = ""
+    var wasteTotalMassTitle: String = ""
+    var wasteTotalMassDesc: String = ""
+    var wasteTotalMassTotalKg: String = ""
+    var wasteTotalMassEstimated: String = ""
+    var wasteTotalMassEmpty: String = ""
+    var wasteTotalMassHistory: String = ""
+    var wasteTotalMassDetailTitle: String = ""
+    var wasteTotalMassDetailStatus: String = ""
+    var wasteTotalMassDetailDate: String = ""
+    var wasteTotalMassDetailType: String = ""
+    var wasteTotalMassDetailLocation: String = ""
+    var wasteTotalMassDetailObjects: String = ""
+    var wasteTotalMassDetailItems: String = ""
+    var wasteTotalMassDetailAnalysis: String = ""
+    var wasteTotalMassQuickScan: String = ""
+    var wasteTotalMassQuickScanDesc: String = ""
+    var wasteTotalMassProcessing: String = ""
 
     // ── Waste Sort List ──────────────────────────────────────────────────────────
     var localScans: String = ""
@@ -637,6 +672,10 @@ class AppStrings(val langCode: String) {
     var habitProfile: String = ""
     var profileMealsIcon: String = ""
     var profileBillsIcon: String = ""
+
+    // ── Bottom Navigation ───────────────────────────────────────────────────────
+    var community: String = ""
+    var profileTab: String = ""
 }
 
 val LocalAppStrings = compositionLocalOf<AppStrings> { EnStrings }

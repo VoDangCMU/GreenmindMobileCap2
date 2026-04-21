@@ -2,6 +2,9 @@ package com.vodang.greenmind.home.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,8 +33,8 @@ fun CheckInCard(points: List<WastePoint>, onCheckInClick: (reportId: String) -> 
         Spacer(Modifier.height(10.dp))
         if (nextPoint == null) {
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("🎉", fontSize = 40.sp)
-                Text(s.checkInDone, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = green800c, textAlign = TextAlign.Center)
+                Icon(Icons.Filled.Celebration, contentDescription = null, modifier = Modifier.size(48.dp), tint = green800c)
+                Text(s.checkInDone, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = green800c, textAlign = TextAlign.Center)
                 Text(s.checkInDoneDesc, fontSize = 12.sp, color = Color.Gray, textAlign = TextAlign.Center)
             }
         } else {

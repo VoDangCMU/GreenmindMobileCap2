@@ -9,28 +9,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import com.vodang.greenmind.i18n.LocalAppStrings
-
-private val green800h = Color(0xFF2E7D32)
-private val green600h = Color(0xFF388E3C)
-private val green50h  = Color(0xFFE8F5E9)
-private val blue600h  = Color(0xFF1976D2)
-private val blue50h   = Color(0xFFE3F2FD)
-private val orange50h = Color(0xFFFFF3E0)
+import com.vodang.greenmind.theme.*
+import com.vodang.greenmind.home.components.StatsSummaryCard
 
 @Composable
 private fun PreAppSurveyBadge(onClick: () -> Unit) {
@@ -44,7 +39,7 @@ private fun PreAppSurveyBadge(onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    Brush.horizontalGradient(listOf(Color(0xFF2E7D32), Color(0xFF43A047)))
+                    Brush.horizontalGradient(listOf(Green800, Green600))
                 )
                 .padding(horizontal = 18.dp, vertical = 16.dp)
         ) {
@@ -76,14 +71,24 @@ private fun PreAppSurveyBadge(onClick: () -> Unit) {
 @Composable
 fun HouseholdDashboard(
     scrollState: ScrollState = rememberScrollState(),
+    // Core waste features
     onWasteSortClick: () -> Unit = {},
     onWasteImpactClick: () -> Unit = {},
     onHouseholdWasteClick: () -> Unit = {},
     onWasteStatClick: () -> Unit = {},
+    onWasteReportClick: () -> Unit = {},
+    onWasteTotalMassClick: () -> Unit = {},
+    // Scanning features
     onScanMealClick: () -> Unit = {},
     onScanBillClick: () -> Unit = {},
+    // Lifestyle features
+    onElectricityClick: () -> Unit = {},
+    onWalkDistanceClick: () -> Unit = {},
+    onEnvironmentalImpactClick: () -> Unit = {},
+    // Community features
     onBlogClick: () -> Unit = {},
-    onWasteReportClick: () -> Unit = {},
+    onCampaignsClick: () -> Unit = {},
+    // Onboarding
     showPreAppSurveyBadge: Boolean = false,
     onPreAppSurveyClick: () -> Unit = {},
 ) {
@@ -94,29 +99,29 @@ fun HouseholdDashboard(
         Dialog(onDismissRequest = { showScanModal = false }) {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(s.scanBillMealTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = green800h)
+                    Text(s.scanBillMealTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Green800)
                     Spacer(Modifier.height(8.dp))
-                    Text(s.scanBillMealDesc, fontSize = 14.sp, color = Color.Gray)
+                    Text(s.scanBillMealDesc, fontSize = 14.sp, color = TextSecondary)
                     Spacer(Modifier.height(24.dp))
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        FeatureButton("🍽️", s.scanMeal, s.scanMealDesc, green50h, green600h, Modifier.weight(1f)) { 
+                        FeatureButton(Icons.Filled.Restaurant, s.scanMeal, s.scanMealDesc, GreenBg50, GreenIcon, Modifier.weight(1f)) {
                             showScanModal = false
-                            onScanMealClick() 
+                            onScanMealClick()
                         }
-                        FeatureButton("🧾", s.scanBill, s.scanBillDesc, Color(0xFFFFF8E1), Color(0xFFF57F17), Modifier.weight(1f)) { 
+                        FeatureButton(Icons.Filled.Receipt, s.scanBill, s.scanBillDesc, YellowBg50, YellowIcon, Modifier.weight(1f)) {
                             showScanModal = false
-                            onScanBillClick() 
+                            onScanBillClick()
                         }
                     }
                 }
@@ -134,27 +139,44 @@ fun HouseholdDashboard(
         if (showPreAppSurveyBadge) {
             PreAppSurveyBadge(onClick = onPreAppSurveyClick)
         }
+
+        // Ocean Score Card at the top
         OceanScoreCard()
+        Spacer(modifier = Modifier.height(12.dp))
 
-        PollutionTrendCard()
+        // Stats Summary Card with real-time data
+        StatsSummaryCard()
+        Spacer(modifier = Modifier.height(8.dp))
 
-        Text(s.features, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
+        // Section Header for Features
+        Text(s.features, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FeatureButton("📷", s.wasteSort, s.wasteSortDesc, green50h, green800h, Modifier.weight(1f)) { onWasteSortClick() }
-                FeatureButton("📊", s.wasteImpactTitle, s.wasteImpactDesc, orange50h, Color(0xFFE65100), Modifier.weight(1f)) { onWasteImpactClick() }
+            // Row 1: Waste core features
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(110.dp)) {
+                FeatureGridButton(Icons.Filled.Recycling, s.wasteSort, GreenBg50, GreenIcon, Modifier.weight(1f)) { onWasteSortClick() }
+                FeatureGridButton(Icons.Filled.Delete, s.wasteReport, RedBg50, RedIcon, Modifier.weight(1f)) { onWasteReportClick() }
+                FeatureGridButton(Icons.Filled.Scale, s.wasteTotalMassTitle, BlueBg50, BlueIcon, Modifier.weight(1f)) { onWasteTotalMassClick() }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FeatureButton("📋", s.householdWasteStatusTitle, s.householdWasteStatusDesc, Color(0xFFF3E5F5), Color(0xFF6A1B9A), Modifier.weight(1f)) { onHouseholdWasteClick() }
-                FeatureButton("📈", s.wasteStatTitle, s.wasteStatDesc, blue50h, blue600h, Modifier.weight(1f)) { onWasteStatClick() }
+
+            // Row 2: Impact & analytics
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(110.dp)) {
+                FeatureGridButton(Icons.Filled.Biotech, s.environmentalImpact, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onEnvironmentalImpactClick() }
+                FeatureGridButton(Icons.Filled.Analytics, s.wasteImpactTitle, OrangeBg50, OrangeIcon, Modifier.weight(1f)) { onWasteImpactClick() }
+                FeatureGridButton(Icons.Filled.TrendingUp, s.wasteStatTitle, BlueBg50, BlueIcon, Modifier.weight(1f)) { onWasteStatClick() }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FeatureButton("📸", s.scanBillMealTitle, s.scanBillMealDesc, green50h, green600h, Modifier.weight(1f)) { showScanModal = true }
-                FeatureButton("📰", s.blog, s.blogDesc, Color(0xFFFFF8E1), Color(0xFFF57F17), Modifier.weight(1f)) { onBlogClick() }
+
+            // Row 3: Household & lifestyle
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(110.dp)) {
+                FeatureGridButton(Icons.Filled.Assignment, s.householdWasteStatusTitle, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onHouseholdWasteClick() }
+                FeatureGridButton(Icons.Filled.Lightbulb, s.electricityUsage, YellowBg50, YellowIcon, Modifier.weight(1f)) { onElectricityClick() }
+                FeatureGridButton(Icons.Filled.DirectionsWalk, s.walkDistance, GreenBg50, GreenIcon, Modifier.weight(1f)) { onWalkDistanceClick() }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FeatureButton("🗑️", s.wasteReport, s.wasteReportDesc, Color(0xFFFFEBEE), Color(0xFFB71C1C), Modifier.weight(1f)) { onWasteReportClick() }
-                Spacer(Modifier.weight(1f))
+
+            // Row 4: Community & scanning
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(110.dp)) {
+                FeatureGridButton(Icons.Filled.CameraAlt, s.scanBillMealTitle, GreenBg50, GreenIcon, Modifier.weight(1f)) { showScanModal = true }
+                FeatureGridButton(Icons.Filled.Newspaper, s.blog, YellowBg50, YellowIcon, Modifier.weight(1f)) { onBlogClick() }
+                FeatureGridButton(Icons.Filled.Handshake, s.campaignsTitle, TealBg50, TealIcon, Modifier.weight(1f)) { onCampaignsClick() }
             }
         }
     }

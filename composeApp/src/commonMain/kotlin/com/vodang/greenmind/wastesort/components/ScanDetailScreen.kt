@@ -5,8 +5,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.unit.times
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,11 +23,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
 import com.vodang.greenmind.api.households.GreenScoreEntryDto
 import com.vodang.greenmind.api.households.bringOutDetectTrash
-import com.vodang.greenmind.api.households.getGreenScoreByHousehold
+import com.vodang.greenmind.api.households.getGreenScoreHistory
+import com.vodang.greenmind.api.households.submitGreenScoreByDetectId
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.store.WasteSortStore
 import com.vodang.greenmind.wastereport.NetworkImage
 import com.vodang.greenmind.wastesort.WasteSortEntry
 import com.vodang.greenmind.wastesort.WasteSortStatus
@@ -408,20 +419,40 @@ fun ScanDetailScreen(
     onStatusChange: (WasteSortStatus) -> Unit = {},
 ) {
     val s = LocalAppStrings.current
-    val categories = entry.grouped.keys.toList()
-    var selectedCategory by remember(entry.id) {
+    val entries by WasteSortStore.entries.collectAsState()
+
+    // Always read from live store entry so background updates flow in
+    val liveEntry = entries.find { it.id == entry.id } ?: entry
+
+    val categories = liveEntry.grouped.keys.toList()
+    var selectedCategory by remember(liveEntry.id) {
         mutableStateOf(categories.firstOrNull() ?: "")
     }
-    var latestGreenScore by remember { mutableStateOf<GreenScoreEntryDto?>(null) }
+    var greenScoreLoading by remember { mutableStateOf(liveEntry.greenScoreResult == null) }
 
-    LaunchedEffect(Unit) {
-        val token       = SettingsStore.getAccessToken() ?: return@LaunchedEffect
-        val householdId = HouseholdStore.household.value?.id ?: return@LaunchedEffect
+    // Fetch green score using detectId, fall back to history
+    LaunchedEffect(liveEntry.backendId, liveEntry.id) {
+        val backendId = liveEntry.backendId ?: return@LaunchedEffect
+        val token = SettingsStore.getAccessToken() ?: return@LaunchedEffect
+
         try {
-            val resp = getGreenScoreByHousehold(token, householdId)
-            latestGreenScore = resp.data.greenScores.lastOrNull()
+            val resp = submitGreenScoreByDetectId(token, backendId)
+            WasteSortStore.updateGreenScore(liveEntry.id, resp.data)
+            AppLogger.i("ScanDetail", "submitGreenScoreByDetectId ok id=${resp.data.id}")
         } catch (e: Throwable) {
-            AppLogger.e("ScanDetail", "getGreenScore failed: ${e.message}")
+            AppLogger.e("ScanDetail", "submitGreenScoreByDetectId failed: ${e.message}")
+            // Fallback: try history
+            try {
+                val historyResp = getGreenScoreHistory(token)
+                val latest = historyResp.data.lastOrNull()
+                if (latest != null) {
+                    WasteSortStore.updateGreenScore(liveEntry.id, latest)
+                }
+            } catch (e2: Throwable) {
+                AppLogger.e("ScanDetail", "getGreenScoreHistory fallback failed: ${e2.message}")
+            }
+        } finally {
+            greenScoreLoading = false
         }
     }
 
@@ -435,13 +466,17 @@ fun ScanDetailScreen(
             ) {
                 // Lifecycle progress bar
                 item {
-                    LifecycleProgressBar(currentStatus = entry.status)
+                    LifecycleProgressBar(currentStatus = liveEntry.status)
                     HorizontalDivider(color = Color(0xFFE0E0E0))
                 }
 
-                // Eco score
+                // Eco score — skeleton while loading
                 item {
-                    EcoScoreCard(latestEntry = latestGreenScore)
+                    if (greenScoreLoading && liveEntry.greenScoreResult == null) {
+                        SkeletonEcoScoreCard()
+                    } else {
+                        EcoScoreCard(latestEntry = liveEntry.greenScoreResult)
+                    }
                     HorizontalDivider(color = Color(0xFFE0E0E0))
                 }
 
@@ -449,7 +484,7 @@ fun ScanDetailScreen(
                 item {
                     Box {
                         NetworkImage(
-                            url = entry.imageUrl,
+                            url = liveEntry.imageUrl,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(4f / 3f),
@@ -469,7 +504,7 @@ fun ScanDetailScreen(
                 }
 
                 // Category tabs + segment grid
-                if (entry.grouped.isNotEmpty()) {
+                if (liveEntry.grouped.isNotEmpty()) {
                     item {
                         Column(
                             modifier = Modifier
@@ -485,10 +520,13 @@ fun ScanDetailScreen(
                                 color = Color(0xFF1B1B1B),
                             )
 
-                            // Category tab pills
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Category tab pills — scrollable on small screens
+                            Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
                                 categories.forEach { cat ->
-                                    val count    = entry.grouped[cat]?.size ?: 0
+                                    val count    = liveEntry.grouped[cat]?.size ?: 0
                                     val selected = cat == selectedCategory
                                     Box(
                                         modifier = Modifier
@@ -503,7 +541,12 @@ fun ScanDetailScreen(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         ) {
-                                            Text(categoryEmoji(cat), fontSize = 14.sp)
+                                            Icon(
+                                                categoryEmoji(cat),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = if (selected) Color.White else categoryColor(cat)
+                                            )
                                             Text(
                                                 s.categoryTab(categoryLabel(cat), count),
                                                 fontSize = 13.sp,
@@ -516,7 +559,7 @@ fun ScanDetailScreen(
                             }
 
                             // Segment image grid
-                            val imageUrls = entry.grouped[selectedCategory] ?: emptyList()
+                            val imageUrls = liveEntry.grouped[selectedCategory] ?: emptyList()
                             SegmentGrid(imageUrls = imageUrls, category = selectedCategory)
                         }
                     }
@@ -525,7 +568,7 @@ fun ScanDetailScreen(
 
             // Sticky action bar at bottom
             HorizontalDivider(color = Color(0xFFE0E0E0))
-            ActionButton(entry = entry, onStatusChange = onStatusChange)
+            ActionButton(entry = liveEntry, onStatusChange = onStatusChange)
         }
     }
 }

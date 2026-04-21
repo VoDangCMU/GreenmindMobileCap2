@@ -11,6 +11,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -131,12 +136,20 @@ private fun BillScanContent(
                         cameraLauncher.launch(uri)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = green800)
-                ) { Text("📷 ${s.billCapture}") }
+                ) {
+                    Icon(Icons.Filled.CameraAlt, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(s.billCapture)
+                }
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { galleryLauncher.launch("image/*") }
-                ) { Text("🖼 ${s.billUpload}") }
+                ) {
+                    Icon(Icons.Filled.Image, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(s.billUpload)
+                }
                 Spacer(Modifier.height(12.dp))
                 TextButton(modifier = Modifier.fillMaxWidth(), onClick = onBack) {
                     Text(s.back, color = Color.Gray)
@@ -183,7 +196,11 @@ private fun BillScanContent(
                             photoUri = uri
                             cameraLauncher.launch(uri)
                         }
-                    ) { Text("🔄 ${s.billRetake}") }
+                    ) {
+                        Icon(Icons.Filled.Refresh, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(s.billRetake)
+                    }
                     Button(
                         modifier = Modifier.weight(1f),
                         onClick = {
@@ -313,7 +330,11 @@ private fun BillScanContent(
                             uploadedImageUrl = null
                             phase = BillScanPhase.IDLE
                         }
-                    ) { Text("🔄 ${s.billScanAgain}") }
+                    ) {
+                        Icon(Icons.Filled.Refresh, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(s.billScanAgain)
+                    }
                     Button(
                         modifier = Modifier.weight(1f),
                         onClick = {
@@ -324,7 +345,11 @@ private fun BillScanContent(
                             )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = green800)
-                    ) { Text("✅ ${s.billSave}") }
+                    ) {
+                        Icon(Icons.Filled.Check, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(s.billSave)
+                    }
                 }
 
                 Spacer(Modifier.navigationBarsPadding())

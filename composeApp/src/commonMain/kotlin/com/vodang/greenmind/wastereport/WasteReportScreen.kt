@@ -1,16 +1,30 @@
 package com.vodang.greenmind.wastereport
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,6 +40,7 @@ import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.launch
 
 private val green800 = Color(0xFF2E7D32)
+private val green600 = Color(0xFF388E3C)
 
 @Composable
 fun WasteReportScreen() {
@@ -33,6 +48,7 @@ fun WasteReportScreen() {
     val scope = rememberCoroutineScope()
 
     var showScan by remember { mutableStateOf(false) }
+    var fabExpanded by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedReport by remember { mutableStateOf<WasteReportDto?>(null) }
 
@@ -41,6 +57,9 @@ fun WasteReportScreen() {
     var isLoadingMy by remember { mutableStateOf(true) }
     var isLoadingAll by remember { mutableStateOf(false) }
     var allLoaded by remember { mutableStateOf(false) }
+
+    var isSubmitting by remember { mutableStateOf(false) }
+    var submitError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         val token = SettingsStore.getAccessToken() ?: run { isLoadingMy = false; return@LaunchedEffect }
@@ -66,11 +85,30 @@ fun WasteReportScreen() {
         }
     }
 
+    fun reloadMyReports() {
+        scope.launch {
+            isLoadingMy = true
+            val token = SettingsStore.getAccessToken() ?: run { isLoadingMy = false; return@launch }
+            try {
+                myReports = getMyWasteReports(token).data
+            } catch (e: Throwable) {
+                AppLogger.e("WasteReport", "Reload my reports failed: ${e.message}")
+            }
+            isLoadingMy = false
+        }
+    }
+
     if (showScan) {
         WasteReportScanScreen(
-            onReported = { form ->
+            onStartSubmit = { form ->
+                isSubmitting = true
+                submitError = null
                 scope.launch {
-                    val token = SettingsStore.getAccessToken() ?: return@launch
+                    val token = SettingsStore.getAccessToken() ?: run {
+                        isSubmitting = false
+                        submitError = "No access token"
+                        return@launch
+                    }
                     try {
                         val created = createWasteReport(
                             token,
@@ -86,11 +124,13 @@ fun WasteReportScreen() {
                         )
                         myReports = listOf(created) + myReports
                         if (allLoaded) allReports = listOf(created) + allReports
+                        showScan = false
                     } catch (e: Throwable) {
                         AppLogger.e("WasteReport", "Create failed: ${e.message}")
+                        submitError = e.message ?: "Failed to submit report"
                     }
+                    isSubmitting = false
                 }
-                showScan = false
             },
             onBack = { showScan = false }
         )
@@ -151,7 +191,7 @@ fun WasteReportScreen() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text("🗑️", fontSize = 48.sp)
+                        Text(Icons.Filled.Refresh.name, fontSize = 48.sp)
                         Text(
                             s.wasteReportEmpty,
                             fontSize = 14.sp,
@@ -175,22 +215,118 @@ fun WasteReportScreen() {
             }
         }
 
-        FloatingActionButton(
-            onClick = { showScan = true },
-            containerColor = green800,
-            contentColor = Color.White,
-            shape = RoundedCornerShape(16.dp),
+        // Submit loading overlay
+        if (isSubmitting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    CircularProgressIndicator(color = Color.White)
+                    Text("Đang gửi báo cáo…", color = Color.White, fontSize = 15.sp)
+                }
+            }
+        }
+
+        // Submit error snackbar
+        submitError?.let { errorMsg ->
+            Snackbar(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .navigationBarsPadding(),
+                action = {
+                    TextButton(onClick = { submitError = null }) {
+                        Text("Đóng", color = Color.White)
+                    }
+                },
+                containerColor = Color(0xFFC62828),
+                contentColor = Color.White,
+            ) {
+                Text(errorMsg)
+            }
+        }
+
+        // FAB with expandable menu
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
                 .navigationBarsPadding(),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("+", fontSize = 28.sp, fontWeight = FontWeight.Light)
+            AnimatedVisibility(
+                visible = fabExpanded,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    MiniFabRow(
+                        icon = Icons.Filled.Image,
+                        label = s.uploadImage,
+                        onClick = { fabExpanded = false; showScan = true }
+                    )
+                    MiniFabRow(
+                        icon = Icons.Filled.Add,
+                        label = s.takePhoto,
+                        onClick = { fabExpanded = false; showScan = true }
+                    )
+                }
+            }
+
+            FloatingActionButton(
+                onClick = { fabExpanded = !fabExpanded },
+                containerColor = green800,
+                contentColor = Color.White,
+                shape = CircleShape,
+            ) {
+                Icon(
+                    imageVector = if (fabExpanded) Icons.Filled.Close else Icons.Filled.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(if (fabExpanded) 20.dp else 28.dp)
+                )
+            }
         }
     }
 
     selectedReport?.let { report ->
         WasteReportDetailSheet(report = report, onDismiss = { selectedReport = null })
+    }
+}
+
+@Composable
+private fun MiniFabRow(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.clickable(onClick = onClick),
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+            Text(label, fontSize = 13.sp, color = Color(0xFF1B1B1B), fontWeight = FontWeight.Medium)
+        }
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(green800),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        }
     }
 }
 

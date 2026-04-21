@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -127,7 +130,7 @@ fun EnvImpactCard(result: WasteDetectResponse, modifier: Modifier = Modifier) {
                                 .background(orange50),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("🗑️", fontSize = 14.sp)
+                            Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(16.dp), tint = orange600)
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(

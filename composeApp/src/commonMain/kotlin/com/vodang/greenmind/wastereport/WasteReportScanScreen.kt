@@ -15,6 +15,6 @@ data class WasteReportFormData(
 
 @Composable
 expect fun WasteReportScanScreen(
-    onReported: (WasteReportFormData) -> Unit,
+    onStartSubmit: (WasteReportFormData) -> Unit,
     onBack: () -> Unit,
 )

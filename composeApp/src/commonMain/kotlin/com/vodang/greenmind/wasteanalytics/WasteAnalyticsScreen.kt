@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -184,7 +187,7 @@ fun WasteAnalyticsScreen() {
                     MultiSeriesCard(
                         title    = s.pollutionImpactTrends,
                         subtitle = s.airWaterSoil,
-                        icon     = "💨",
+                        icon     = Icons.Filled.Analytics.name,
                         seriesList = listOf(
                             SeriesData(s.seriesAir,   red700,  data.airPollution),
                             SeriesData(s.seriesWater, blue600, data.waterPollution),
@@ -199,7 +202,7 @@ fun WasteAnalyticsScreen() {
                     MultiSeriesCard(
                         title    = s.keyPollutants,
                         subtitle = s.co2DioxinMicroplastic,
-                        icon     = "☁️",
+                        icon     = Icons.Filled.Cloud.name,
                         seriesList = listOf(
                             SeriesData(s.seriesCO2,         red700,   data.co2),
                             SeriesData(s.seriesDioxin,       purple700, data.dioxin),

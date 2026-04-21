@@ -3,6 +3,9 @@ package com.vodang.greenmind.home.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,7 +31,7 @@ fun LanguageSwitcher(currentLang: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text("🌐", fontSize = 20.sp)
+        Icon(Icons.Filled.Language, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.DarkGray)
         Text(name, fontSize = 14.sp, color = Color.DarkGray, modifier = Modifier.weight(1f))
         Text(flag, fontSize = 20.sp)
         Text("›", fontSize = 18.sp, color = Color.Gray, fontWeight = FontWeight.Light)

@@ -16,7 +16,7 @@ private const val POLL_INTERVAL_MS = 15_000L
 
 object WalkDistanceStore {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var pollingJob: Job? = null
 
     private val _distanceMeters = MutableStateFlow(0)
@@ -29,7 +29,8 @@ object WalkDistanceStore {
                 val token = SettingsStore.getAccessToken()
                 if (token != null) {
                     try {
-                        _distanceMeters.value = getDistanceToday(token).data.totalDistance.toInt()
+                        val response = getDistanceToday(token)
+                        _distanceMeters.value = response.data.totalDistance.toInt()
                     } catch (_: Throwable) {
                         // keep last known value and retry next cycle
                     }
@@ -42,5 +43,16 @@ object WalkDistanceStore {
     fun stopPolling() {
         pollingJob?.cancel()
         pollingJob = null
+    }
+
+    /** Refresh distance immediately from API */
+    fun refresh() {
+        val token = SettingsStore.getAccessToken() ?: return
+        scope.launch {
+            try {
+                val response = getDistanceToday(token)
+                _distanceMeters.value = response.data.totalDistance.toInt()
+            } catch (_: Throwable) {}
+        }
     }
 }

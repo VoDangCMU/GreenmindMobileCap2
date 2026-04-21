@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -335,7 +337,7 @@ private fun OptionRow(
                         .background(Color.White),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("✓", color = green800, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(14.dp), tint = green800)
                 }
             }
         }

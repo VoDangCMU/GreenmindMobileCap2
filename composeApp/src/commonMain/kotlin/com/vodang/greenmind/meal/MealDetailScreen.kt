@@ -7,6 +7,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -72,7 +74,7 @@ fun MealDetailScreen(meal: MealRecord, onBack: () -> Unit) {
                         .background(Brush.linearGradient(listOf(green800, green600))),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🥗", fontSize = 72.sp)
+                    Icon(Icons.Filled.Restaurant, contentDescription = null, modifier = Modifier.size(80.dp), tint = Color.White.copy(alpha = 0.7f))
                 }
             }
 

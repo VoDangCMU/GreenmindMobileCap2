@@ -6,12 +6,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -86,7 +93,7 @@ fun SettingsScreen() {
             ) {
 
                 // ── Location Tracking ─────────────────────────────────────────
-                SettingsSectionHeader("🗺  ${s.settingsLocation}")
+                SettingsSectionHeader(s.settingsLocation, Icons.Filled.LocationOn)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -192,7 +199,7 @@ fun SettingsScreen() {
                 OceanScoreCard()
 
                 // ── Metrics Auto Update ───────────────────────────────────────
-                SettingsSectionHeader("📊  ${s.metricsAutoUpdate}")
+                SettingsSectionHeader(s.metricsAutoUpdate, Icons.Filled.Analytics)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -337,7 +344,7 @@ fun SettingsScreen() {
                 }
 
                 // ── Recent GPS ticks ──────────────────────────────────────────
-                SettingsSectionHeader("📡  ${s.settingsLocation} records")
+                SettingsSectionHeader("${s.settingsLocation} records", Icons.Filled.LocationOn)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -367,7 +374,7 @@ fun SettingsScreen() {
                 NetworkLogSection()
 
                 // ── General ───────────────────────────────────────────────────
-                SettingsSectionHeader("⚙  ${s.settingsGeneral}")
+                SettingsSectionHeader(s.settingsGeneral, Icons.Filled.Settings)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -400,7 +407,7 @@ fun SettingsScreen() {
                 }
 
                 // ── About ─────────────────────────────────────────────────────
-                SettingsSectionHeader("ℹ  ${s.settingsAbout}")
+                SettingsSectionHeader(s.settingsAbout, Icons.Filled.Info)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -412,7 +419,7 @@ fun SettingsScreen() {
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("🌱", fontSize = 22.sp)
+                            Icon(Icons.Filled.Eco, contentDescription = null, modifier = Modifier.size(24.dp), tint = green800)
                             Spacer(Modifier.width(10.dp))
                             Text(s.greenMind, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = green800, modifier = Modifier.weight(1f))
                             Text(s.version, fontSize = 13.sp, color = Color.Gray)
@@ -464,14 +471,18 @@ fun SettingsScreen() {
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 @Composable
-private fun SettingsSectionHeader(title: String) {
-    Text(
-        text = title,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color(0xFF424242),
-        modifier = Modifier.padding(start = 4.dp),
-    )
+private fun SettingsSectionHeader(title: String, icon: ImageVector? = null) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = green800)
+        }
+        Text(
+            text = title,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF424242),
+        )
+    }
 }
 
 @Composable

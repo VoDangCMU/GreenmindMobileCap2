@@ -13,6 +13,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -130,14 +135,18 @@ private fun MealScanContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = green800)
                 ) {
-                    Text("📷 ${s.mealCapture}")
+                    Icon(Icons.Filled.CameraAlt, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(s.mealCapture)
                 }
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { galleryLauncher.launch("image/*") }
                 ) {
-                    Text("🖼 ${s.mealUpload}")
+                    Icon(Icons.Filled.Image, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(s.mealUpload)
                 }
                 Spacer(Modifier.height(12.dp))
                 TextButton(modifier = Modifier.fillMaxWidth(), onClick = onBack) {
@@ -187,7 +196,9 @@ private fun MealScanContent(
                             cameraLauncher.launch(uri)
                         }
                     ) {
-                        Text("🔄 ${s.mealRetake}")
+                        Icon(Icons.Filled.Refresh, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(s.mealRetake)
                     }
                     Button(
                         modifier = Modifier.weight(1f),
@@ -350,14 +361,18 @@ private fun MealScanContent(
                                     phase = MealScanPhase.IDLE
                                 }
                             ) {
-                                Text("🔄 ${s.mealScanAgain}")
+                                Icon(Icons.Filled.Refresh, contentDescription = null)
+                                Spacer(Modifier.width(6.dp))
+                                Text(s.mealScanAgain)
                             }
                             Button(
                                 modifier = Modifier.weight(1f),
                                 onClick = { onScanComplete(res.plantRatio, mealName, imageUrl, res.plantImageBase64, res.dishImageBase64) },
                                 colors = ButtonDefaults.buttonColors(containerColor = green800)
                             ) {
-                                Text("✅ ${s.mealSave}")
+                                Icon(Icons.Filled.Check, contentDescription = null)
+                                Spacer(Modifier.width(6.dp))
+                                Text(s.mealSave)
                             }
                         }
                     }

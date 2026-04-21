@@ -12,11 +12,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.unit.size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -122,7 +130,12 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                 modifier = Modifier.size(logoSz).background(green800, shape = CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("🌱", fontSize = logoFs)
+                Icon(
+                    imageVector = Icons.Filled.Eco,
+                    contentDescription = null,
+                    modifier = Modifier.size(logoSz * 0.7f),
+                    tint = Color.White,
+                )
             }
             Spacer(Modifier.height(8.dp))
             Text(s.appName, fontSize = titleFs, fontWeight = FontWeight.Bold, color = green800)
@@ -155,12 +168,16 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                                 ),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(
-                                if (isComplete) "✓" else "$step",
-                                color = Color.White,
-                                fontSize = dotFs,
-                                fontWeight = FontWeight.Bold,
-                            )
+                            if (isComplete) {
+                                Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                            } else {
+                                Text(
+                                    "$step",
+                                    color = Color.White,
+                                    fontSize = dotFs,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(
@@ -555,7 +572,7 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                         focusedLabelColor = green800,
                         cursorColor = green800,
                     ),
-                    leadingIcon = { Text("🔍", fontSize = 16.sp) },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.Gray) },
                 )
                 Spacer(Modifier.height(8.dp))
             }
@@ -571,10 +588,10 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text(country.flag.ifBlank { "🏳" }, fontSize = 24.sp)
+                        Text(country.flag.ifBlank { "🏳️" }, fontSize = 24.sp)
                         Text(country.name.common, fontSize = 15.sp, color = Color(0xFF212121), modifier = Modifier.weight(1f))
                         if (selectedCountry?.cca2 == country.cca2) {
-                            Text("✓", fontSize = 16.sp, color = green800, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp), tint = green800)
                         }
                     }
                     HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)
@@ -605,7 +622,7 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                         focusedLabelColor = green800,
                         cursorColor = green800,
                     ),
-                    leadingIcon = { Text("🔍", fontSize = 16.sp) },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.Gray) },
                 )
                 Spacer(Modifier.height(8.dp))
             }
@@ -626,10 +643,10 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Text("📍", fontSize = 18.sp)
+                            Icon(Icons.Filled.LocationOn, contentDescription = null, modifier = Modifier.size(20.dp), tint = green800)
                             Text(cityName, fontSize = 15.sp, color = Color(0xFF212121), modifier = Modifier.weight(1f))
                             if (city == cityName) {
-                                Text("✓", fontSize = 16.sp, color = green800, fontWeight = FontWeight.Bold)
+                                Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp), tint = green800)
                             }
                         }
                         HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)

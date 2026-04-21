@@ -14,6 +14,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,17 +79,17 @@ private fun createWastePhotoUri(context: android.content.Context): Uri {
 
 @Composable
 actual fun WasteReportScanScreen(
-    onReported: (WasteReportFormData) -> Unit,
+    onStartSubmit: (WasteReportFormData) -> Unit,
     onBack: () -> Unit,
 ) {
     CameraPermissionGate(onDenied = onBack) {
-    WasteReportScanContent(onReported = onReported, onBack = onBack)
+    WasteReportScanContent(onStartSubmit = onStartSubmit, onBack = onBack)
     }
 }
 
 @Composable
 private fun WasteReportScanContent(
-    onReported: (WasteReportFormData) -> Unit,
+    onStartSubmit: (WasteReportFormData) -> Unit,
     onBack: () -> Unit,
 ) {
     val s       = LocalAppStrings.current
@@ -149,6 +154,23 @@ private fun WasteReportScanContent(
         // if in FORM and user cancelled → just stay in FORM with existing photos
     }
 
+    // ── Gallery launcher ─────────────────────────────────────────────────────
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes != null) {
+                    addAndUpload(bytes)
+                    if (phase == WasteReportScanPhase.IDLE) phase = WasteReportScanPhase.FORM
+                }
+            } catch (e: Throwable) {
+                AppLogger.e("WasteReport", "Gallery read failed: ${e.message}")
+            }
+        }
+    }
+
     // ── Helper: launch camera ─────────────────────────────────────────────────
     fun launchCamera() {
         val uri = createWastePhotoUri(context)
@@ -179,7 +201,9 @@ private fun WasteReportScanContent(
                             ReverseOptions(zoom = 18, addressDetails = true, language = "vi")
                         )
                         val suburb = place.address?.suburb ?: place.address?.neighbourhood
-                        if (!suburb.isNullOrBlank() && wardName.isBlank()) wardName = suburb
+                        if (!suburb.isNullOrBlank() && wardName.isBlank()) {
+                            wardName = suburb.replace(Regex("^(phường|ward|quận)\\s+", RegexOption.IGNORE_CASE), "")
+                        }
                     }
                 } catch (_: Throwable) { } finally {
                     isLoadingLocation = false
@@ -237,7 +261,7 @@ private fun WasteReportScanContent(
                                 },
                             )
                         }
-                        // "Add photo" button
+                        // "Add photo" button — camera
                         item {
                             Box(
                                 modifier = Modifier
@@ -252,10 +276,45 @@ private fun WasteReportScanContent(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center,
                                 ) {
-                                    Text("📷", fontSize = 26.sp)
+                                    Icon(
+                                        Icons.Filled.CameraAlt,
+                                        contentDescription = null,
+                                        tint = green600,
+                                        modifier = Modifier.size(26.dp)
+                                    )
                                     Text(
-                                        "+",
-                                        fontSize = 16.sp,
+                                        s.wasteReportCamera,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = green600,
+                                    )
+                                }
+                            }
+                        }
+                        // "Add photo" button — gallery
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .size(88.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White)
+                                    .border(2.dp, green600, RoundedCornerShape(12.dp))
+                                    .clickable { galleryLauncher.launch("image/*") },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Image,
+                                        contentDescription = null,
+                                        tint = green600,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                    Text(
+                                        s.wasteReportGallery,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = green600,
                                     )
@@ -366,9 +425,9 @@ private fun WasteReportScanContent(
                     if (!canSubmit && photos.isNotEmpty()) {
                         Text(
                             if (lastPhoto?.state == UploadState.UPLOADING)
-                                "⏳  Uploading last photo…"
+                                "Uploading last photo..."
                             else
-                                "⚠  Last photo upload failed — retry it above",
+                                "Last photo upload failed — retry it above",
                             fontSize = 12.sp,
                             color = if (lastPhoto?.state == UploadState.ERROR) red else Color.Gray,
                             textAlign = TextAlign.Center,
@@ -378,31 +437,30 @@ private fun WasteReportScanContent(
                     Button(
                         onClick = {
                             val last = photos.lastOrNull() ?: return@Button
-                            phase = WasteReportScanPhase.SUBMITTING
-                            scope.launch {
-                                onReported(
-                                    WasteReportFormData(
-                                        imageKey  = last.key ?: "",
-                                        imageUrl  = last.imageUrl ?: "",
-                                        wasteType = selectedWasteType,
-                                        description = description.ifBlank {
-                                            wasteTypeOptions.find { it.first == selectedWasteType }
-                                                ?.second?.trim() ?: selectedWasteType
-                                        },
-                                        lat      = currentLat,
-                                        lng      = currentLng,
-                                        wardName = wardName.ifBlank { "Unknown" },
-                                    )
+                            onStartSubmit(
+                                WasteReportFormData(
+                                    imageKey  = last.key ?: "",
+                                    imageUrl  = last.imageUrl ?: "",
+                                    wasteType = selectedWasteType,
+                                    description = description.ifBlank {
+                                        wasteTypeOptions.find { it.first == selectedWasteType }
+                                            ?.second?.trim() ?: selectedWasteType
+                                    },
+                                    lat      = currentLat,
+                                    lng      = currentLng,
+                                    wardName = wardName.ifBlank { "Unknown" },
                                 )
-                            }
+                            )
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = canSubmit,
                         colors = ButtonDefaults.buttonColors(containerColor = green800),
                         shape = RoundedCornerShape(12.dp),
                     ) {
+                        Icon(Icons.Filled.Check, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            "✅  ${s.wasteReportSubmit}",
+                            s.wasteReportSubmit,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp,
                         )
@@ -520,7 +578,12 @@ private fun PhotoThumb(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        Text("⚠", fontSize = 16.sp)
+                        Icon(
+                            Icons.Filled.Warning,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
                         Text("Retry", fontSize = 9.sp, color = Color.White)
                     }
                 }

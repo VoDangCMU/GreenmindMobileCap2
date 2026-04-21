@@ -2,6 +2,9 @@ package com.vodang.greenmind.home.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +26,7 @@ fun GreenMealCard() {
     val pct = 0.68f
     SectionCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("🥦", fontSize = 20.sp)
+            Icon(Icons.Filled.Eco, contentDescription = null, modifier = Modifier.size(22.dp), tint = green600)
             Spacer(Modifier.width(8.dp))
             Text(s.greenMealCardTitle, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             Spacer(Modifier.weight(1f))

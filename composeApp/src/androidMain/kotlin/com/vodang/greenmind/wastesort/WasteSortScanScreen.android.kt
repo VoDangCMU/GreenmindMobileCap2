@@ -6,6 +6,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +25,8 @@ import com.vodang.greenmind.api.households.DetectImageUrlRequest
 import com.vodang.greenmind.api.households.detectTrashOnly
 import com.vodang.greenmind.api.households.predictPollutant
 import com.vodang.greenmind.api.households.detectTotalMass
-import com.vodang.greenmind.api.households.getGreenScoreByHousehold
+import com.vodang.greenmind.api.households.submitGreenScoreByDetectId
+import com.vodang.greenmind.api.households.getGreenScoreHistory
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.api.upload.requestAndUpload
 import com.vodang.greenmind.api.wastedetect.WasteDetectImpact
@@ -224,16 +227,24 @@ private fun WasteSortScanContent(
                         AppLogger.e("HouseholdScan", "detectTotalMass failed: ${e.message}")
                     }
 
-                    val householdId = HouseholdStore.household.value?.id
-                    if (!householdId.isNullOrBlank()) {
+                    // Submit green score by detectId, then fall back to history
+                    try {
+                        val greenScoreResp = submitGreenScoreByDetectId(token, dto.id)
+                        WasteSortStore.updateGreenScore(entryId, greenScoreResp.data)
+                        AppLogger.i("HouseholdScan", "submitGreenScoreByDetectId ok id=${greenScoreResp.data.id}")
+                    } catch (e: Throwable) {
+                        AppLogger.e("HouseholdScan", "submitGreenScoreByDetectId failed: ${e.message}")
+                        // Fallback: get from history
                         try {
-                            val greenScore = getGreenScoreByHousehold(token, householdId)
-                            AppLogger.i("HouseholdScan", "getGreenScore ok householdId=$householdId scores=${greenScore.data.greenScores.size}")
-                        } catch (e: Throwable) {
-                            AppLogger.e("HouseholdScan", "getGreenScore failed: ${e.message}")
+                            val historyResp = getGreenScoreHistory(token)
+                            val latest = historyResp.data.lastOrNull()
+                            if (latest != null) {
+                                WasteSortStore.updateGreenScore(entryId, latest)
+                                AppLogger.i("HouseholdScan", "getGreenScoreHistory fallback ok")
+                            }
+                        } catch (e2: Throwable) {
+                            AppLogger.e("HouseholdScan", "getGreenScoreHistory fallback failed: ${e2.message}")
                         }
-                    } else {
-                        AppLogger.w("HouseholdScan", "getGreenScore skipped — no householdId")
                     }
                 }
             } catch (e: Throwable) {
@@ -335,7 +346,12 @@ private fun WasteSortScanContent(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Text("⚠️", fontSize = 48.sp)
+                    Icon(
+                        Icons.Filled.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFE65100),
+                        modifier = Modifier.size(48.dp)
+                    )
                     Text(
                         "Detection failed",
                         fontSize = 18.sp,

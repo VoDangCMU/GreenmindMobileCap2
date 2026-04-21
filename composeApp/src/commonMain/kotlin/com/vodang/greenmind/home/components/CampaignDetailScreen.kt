@@ -21,6 +21,7 @@ import com.vodang.greenmind.api.campaign.CampaignParticipantUser
 import com.vodang.greenmind.api.campaign.CampaignReport
 import com.vodang.greenmind.api.campaign.toCampaignParticipant
 import com.vodang.greenmind.api.participantcampaign.ParticipantCampaignDto
+import com.vodang.greenmind.api.participantcampaign.getMyParticipations
 import com.vodang.greenmind.api.participantcampaign.checkInCampaign
 import com.vodang.greenmind.api.participantcampaign.checkOutCampaign
 import com.vodang.greenmind.api.participantcampaign.registerCampaign
@@ -58,9 +59,29 @@ fun CampaignDetailScreen(
     val currentUser = remember { SettingsStore.getUser() }
 
     var participant by remember { mutableStateOf<CampaignParticipant?>(null) }
+    var participations by remember { mutableStateOf<List<ParticipantCampaignDto>>(emptyList()) }
 
-    LaunchedEffect(campaign, currentUser) {
-        participant = campaign.participants.find { it.user.id == currentUser?.id }
+    LaunchedEffect(campaign) {
+        participations = try {
+            getMyParticipations(access)
+        } catch (_: Throwable) {
+            emptyList()
+        }
+        val currentUserId = currentUser?.id ?: ""
+        participant = participations.find { it.userId == currentUserId && it.campaignId == campaign.id }?.let { p ->
+            CampaignParticipant(
+                id = p.id,
+                status = p.status,
+                checkInTime = p.checkInTime,
+                checkOutTime = p.checkOutTime,
+                user = CampaignParticipantUser(
+                    id = currentUserId,
+                    fullName = currentUser?.fullName ?: "",
+                    email = currentUser?.email ?: "",
+                    phoneNumber = null,
+                )
+            )
+        }
     }
 
     var isLoading by remember { mutableStateOf(false) }
@@ -152,7 +173,7 @@ fun CampaignDetailScreen(
             }
         } else {
             when (status) {
-                null -> ActionButton(s.volunteerJoinButton, green800v, Modifier.fillMaxWidth(), enabled = isActive) {
+                null -> ActionButton(s.volunteerJoinButton, green800v, Modifier.fillMaxWidth()) {
                     scope.launch {
                         isBusy = true; error = null
                         try {

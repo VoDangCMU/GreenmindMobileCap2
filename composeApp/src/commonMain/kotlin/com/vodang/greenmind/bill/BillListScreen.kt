@@ -10,12 +10,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -85,7 +95,7 @@ fun BillListScreen(onScanClick: () -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text("🧾", fontSize = 48.sp)
+                    Icon(Icons.Filled.Receipt, contentDescription = null, modifier = Modifier.size(56.dp), tint = green800)
                     Text(s.billListEmpty, color = Color.Gray, fontSize = 15.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(
@@ -97,7 +107,7 @@ fun BillListScreen(onScanClick: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text("📷", fontSize = 15.sp)
+                        Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
                         Text(s.billScanTitle, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -205,7 +215,10 @@ private fun InvoiceCard(invoice: InvoiceDto, onClick: () -> Unit) {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(formatAmount(grand, symbol), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF424242))
                 val plant = invoice.items?.filter { it.plantBased == true }?.sumOf { it.lineTotal ?: 0.0 } ?: 0.0
-                Text("🌿 ${formatAmount(plant, symbol)}", fontSize = 11.sp, color = green600)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Filled.Eco, contentDescription = null, modifier = Modifier.size(14.dp), tint = green600)
+                    Text("${formatAmount(plant, symbol)}", fontSize = 11.sp, color = green600)
+                }
             }
         }
     }
@@ -245,13 +258,13 @@ private fun InvoiceDetailSheet(invoice: InvoiceDto, onDismiss: () -> Unit) {
             // Meta
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (!invoice.vendor?.address.isNullOrBlank())
-                    SheetRow("📍", invoice.vendor.address)
+                    SheetRow(Icons.Filled.LocationOn, invoice.vendor.address)
                 val dateLine = listOfNotNull(invoice.datetime?.date, invoice.datetime?.time).joinToString("  ·  ")
-                if (dateLine.isNotBlank()) SheetRow("🗓", dateLine)
+                if (dateLine.isNotBlank()) SheetRow(Icons.Filled.CalendarMonth, dateLine)
                 if (!invoice.doc?.paymentMethod.isNullOrBlank())
-                    SheetRow("💳", invoice.doc.paymentMethod)
+                    SheetRow(Icons.Filled.CreditCard, invoice.doc.paymentMethod)
                 if (!invoice.doc?.notes.isNullOrBlank())
-                    SheetRow("📝", invoice.doc.notes)
+                    SheetRow(Icons.Filled.Notes, invoice.doc.notes)
             }
 
             // Items
@@ -277,7 +290,7 @@ private fun InvoiceDetailSheet(invoice: InvoiceDto, onDismiss: () -> Unit) {
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text(if (item.plantBased == true) "🌿" else "·", fontSize = 12.sp)
+                                    if (item.plantBased == true) Icon(Icons.Filled.Eco, contentDescription = null, modifier = Modifier.size(14.dp), tint = green600)
                                     Text(
                                         item.rawName ?: "Unknown",
                                         fontSize = 13.sp,
@@ -325,9 +338,9 @@ private fun InvoiceDetailSheet(invoice: InvoiceDto, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun SheetRow(icon: String, text: String) {
+private fun SheetRow(icon: ImageVector, text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
-        Text(icon, fontSize = 13.sp)
+        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = green800)
         Text(text, fontSize = 13.sp, color = Color(0xFF616161), lineHeight = 18.sp, modifier = Modifier.weight(1f))
     }
 }

@@ -4,7 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -14,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.i18n.LocalAppStrings
@@ -21,10 +28,10 @@ import com.vodang.greenmind.i18n.LocalAppStrings
 private val green800 = Color(0xFF2E7D32)
 private val green50 = Color(0xFFE8F5E9)
 
-enum class UserType(val icon: String) {
-    HOUSEHOLD("🏠"),
-    COLLECTOR("🚛"),
-    VOLUNTEER("🤝")
+enum class UserType(val icon: ImageVector) {
+    HOUSEHOLD(Icons.Filled.Home),
+    COLLECTOR(Icons.Filled.LocalShipping),
+    VOLUNTEER(Icons.Filled.Handshake)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,7 +71,7 @@ fun UserTypePickerModal(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(type.icon, fontSize = 28.sp)
+                    Icon(type.icon, contentDescription = null, modifier = Modifier.size(28.dp), tint = if (selected) green800 else Color.Gray)
                     Text(
                         labels[type] ?: "",
                         fontSize = 15.sp,
@@ -72,7 +79,7 @@ fun UserTypePickerModal(
                         color = if (selected) green800 else Color.Black,
                         modifier = Modifier.weight(1f)
                     )
-                    if (selected) Text("✓", fontSize = 16.sp, color = green800, fontWeight = FontWeight.Bold)
+                    if (selected) Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp), tint = green800)
                 }
             }
         }

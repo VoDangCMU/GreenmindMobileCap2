@@ -2,7 +2,15 @@ package com.vodang.greenmind.wastesort
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
 import com.vodang.greenmind.api.households.DetectTrashHistoryDto
+import com.vodang.greenmind.api.households.GreenScoreEntryDto
 import com.vodang.greenmind.api.households.getDetectHistoryByUser
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.api.wastesort.DetectTrashResponse
@@ -54,6 +62,8 @@ data class WasteSortEntry(
     val scannedBy: String,
     val status: WasteSortStatus = WasteSortStatus.SCANNED,
     val pollutantResult: WasteDetectResponse? = null,
+    val greenScoreResult: GreenScoreEntryDto? = null,
+    val totalMassKg: Double? = null,
 )
 
 // ── Category helpers ──────────────────────────────────────────────────────────
@@ -74,18 +84,18 @@ fun categoryBg(cat: String) = when (cat.lowercase()) {
     else         -> Color(0xFFF5F5F5)
 }
 
-fun categoryEmoji(cat: String) = when (cat.lowercase()) {
-    "recyclable" -> "♻️"
-    "residual"   -> "🗑️"
-    "organic"    -> "🌿"
-    "hazardous"  -> "⚠️"
-    else         -> "📦"
+fun categoryEmoji(cat: String): ImageVector = when (cat.lowercase()) {
+    "recyclable" -> Icons.Filled.Refresh
+    "residual"   -> Icons.Filled.Delete
+    "organic"    -> Icons.Filled.Eco
+    "hazardous"  -> Icons.Filled.Warning
+    else         -> Icons.Filled.Inventory2
 }
 
 fun categoryLabel(cat: String) = cat.replaceFirstChar { it.uppercase() }
 
 
-fun DetectTrashResponse.toEntry(scannedBy: String): WasteSortEntry {
+fun DetectTrashResponse.toEntry(scannedBy: String, massKg: Double? = null): WasteSortEntry {
     val date = nowIso8601().take(10) // "YYYY-MM-DD"
     return WasteSortEntry(
         id           = imageUrl.substringAfterLast("/").substringBeforeLast("."),
@@ -96,6 +106,7 @@ fun DetectTrashResponse.toEntry(scannedBy: String): WasteSortEntry {
         createdAt    = date,
         scannedBy    = scannedBy,
         status       = WasteSortStatus.SCANNED,
+        totalMassKg  = massKg,
     )
 }
 

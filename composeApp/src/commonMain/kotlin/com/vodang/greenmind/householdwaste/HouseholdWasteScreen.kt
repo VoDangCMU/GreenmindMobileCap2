@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -166,7 +169,7 @@ fun HouseholdWasteScreen(onBack: () -> Unit = {}, onNavigateToWasteImpact: () ->
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
                     // ── Section 1: Green Score ────────────────────────────────
-                    SectionHeader("🌿  Green Score", greenScoreEntries.size)
+                    SectionHeader("Green Score", greenScoreEntries.size, Icons.Filled.Eco)
                     if (greenScoreEntries.isEmpty()) {
                         EmptyState(s.noScoreHistory)
                     } else {
@@ -190,7 +193,7 @@ fun HouseholdWasteScreen(onBack: () -> Unit = {}, onNavigateToWasteImpact: () ->
 
                     // ── Section 2: Scan History ───────────────────────────────
                     val householdGroups = householdHistory.groupBy { it.imageUrl }
-                    SectionHeader("📷  Scan History", householdGroups.size)
+                    SectionHeader("Scan History", householdGroups.size, Icons.Filled.CameraAlt)
                     if (householdGroups.isEmpty()) {
                         EmptyState(s.noHouseholdScans)
                     } else {

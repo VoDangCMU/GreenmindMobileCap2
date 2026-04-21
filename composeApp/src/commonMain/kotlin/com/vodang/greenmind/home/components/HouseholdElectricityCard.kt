@@ -2,6 +2,9 @@ package com.vodang.greenmind.home.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,7 +35,7 @@ fun HouseholdElectricityCard() {
 
     SectionCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("💡", fontSize = 20.sp)
+            Icon(Icons.Filled.Lightbulb, contentDescription = null, modifier = Modifier.size(22.dp), tint = blue600)
             Spacer(Modifier.width(8.dp))
             Text(s.electricityWeekTitle, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             Spacer(Modifier.weight(1f))

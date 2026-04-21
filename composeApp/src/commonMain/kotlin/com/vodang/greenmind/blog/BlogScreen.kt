@@ -7,6 +7,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,16 +21,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import com.vodang.greenmind.api.blog.BlogDto
 import com.vodang.greenmind.api.blog.LeaderboardEntryDto
 import com.vodang.greenmind.api.blog.getBlogs
 import com.vodang.greenmind.api.blog.getLeaderboard
 import com.vodang.greenmind.api.blog.getMyBlogs
 import com.vodang.greenmind.api.blog.toggleBlogLike
+import com.vodang.greenmind.api.campaign.CampaignDto
+import com.vodang.greenmind.api.campaign.getAllCampaigns
+import com.vodang.greenmind.home.components.CampaignDetailScreen
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.platform.BackHandler
 import com.vodang.greenmind.store.SettingsStore
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 // -- Palette (green scheme preserved) ------------------------------------------
 
@@ -37,11 +46,14 @@ private val green50  = Color(0xFFE8F5E9)
 private val green100 = Color(0xFFC8E6C9)
 private val feedBg   = Color(0xFFEEF0F3)
 private val gray700  = Color(0xFF374151)
+private val gray600  = Color(0xFF424242)
 private val gray500  = Color(0xFF6B7280)
 private val gray400  = Color(0xFF9CA3AF)
 private val gray100  = Color(0xFFF3F4F6)
 private val divider  = Color(0xFFE4E6EB)
 private val red500   = Color(0xFFE53935)
+private val sponsoredBg = green50
+private val sponsoredBorder = green800
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -77,6 +89,20 @@ fun BlogScreen() {
     BackHandler(enabled = showCreate) { showCreate = false }
     BackHandler(enabled = selectedBlogId != null) { selectedBlogId = null }
 
+    // Campaign state for native ad injection
+    var allCampaigns by remember { mutableStateOf<List<CampaignDto>>(emptyList()) }
+    var selectedCampaignId by remember { mutableStateOf<String?>(null) }
+
+    val selectedCampaign = selectedCampaignId?.let { id -> allCampaigns.find { it.id == id } }
+    if (selectedCampaign != null) {
+        CampaignDetailScreen(
+            campaign = selectedCampaign,
+            accessToken = token,
+            onBack = { selectedCampaignId = null },
+        )
+        return
+    }
+
     if (showCreate) {
         CreateBlogScreen(
             accessToken = token,
@@ -105,48 +131,50 @@ fun BlogScreen() {
         return
     }
 
-    Column(Modifier.fillMaxSize().background(feedBg)) {
-        // -- Tab row -------------------------------------------------------
-        PrimaryTabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = Color.White,
-            contentColor = green800,
+    Column(Modifier.fillMaxSize()) {
+        // -- Top nav ------------------------------------------------------
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .background(Color.White),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick  = { selectedTab = 0 },
-                text = {
-                    Text(
-                        s.blogTabPosts,
-                        fontSize = 14.sp,
-                        fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
-                    )
-                }
+            Text(
+                s.blogTabPosts,
+                fontSize = 14.sp,
+                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
+                color = if (selectedTab == 0) green800 else gray500,
+                modifier = Modifier.clickable { selectedTab = 0 }.padding(vertical = 8.dp)
             )
-            Tab(
-                selected = selectedTab == 1,
-                onClick  = { selectedTab = 1 },
-                text = {
-                    Text(
-                        s.blogTabLeaderboard,
-                        fontSize = 14.sp,
-                        fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
-                    )
-                }
+
+            Text(
+                s.blogTabLeaderboard,
+                fontSize = 14.sp,
+                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
+                color = if (selectedTab == 1) green800 else gray500,
+                modifier = Modifier.clickable { selectedTab = 1 }.padding(vertical = 8.dp)
             )
         }
 
-        when (selectedTab) {
-            0 -> BlogListTab(
-                accessToken  = token,
-                refreshKey   = listRefreshKey,
-                reloadTrigger = reloadTrigger,
-                onSelectBlog = { selectedBlogId = it },
-                onCreatePost = { showCreate = true },
-                likedPosts   = likedPosts,
-                likeCounts   = likeCounts,
-            )
-            1 -> LeaderboardTab(accessToken = token)
+        // -- Content area ----------------------------------------------------
+        Box(modifier = Modifier.weight(1f).fillMaxWidth().background(feedBg)) {
+            when (selectedTab) {
+                0 -> BlogListTab(
+                    accessToken  = token,
+                    refreshKey   = listRefreshKey,
+                    reloadTrigger = reloadTrigger,
+                    onSelectBlog = { selectedBlogId = it },
+                    onCreatePost = { showCreate = true },
+                    likedPosts   = likedPosts,
+                    likeCounts   = likeCounts,
+                    allCampaigns = allCampaigns,
+                    onSelectCampaign = { selectedCampaignId = it },
+                    onCampaignsLoaded = { allCampaigns = it },
+                )
+                1 -> LeaderboardTab(accessToken = token)
+            }
         }
     }
 }
@@ -198,6 +226,9 @@ private fun BlogListTab(
     onCreatePost: () -> Unit,
     likedPosts: Map<String, Boolean>,
     likeCounts: Map<String, Int>,
+    allCampaigns: List<CampaignDto>,
+    onSelectCampaign: (String) -> Unit,
+    onCampaignsLoaded: (List<CampaignDto>) -> Unit,
 ) {
     val s     = LocalAppStrings.current
     val scope = rememberCoroutineScope()
@@ -208,6 +239,14 @@ private fun BlogListTab(
     var error         by remember { mutableStateOf<String?>(null) }
     var currentPage   by remember { mutableIntStateOf(1) }
     var totalPages    by remember { mutableIntStateOf(1) }
+
+    // Load campaigns once
+    LaunchedEffect(accessToken) {
+        try {
+            val campaigns = getAllCampaigns(accessToken)
+            onCampaignsLoaded(campaigns)
+        } catch (_: Throwable) { /* silently ignore — blog list works without campaigns */ }
+    }
 
     fun load(page: Int, query: String, append: Boolean = false) {
         scope.launch {
@@ -294,50 +333,84 @@ private fun BlogListTab(
             }
         }
 
-        else -> LazyColumn(Modifier.fillMaxSize()) {
-            // -- "What's on your mind?" row --------------------------------
-            item {
-                CreatePostPrompt(onTap = onCreatePost)
-                Spacer(Modifier.height(8.dp))
-            }
-
-            // -- Posts (edge-to-edge white blocks separated by gray gap) ---
-            items(posts, key = { it.id }) { post ->
-                val effectiveLiked = likedPosts[post.id] ?: post.isLiked || post.liked
-                val effectiveCount = likeCounts[post.id] ?: post.likeCount
-                BlogCard(
-                    post = post,
-                    effectiveLiked = effectiveLiked,
-                    effectiveLikeCount = effectiveCount,
-                    onClick = { onSelectBlog(post.id) },
-                    onLike = { toggleLike(post.id) },
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-
-            // -- Load more -------------------------------------------------
-            if (currentPage < totalPages) {
-                item {
-                    Box(
-                        Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (isLoadingMore) {
-                            CircularProgressIndicator(color = green800, modifier = Modifier.size(24.dp))
-                        } else {
-                            OutlinedButton(
-                                onClick = { load(currentPage + 1, "", append = true) },
-                                shape   = RoundedCornerShape(20.dp),
-                                colors  = ButtonDefaults.outlinedButtonColors(contentColor = green800),
-                            ) { Text(s.blogLoadMore) }
-                        }
+        else -> {
+            // Build interleaved list: every 2 blog posts → 1 campaign card
+            val feedItems = buildList {
+                val campaigns = allCampaigns.takeIf { it.isNotEmpty() } ?: emptyList()
+                var campaignIdx = 0
+                posts.forEachIndexed { index, post ->
+                    add(FeedItem.Blog(post))
+                    if ((index + 1) % 2 == 0 && campaignIdx < campaigns.size) {
+                        add(FeedItem.Campaign(campaigns[campaignIdx]))
+                        campaignIdx++
                     }
                 }
             }
 
-            item { Spacer(Modifier.navigationBarsPadding()) }
+            LazyColumn(Modifier.fillMaxSize()) {
+                // -- "What's on your mind?" row --------------------------------
+                item {
+                    CreatePostPrompt(onTap = onCreatePost)
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                // -- Feed items: blog posts and campaign cards -----------------
+                items(feedItems, key = {
+                    when (it) {
+                        is FeedItem.Blog -> "blog-${it.post.id}"
+                        is FeedItem.Campaign -> "campaign-${it.campaign.id}"
+                    }
+                }) { item ->
+                    when (item) {
+                        is FeedItem.Blog -> {
+                            val effectiveLiked = likedPosts[item.post.id] ?: item.post.isLiked || item.post.liked
+                            val effectiveCount = likeCounts[item.post.id] ?: item.post.likeCount
+                            BlogCard(
+                                post = item.post,
+                                effectiveLiked = effectiveLiked,
+                                effectiveLikeCount = effectiveCount,
+                                onClick = { onSelectBlog(item.post.id) },
+                                onLike = { toggleLike(item.post.id) },
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                        is FeedItem.Campaign -> {
+                            SponsoredCampaignCard(
+                                campaign = item.campaign,
+                                onClick = { onSelectCampaign(item.campaign.id) },
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                    }
+                }
+
+                // -- Load more -------------------------------------------------
+                if (currentPage < totalPages) {
+                    item {
+                        Box(
+                            Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (isLoadingMore) {
+                                CircularProgressIndicator(color = green800, modifier = Modifier.size(24.dp))
+                            } else {
+                                OutlinedButton(
+                                    onClick = { load(currentPage + 1, "", append = true) },
+                                    shape   = RoundedCornerShape(20.dp),
+                                    colors  = ButtonDefaults.outlinedButtonColors(contentColor = green800),
+                                ) { Text(s.blogLoadMore) }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
+}
+
+private sealed class FeedItem {
+    data class Blog(val post: BlogDto) : FeedItem()
+    data class Campaign(val campaign: CampaignDto) : FeedItem()
 }
 
 // -- Blog card (Facebook post style) -------------------------------------------
@@ -387,9 +460,9 @@ private fun BlogCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Text(formatDateShort(post.createdAt), fontSize = 12.sp, color = gray500)
-                        Text("\u00B7", fontSize = 12.sp, color = gray500)
-                        Text("\uD83D\uDD50 ${readMin}m", fontSize = 12.sp, color = gray500)
+                        Text(formatDateShort(post.createdAt), fontSize = 12.sp, color = gray600)
+                        Text("\u00B7", fontSize = 12.sp, color = gray600)
+                        Text("\uD83D\uDD50 ${readMin}m", fontSize = 12.sp, color = gray600)
                     }
                 }
             }
@@ -409,12 +482,12 @@ private fun BlogCard(
             // -- Body excerpt ----------------------------------------------
             if (!post.content.isNullOrBlank()) {
                 Spacer(Modifier.height(4.dp))
-                val excerpt = if (post.content.length > 150) post.content.take(150) + "..." else post.content
+                val excerpt = if (post.content.length > 200) post.content.take(200) + "..." else post.content
                 Text(
                     excerpt,
                     modifier   = Modifier.padding(horizontal = 16.dp),
                     fontSize   = 14.sp,
-                    color      = Color(0xFF333333),
+                    color      = Color(0xFF1A1A1A),
                     maxLines   = 4,
                     overflow   = TextOverflow.Ellipsis,
                     lineHeight = 21.sp,
@@ -436,15 +509,23 @@ private fun BlogCard(
 
             Spacer(Modifier.height(10.dp))
 
-            // -- Like count summary (e.g. "\u2665 12") -------------------------
-            if (effectiveLikeCount > 0) {
+            // -- Like + Comment count summary ----------------------------------
+            if (effectiveLikeCount > 0 || post.commentCount > 0) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Text("\u2665", fontSize = 14.sp, color = if (effectiveLiked) red500 else gray500)
-                    Text("$effectiveLikeCount", fontSize = 13.sp, color = gray500)
+                    if (effectiveLikeCount > 0) {
+                        Text("\u2665", fontSize = 14.sp, color = if (effectiveLiked) red500 else gray600)
+                        Text("$effectiveLikeCount", fontSize = 13.sp, color = gray600)
+                    }
+                    if (effectiveLikeCount > 0 && post.commentCount > 0) {
+                        Text(" · ", fontSize = 13.sp, color = gray600)
+                    }
+                    if (post.commentCount > 0) {
+                        Text("${post.commentCount} ${s.blogComments}", fontSize = 13.sp, color = gray600)
+                    }
                 }
                 Spacer(Modifier.height(6.dp))
             }
@@ -452,7 +533,7 @@ private fun BlogCard(
             // -- Divider ---------------------------------------------------
             HorizontalDivider(Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = divider)
 
-            // -- Action bar: Like \u00B7 Read -----------------------------------
+            // -- Action bar: Like | Comment -----------------------------------
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -465,25 +546,25 @@ private fun BlogCard(
                         Text(
                             if (effectiveLiked) "\u2665" else "\u2661",
                             fontSize = 18.sp,
-                            color = if (effectiveLiked) red500 else gray500,
+                            color = if (effectiveLiked) red500 else gray600,
                         )
                         Text(
                             if (effectiveLiked) s.blogLiked else s.blogLike,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (effectiveLiked) red500 else gray500,
+                            color = if (effectiveLiked) red500 else gray600,
                         )
                     }
                 }
-                //TextButton(onClick = onClick, modifier = Modifier.weight(1f)) {
-                //    Row(
-                //        verticalAlignment = Alignment.CenterVertically,
-                //        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                //    ) {
-                //        Text("\uD83D\uDCD6", fontSize = 16.sp)
-                //        Text(s.blogLoadMore, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray500)
-                //    }
-                //}
+                TextButton(onClick = onClick, modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text("\uD83D\uDCAC", fontSize = 16.sp, color = gray600)
+                        Text(s.blogCommentLabel, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray600)
+                    }
+                }
             }
         }
     }
@@ -512,15 +593,28 @@ private fun LeaderboardTab(accessToken: String) {
     LaunchedEffect(Unit) { load() }
 
     Column(Modifier.fillMaxSize()) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 20.dp, vertical = 14.dp)
+        // -- Leaderboard header ---------------------------------------------
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.White,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(s.leaderboardTitle, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = gray700)
-                Text(s.leaderboardSubtitle, fontSize = 12.sp, color = gray400)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.EmojiEvents,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = Color(0xFFFFD700),
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(s.leaderboardTitle, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = gray700)
+                    Text(s.leaderboardSubtitle, fontSize = 12.sp, color = gray400)
+                }
             }
         }
 
@@ -571,8 +665,6 @@ private fun LeaderboardTab(accessToken: String) {
                 items(rest, key = { it.userId }) { entry ->
                     LeaderboardRow(entry = entry)
                 }
-
-                item { Spacer(Modifier.navigationBarsPadding()) }
             }
         }
     }
@@ -685,6 +777,122 @@ private fun LeaderboardRow(entry: LeaderboardEntryDto) {
                     fontWeight = FontWeight.SemiBold,
                     color = green800,
                 )
+            }
+        }
+    }
+}
+
+// -- Sponsored / Campaign card (native ad style) --------------------------------
+
+@Composable
+private fun SponsoredCampaignCard(
+    campaign: CampaignDto,
+    onClick: () -> Unit,
+) {
+    val s = LocalAppStrings.current
+    val isActive = campaign.status.equals("ACTIVE", ignoreCase = true) ||
+            campaign.status.equals("IN_PROGRESS", ignoreCase = true)
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 2.dp,
+        onClick = onClick,
+    ) {
+        Column {
+            // -- "Advertisement" annotation bar --------------------------------
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(sponsoredBg)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text("\uD83D\uDCC5", fontSize = 12.sp)
+                    Text(
+                        s.blogSponsored,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = green800,
+                    )
+                }
+                if (isActive) {
+                    Text(s.campaignActive, fontSize = 12.sp)
+                } else {
+                    Text(s.campaignInactive, fontSize = 12.sp)
+                }
+            }
+
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isActive) green50 else gray100),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            if (isActive) s.campaignActive else s.campaignInactive,
+                            fontSize = 20.sp,
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            campaign.name,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1A1A1A),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            s.dateRange(formatDateShort(campaign.startDate), formatDateShort(campaign.endDate)),
+                            fontSize = 11.sp,
+                            color = gray500,
+                        )
+                    }
+                }
+
+                if (campaign.description.isNotBlank()) {
+                    Text(
+                        campaign.description,
+                        fontSize = 13.sp,
+                        color = Color(0xFF555555),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 19.sp,
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isActive) green800 else gray400)
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        s.blogSponsoredCta,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                    )
+                }
             }
         }
     }

@@ -23,7 +23,7 @@ private val green800 = Color(0xFF2E7D32)
 private val green50  = Color(0xFFE8F5E9)
 
 /**
- * App bar matching the HomeTopBar aesthetic:
+ * App bar with green aesthetic:
  * transparent when at top, white + shadow when scrolled.
  *
  * @param title       Primary title text.

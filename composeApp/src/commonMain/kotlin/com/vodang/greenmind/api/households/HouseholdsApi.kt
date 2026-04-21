@@ -127,6 +127,7 @@ data class GreenScoreEntryDto(
     val householdId: String,
     val items: List<DetectItemDto>? = null,
     val reasons: List<String>? = null,
+    val level: String? = null,
     val createdAt: String
 )
 
@@ -140,6 +141,18 @@ data class GreenScoreHouseholdDto(
     val createdAt: String,
     val updatedAt: String,
     val greenScores: List<GreenScoreEntryDto>
+)
+
+@Serializable
+data class GreenScoreByDetectResponse(
+    val message: String? = null,
+    val data: GreenScoreEntryDto
+)
+
+@Serializable
+data class GreenScoreHistoryResponse(
+    val message: String? = null,
+    val data: List<GreenScoreEntryDto>
 )
 
 @Serializable
@@ -440,6 +453,30 @@ suspend fun getGreenScoreByHousehold(accessToken: String, householdId: String): 
     AppLogger.i("HouseholdsApi", "getGreenScoreByHousehold householdId=$householdId")
     return executeRequest<GreenScoreResponse> {
         httpClient.get("$BASE_URL/households/green-score/$householdId") {
+            header("Authorization", "Bearer $accessToken")
+        }
+    }
+}
+
+/**
+ * POST /households/green-score/{detectId} — calculates green score for a specific scan.
+ */
+suspend fun submitGreenScoreByDetectId(accessToken: String, detectId: String): GreenScoreByDetectResponse {
+    AppLogger.i("HouseholdsApi", "submitGreenScoreByDetectId detectId=$detectId")
+    return executeRequest<GreenScoreByDetectResponse> {
+        httpClient.post("$BASE_URL/households/green-score/$detectId") {
+            header("Authorization", "Bearer $accessToken")
+        }
+    }
+}
+
+/**
+ * GET /households/green-score/history — fallback green score from history.
+ */
+suspend fun getGreenScoreHistory(accessToken: String): GreenScoreHistoryResponse {
+    AppLogger.i("HouseholdsApi", "getGreenScoreHistory")
+    return executeRequest<GreenScoreHistoryResponse> {
+        httpClient.get("$BASE_URL/households/green-score/history") {
             header("Authorization", "Bearer $accessToken")
         }
     }

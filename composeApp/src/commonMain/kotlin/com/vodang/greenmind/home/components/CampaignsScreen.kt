@@ -3,17 +3,14 @@ package com.vodang.greenmind.home.components
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -24,7 +21,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.api.auth.UserDto
 import com.vodang.greenmind.api.campaign.CampaignDto
 import com.vodang.greenmind.api.campaign.CampaignParticipant
 import com.vodang.greenmind.api.campaign.CampaignParticipantUser
@@ -35,16 +31,14 @@ import com.vodang.greenmind.api.participantcampaign.checkOutCampaign
 import com.vodang.greenmind.api.participantcampaign.registerCampaign
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.location.Geo
-import com.vodang.greenmind.location.Location
 import com.vodang.greenmind.platform.BackHandler
 import com.vodang.greenmind.store.SettingsStore
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlin.math.*
 
-/** Haversine distance in meters between two lat/lng points */
 private fun distanceMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
-    val r = 6371000.0 // Earth radius in meters
+    val r = 6371000.0
     val toRad = kotlin.math.PI / 180.0
     val dLat = (lat2 - lat1) * toRad
     val dLng = (lng2 - lng1) * toRad
@@ -52,44 +46,56 @@ private fun distanceMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Doubl
     return r * 2 * atan2(sqrt(a), sqrt(1 - a))
 }
 
-/** Returns distance in meters from user location to campaign, or null if location unavailable */
-private fun campaignDistance(userLocation: Location?, campaign: CampaignDto): Double? =
+private fun campaignDistance(userLocation: com.vodang.greenmind.location.Location?, campaign: CampaignDto): Double? =
     userLocation?.let { loc -> distanceMeters(loc.latitude, loc.longitude, campaign.lat, campaign.lng) }
 
-private fun isInRange(dist: Double, radius: Int) = dist <= radius
+/** Sorts campaigns: in-range first (by distance asc), then out-of-range */
+private fun sortByDistance(campaigns: List<CampaignDto>, userLocation: com.vodang.greenmind.location.Location?): List<CampaignDto> =
+    campaigns.sortedWith(
+        compareBy<CampaignDto> { campaign ->
+            val dist = campaignDistance(userLocation, campaign) ?: Double.MAX_VALUE
+            dist > campaign.radius
+        }.thenBy { campaign ->
+            campaignDistance(userLocation, campaign) ?: Double.MAX_VALUE
+        }
+    )
 
-private val green800v = Color(0xFF2E7D32)
-private val green600v = Color(0xFF388E3C)
-private val green50v  = Color(0xFFE8F5E9)
-private val blue600v  = Color(0xFF1976D2)
-private val blue50v   = Color(0xFFE3F2FD)
-private val teal600v  = Color(0xFF00897B)
-private val teal50v   = Color(0xFFE0F2F1)
-private val orange600v = Color(0xFFF57C00)
-private val orange50v  = Color(0xFFFFF3E0)
-
-// Per-campaign mutable state tracked in memory for this session
-private data class CampaignUiState(
+private data class CampaignsUiState(
     val participant: CampaignParticipant? = null,
     val busy: Boolean = false,
     val error: String? = null,
 )
 
+private val green800c = Color(0xFF2E7D32)
+private val green600c = Color(0xFF388E3C)
+private val green50c  = Color(0xFFE8F5E9)
+private val blue600c  = Color(0xFF1976D2)
+private val blue50c   = Color(0xFFE3F2FD)
+private val teal600c  = Color(0xFF00897B)
+private val teal50c   = Color(0xFFE0F2F1)
+private val orange600c = Color(0xFFF57C00)
+private val orange50c  = Color(0xFFFFF3E0)
+private val gray200 = Color(0xFFEEEEEE)
+
+private enum class CampaignsTab { ALL, MY }
+private enum class MyCampaignsTab { ACTIVE, HISTORY }
+
 @Composable
-fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = rememberScrollState()) {
+fun CampaignsScreen(onBack: () -> Unit) {
     val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
 
     var campaigns by remember { mutableStateOf<List<CampaignDto>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }
-    var userLocation by remember { mutableStateOf<Location?>(null) }
+    var userLocation by remember { mutableStateOf<com.vodang.greenmind.location.Location?>(null) }
     var selectedCampaignId by remember { mutableStateOf<String?>(null) }
-    // Track participant state per campaign id
-    val campaignStates = remember { mutableStateMapOf<String, CampaignUiState>() }
-
+    val campaignStates = remember { mutableStateMapOf<String, CampaignsUiState>() }
     val accessToken = remember { SettingsStore.getAccessToken() ?: "" }
     val currentUser = remember { SettingsStore.getUser() }
+
+    var topTab by remember { mutableStateOf(CampaignsTab.ALL) }
+    var myTab by remember { mutableStateOf(MyCampaignsTab.ACTIVE) }
 
     BackHandler(enabled = selectedCampaignId != null) {
         selectedCampaignId = null
@@ -105,28 +111,26 @@ fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
                 accessToken = accessToken,
                 onBack = { selectedCampaignId = null },
                 onRegistered = { participant ->
-                    campaignStates[campaign.id] = CampaignUiState(participant = participant)
+                    campaignStates[campaign.id] = CampaignsUiState(participant = participant)
                 },
             )
             return
         }
     }
 
-    // Load campaigns (participation info is embedded in each campaign)
+    // Load campaigns
     LaunchedEffect(accessToken) {
         if (accessToken.isBlank()) { loading = false; return@LaunchedEffect }
         loading = true
         loadError = null
         try {
-            // Get user location first
             userLocation = Geo.service.locationUpdates.firstOrNull()
             val fetchedCampaigns = getAllCampaigns(accessToken)
             val currentUserId = SettingsStore.getUser()?.id ?: ""
-            // Pre-populate campaignStates from embedded participants list
             fetchedCampaigns.forEach { campaign ->
                 val myParticipation = campaign.participants.find { it.user.id == currentUserId }
                 if (myParticipation != null && !campaignStates.containsKey(campaign.id)) {
-                    campaignStates[campaign.id] = CampaignUiState(participant = myParticipation)
+                    campaignStates[campaign.id] = CampaignsUiState(participant = myParticipation)
                 }
             }
             campaigns = fetchedCampaigns
@@ -137,44 +141,127 @@ fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
         }
     }
 
+    val currentUserId = SettingsStore.getUser()?.id ?: ""
+
+    // Derived campaign lists
+    val myCampaignIds = remember(campaignStates, currentUserId) {
+        campaignStates.keys.toSet()
+    }
+
+    val myActiveCampaigns = remember(campaigns, campaignStates, userLocation) {
+        val myActive = campaigns.filter { c ->
+            val state = campaignStates[c.id]
+            val p = state?.participant
+            p != null && (p.status == "REGISTERED" || p.status == "CHECKED_IN")
+        }
+        sortByDistance(myActive, userLocation)
+    }
+
+    val myHistoryCampaigns = remember(campaigns, campaignStates, userLocation) {
+        val myDone = campaigns.filter { c ->
+            val state = campaignStates[c.id]
+            val p = state?.participant
+            p != null && (p.status == "CHECKED_OUT" || p.status == "COMPLETED")
+        }
+        sortByDistance(myDone, userLocation)
+    }
+
+    val sortedAllCampaigns = remember(campaigns, userLocation) {
+        sortByDistance(campaigns, userLocation)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(Color(0xFFF5F5F5))
     ) {
-        OceanScoreCard()
-
+        // ── Top tabs: All | My Campaigns ────────────────────────────────────────
         Row(
-            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
         ) {
-            MetricCard(Icons.Filled.Timer, s.volunteerHoursLabel, s.volunteerHoursValue, "", teal50v, teal600v, teal600v, Modifier.weight(1f).aspectRatio(1f))
-            MetricCard(Icons.Filled.CalendarToday, s.volunteerEventsLabel, s.volunteerEventsValue, "", green50v, green800v, green800v, Modifier.weight(1f).aspectRatio(1f))
-            MetricCard(Icons.Filled.Star, s.volunteerPointsLabel, s.volunteerPointsValue, "", blue50v, blue600v, blue600v, Modifier.weight(1f).aspectRatio(1f))
+            CampaignsTab.values().forEach { tab ->
+                val selected = topTab == tab
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { topTab = tab }
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = when (tab) {
+                            CampaignsTab.ALL -> s.campaignsAllTab
+                            CampaignsTab.MY  -> s.campaignsMyTab
+                        },
+                        fontSize = 14.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (selected) green800c else Color(0xFF9E9E9E),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .height(2.dp)
+                            .fillMaxWidth()
+                            .background(if (selected) green800c else Color.Transparent),
+                    )
+                }
+            }
         }
 
-        // Campaign list section
-        SectionCard {
-            Text(s.volunteerEventsCardTitle, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Spacer(Modifier.height(12.dp))
+        HorizontalDivider(color = gray200)
 
-            when {
-                loading -> {
-                    Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = green800v)
-                            Text(s.volunteerLoading, fontSize = 13.sp, color = Color.Gray)
-                        }
+        // ── Sub-tabs for My Campaigns ──────────────────────────────────────────
+        if (topTab == CampaignsTab.MY) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MyCampaignsTab.values().forEach { tab ->
+                    val selected = myTab == tab
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (selected) green800c else Color(0xFFEEEEEE))
+                            .clickable { myTab = tab }
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            text = when (tab) {
+                                MyCampaignsTab.ACTIVE  -> s.campaignsActiveTab
+                                MyCampaignsTab.HISTORY -> s.campaignsHistoryTab
+                            },
+                            fontSize = 13.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selected) Color.White else Color(0xFF757575),
+                        )
                     }
                 }
-                loadError != null -> {
+            }
+            HorizontalDivider(color = gray200)
+        }
+
+        // ── Content ────────────────────────────────────────────────────────────
+        when {
+            loading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = green800c)
+                        Text(s.volunteerLoading, fontSize = 13.sp, color = Color.Gray)
+                    }
+                }
+            }
+            loadError != null -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -188,33 +275,59 @@ fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
                                 finally { loading = false }
                             }
                         }) {
-                            Text(s.retry, fontSize = 12.sp, color = green800v)
+                            Text(s.retry, fontSize = 12.sp, color = green800c)
                         }
                     }
                 }
-                campaigns.isEmpty() -> {
-                    Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                        Text(s.volunteerNoCampaigns, fontSize = 13.sp, color = Color.Gray)
+            }
+            else -> {
+                val displayedCampaigns = when (topTab) {
+                    CampaignsTab.ALL -> sortedAllCampaigns
+                    CampaignsTab.MY -> when (myTab) {
+                        MyCampaignsTab.ACTIVE  -> myActiveCampaigns
+                        MyCampaignsTab.HISTORY -> myHistoryCampaigns
                     }
                 }
-                else -> {
-                    // Sort: in-range first (by distance ascending), then out-of-range by distance
-                    val sortedCampaigns = remember(campaigns, userLocation) {
-                        campaigns.sortedWith(
-                            compareBy<CampaignDto> { campaign ->
-                                val dist = campaignDistance(userLocation, campaign) ?: Double.MAX_VALUE
-                                !isInRange(dist, campaign.radius)
-                            }.thenBy { campaign ->
-                                campaignDistance(userLocation, campaign) ?: Double.MAX_VALUE
-                            }
+
+                if (displayedCampaigns.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = when (topTab) {
+                                CampaignsTab.ALL -> s.volunteerNoCampaigns
+                                CampaignsTab.MY -> when (myTab) {
+                                    MyCampaignsTab.ACTIVE  -> s.volunteerNoCampaigns
+                                    MyCampaignsTab.HISTORY -> s.volunteerNoCampaigns
+                                }
+                            },
+                            fontSize = 13.sp,
+                            color = Color.Gray,
                         )
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        sortedCampaigns.forEach { campaign ->
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        if (topTab == CampaignsTab.MY) {
+                            // Section label
+                            item {
+                                Text(
+                                    text = when (myTab) {
+                                        MyCampaignsTab.ACTIVE  -> s.campaignsActiveTab
+                                        MyCampaignsTab.HISTORY -> s.campaignsHistoryTab
+                                    } + " (${displayedCampaigns.size})",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF757575),
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                        }
+                        items(displayedCampaigns, key = { it.id }) { campaign ->
                             val dist = campaignDistance(userLocation, campaign)
                             val inRange = dist != null && dist <= campaign.radius
-                            val state = campaignStates[campaign.id] ?: CampaignUiState()
-                            CampaignRow(
+                            val state = campaignStates[campaign.id] ?: CampaignsUiState()
+                            CampaignsCampaignRow(
                                 campaign = campaign,
                                 state = state,
                                 s = s,
@@ -232,7 +345,7 @@ fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
                                                 email = currentUser?.email ?: "",
                                                 phoneNumber = null,
                                             )
-                                            campaignStates[campaign.id] = CampaignUiState(
+                                            campaignStates[campaign.id] = CampaignsUiState(
                                                 participant = result.toCampaignParticipant(user)
                                             )
                                         } catch (e: Throwable) {
@@ -249,7 +362,7 @@ fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
                                             val lat = loc?.latitude ?: 0.0
                                             val lng = loc?.longitude ?: 0.0
                                             val result = checkInCampaign(accessToken, campaign.id, lat, lng)
-                                            campaignStates[campaign.id] = CampaignUiState(
+                                            campaignStates[campaign.id] = CampaignsUiState(
                                                 participant = result.toCampaignParticipant(participant.user)
                                             )
                                         } catch (e: Throwable) {
@@ -266,7 +379,7 @@ fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
                                             val lat = loc?.latitude ?: 0.0
                                             val lng = loc?.longitude ?: 0.0
                                             val result = checkOutCampaign(accessToken, campaign.id, lat, lng)
-                                            campaignStates[campaign.id] = CampaignUiState(
+                                            campaignStates[campaign.id] = CampaignsUiState(
                                                 participant = result.toCampaignParticipant(participant.user)
                                             )
                                         } catch (e: Throwable) {
@@ -280,15 +393,13 @@ fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
                 }
             }
         }
-
-        GarbageHeatmapCard()
     }
 }
 
 @Composable
-private fun CampaignRow(
+private fun CampaignsCampaignRow(
     campaign: CampaignDto,
-    state: CampaignUiState,
+    state: CampaignsUiState,
     s: com.vodang.greenmind.i18n.AppStrings,
     distanceMeters: Double?,
     isInRange: Boolean,
@@ -300,7 +411,6 @@ private fun CampaignRow(
     val participant = state.participant
     val participantStatus = participant?.status
 
-    // Derive isActive from campaign dates if status not present
     val isActive = campaign.status.equals("ACTIVE", ignoreCase = true) ||
             campaign.status.equals("IN_PROGRESS", ignoreCase = true)
 
@@ -308,7 +418,7 @@ private fun CampaignRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFFF9FBF9))
+            .background(Color.White)
             .clickable(onClick = onClick)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -321,7 +431,7 @@ private fun CampaignRow(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (isActive) green50v else Color(0xFFF5F5F5)),
+                    .background(if (isActive) green50c else Color(0xFFF5F5F5)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(if (isActive) s.campaignActive else s.campaignInactive, fontSize = 18.sp)
@@ -335,8 +445,8 @@ private fun CampaignRow(
                 Text(s.locationRadius(campaign.lat, campaign.lng, campaign.radius), fontSize = 11.sp, color = Color.Gray)
                 if (distanceMeters != null) {
                     Spacer(Modifier.height(4.dp))
-                    val badgeColor = if (isInRange) green800v else Color(0xFFBDBDBD)
-                    val badgeBg = if (isInRange) green50v else Color(0xFFF5F5F5)
+                    val badgeColor = if (isInRange) green800c else Color(0xFFBDBDBD)
+                    val badgeBg = if (isInRange) green50c else Color(0xFFF5F5F5)
                     val badgeText = if (distanceMeters >= 1000) {
                         "${(distanceMeters / 1000 * 10).toInt() / 10.0} km"
                     } else {
@@ -355,42 +465,35 @@ private fun CampaignRow(
             }
         }
 
-        // Error row
         if (state.error != null) {
             Text(s.errorDisplay(state.error), fontSize = 11.sp, color = Color(0xFFB71C1C))
         }
 
-        // Action buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (state.busy) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = green800v)
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = green800c)
             } else {
                 when (participantStatus) {
-                    null -> {
-                        // Not registered
-                        ActionButton(s.volunteerJoinButton, green800v, onRegister)
-                    }
+                    null -> CampaignsActionButton(s.volunteerJoinButton, green800c, onRegister)
                     "REGISTERED" -> {
-                        // Registered, not checked in
-                        StatusBadge(s.registeredStatus(s.volunteerRegistered), green600v, green50v)
+                        CampaignsStatusBadge(s.registeredStatus(s.volunteerRegistered), green600c, green50c)
                         Spacer(Modifier.width(8.dp))
-                        ActionButton(s.volunteerCheckIn, teal600v, onCheckIn)
+                        CampaignsActionButton(s.volunteerCheckIn, teal600c, onCheckIn)
                     }
                     "CHECKED_IN" -> {
-                        // Checked in, can check out
-                        StatusBadge(s.checkedInStatus(s.volunteerCheckedIn), teal600v, teal50v)
+                        CampaignsStatusBadge(s.checkedInStatus(s.volunteerCheckedIn), teal600c, teal50c)
                         Spacer(Modifier.width(8.dp))
-                        ActionButton(s.volunteerCheckOut, orange600v, onCheckOut)
+                        CampaignsActionButton(s.volunteerCheckOut, orange600c, onCheckOut)
                     }
                     "CHECKED_OUT", "COMPLETED" -> {
-                        StatusBadge(s.completedStatus(s.volunteerCheckedOut), blue600v, blue50v)
+                        CampaignsStatusBadge(s.completedStatus(s.volunteerCheckedOut), blue600c, blue50c)
                     }
                     else -> {
-                        StatusBadge(participantStatus, Color.Gray, Color(0xFFF5F5F5))
+                        CampaignsStatusBadge(participantStatus, Color.Gray, Color(0xFFF5F5F5))
                     }
                 }
             }
@@ -399,10 +502,10 @@ private fun CampaignRow(
 }
 
 @Composable
-private fun ActionButton(label: String, color: Color, onClick: () -> Unit) {
-    Button(
+private fun CampaignsActionButton(label: String, color: Color, onClick: () -> Unit) {
+    androidx.compose.material3.Button(
         onClick = onClick,
-        colors = ButtonDefaults.buttonColors(containerColor = color),
+        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = color),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
         modifier = Modifier.height(32.dp)
     ) {
@@ -411,7 +514,7 @@ private fun ActionButton(label: String, color: Color, onClick: () -> Unit) {
 }
 
 @Composable
-private fun StatusBadge(label: String, textColor: Color, bgColor: Color) {
+private fun CampaignsStatusBadge(label: String, textColor: Color, bgColor: Color) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
@@ -422,6 +525,5 @@ private fun StatusBadge(label: String, textColor: Color, bgColor: Color) {
     }
 }
 
-/** Trims ISO timestamp to just the date portion for display */
 private fun formatDate(iso: String): String =
     if (iso.length >= 10) iso.substring(0, 10) else iso

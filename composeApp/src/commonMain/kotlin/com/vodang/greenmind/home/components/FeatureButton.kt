@@ -4,21 +4,27 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.Box
+import com.vodang.greenmind.theme.*
 
 @Composable
 fun FeatureButton(
-    icon: String,
+    icon: ImageVector,
     title: String,
     subtitle: String,
     bgColor: Color,
@@ -27,38 +33,106 @@ fun FeatureButton(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier.height(84.dp).clickable { onClick() },
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = modifier.height(100.dp).clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier.size(40.dp).background(bgColor, RoundedCornerShape(10.dp)),
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(bgColor, bgColor.copy(alpha = 0.6f))
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    ),
                 contentAlignment = Alignment.Center
-            ) { Text(icon, fontSize = 20.sp) }
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+            ) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp), tint = iconColor)
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
-                    text = title, 
-                    fontSize = 13.sp, 
-                    fontWeight = FontWeight.SemiBold, 
-                    color = Color.DarkGray,
+                    text = title,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
                     maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 20.sp
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     lineHeight = 16.sp
                 )
-                Text(
-                    text = subtitle, 
-                    fontSize = 10.sp, 
-                    color = Color.Gray, 
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
             }
+            Text(
+                "›",
+                fontSize = 24.sp,
+                color = TextHint,
+                fontWeight = FontWeight.Light
+            )
+        }
+    }
+}
+
+@Composable
+fun FeatureGridButton(
+    icon: ImageVector,
+    title: String,
+    bgColor: Color,
+    iconColor: Color = Color.Gray,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier.heightIn(min = 90.dp).clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp, horizontal = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(bgColor, bgColor.copy(alpha = 0.5f))
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = iconColor)
+            }
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 16.sp
+            )
         }
     }
 }

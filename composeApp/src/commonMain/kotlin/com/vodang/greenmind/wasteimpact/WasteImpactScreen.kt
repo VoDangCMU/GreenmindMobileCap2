@@ -7,11 +7,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -243,7 +249,7 @@ fun WasteImpactScreen() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text("😕", fontSize = 40.sp)
+                Icon(Icons.Filled.Warning, contentDescription = null, modifier = Modifier.size(48.dp), tint = orange600)
                 Text(error!!, fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
                 Button(
                     onClick = { refreshKey++ },
@@ -257,7 +263,7 @@ fun WasteImpactScreen() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text("📊", fontSize = 48.sp)
+                Text(Icons.Filled.Analytics.name, fontSize = 48.sp)
                 Text(s.wasteImpactNoData, fontSize = 14.sp, color = Color.Gray, textAlign = TextAlign.Center)
             }
 
@@ -328,12 +334,7 @@ private fun WasteImpactContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            "📊 ${s.wasteImpactTitle}",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
+                        Text(Icons.Filled.Analytics.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         Box(
                             Modifier
                                 .clip(RoundedCornerShape(8.dp))
@@ -494,7 +495,7 @@ private fun WasteImpactContent(
                     )
                     ImpactMeter(s.airIcon, s.air,   totalAir.toFloat())
                     ImpactMeter("💧", s.waterPollutionLabel, totalWater.toFloat())
-                    ImpactMeter("🌱", s.soilPollutionLabel,  totalSoil.toFloat())
+                    ImpactMeter(Icons.Filled.Eco.name, s.soilPollutionLabel,  totalSoil.toFloat())
                 }
             }
         }

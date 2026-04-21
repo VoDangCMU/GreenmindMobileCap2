@@ -7,12 +7,23 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -25,6 +36,7 @@ private val green600 = Color(0xFF388E3C)
 private val green50  = Color(0xFFE8F5E9)
 private val orange50 = Color(0xFFFFF3E0)
 private val orange   = Color(0xFFE65100)
+private val orange600 = Color(0xFFEF6C00)
 private val red50    = Color(0xFFFFEBEE)
 private val red700   = Color(0xFFC62828)
 private val blue50   = Color(0xFFE3F2FD)
@@ -50,7 +62,7 @@ internal fun WasteReportCard(report: WasteReportDto, onClick: () -> Unit) {
                     .background(orange50),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("🗑️", fontSize = 24.sp)
+                Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(24.dp), tint = orange600)
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(
@@ -144,23 +156,23 @@ internal fun WasteReportDetailSheet(report: WasteReportDto, onDismiss: () -> Uni
             }
 
             // Details
-            DetailRow("🗑️  Type", report.wasteType.replaceFirstChar { it.uppercase() })
-            DetailRow("📍  Ward", report.wardName)
-            DetailRow("🗓️  Reported", formatReportDate(report.createdAt))
+            DetailRow("Type", report.wasteType.replaceFirstChar { it.uppercase() }, Icons.Filled.Delete)
+            DetailRow("Ward", report.wardName, Icons.Filled.LocationOn)
+            DetailRow("Reported", formatReportDate(report.createdAt), Icons.Filled.CalendarMonth)
             if (!report.resolvedAt.isNullOrBlank()) {
-                DetailRow("✅  Resolved", formatReportDate(report.resolvedAt))
+                DetailRow("Resolved", formatReportDate(report.resolvedAt), Icons.Filled.CheckCircle)
             }
             if (!report.assignedTo.isNullOrBlank()) {
-                DetailRow("👷  Assigned to", report.assignedTo)
+                DetailRow("Assigned to", report.assignedTo, Icons.Filled.Build)
             }
             if (report.pollutionScore != null) {
-                DetailRow("☣️  Pollution score", "%.2f".fmt(report.pollutionScore))
+                DetailRow("Pollution score", "%.2f".fmt(report.pollutionScore), Icons.Filled.Warning)
             }
             if (!report.pollutionLevel.isNullOrBlank()) {
-                DetailRow("⚠️  Pollution level", report.pollutionLevel.replaceFirstChar { it.uppercase() })
+                DetailRow("Pollution level", report.pollutionLevel.replaceFirstChar { it.uppercase() }, Icons.Filled.Warning)
             }
             if (report.description.isNotBlank()) {
-                DetailRow("📝  Note", report.description)
+                DetailRow("Note", report.description, Icons.Filled.Notes)
             }
 
             // Segmented / heatmap images
@@ -255,6 +267,17 @@ internal fun StatusChip(status: String) {
 internal fun DetailRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, fontSize = 13.sp, color = Color(0xFF9E9E9E), modifier = Modifier.width(130.dp))
+        Text(value, fontSize = 13.sp, color = Color(0xFF1B1B1B), fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+internal fun DetailRow(label: String, value: String, icon: ImageVector) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.width(130.dp)) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color(0xFF9E9E9E))
+            Text(label, fontSize = 13.sp, color = Color(0xFF9E9E9E))
+        }
         Text(value, fontSize = 13.sp, color = Color(0xFF1B1B1B), fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
     }
 }

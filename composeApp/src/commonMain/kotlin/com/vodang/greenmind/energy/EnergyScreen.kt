@@ -8,6 +8,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -106,10 +109,11 @@ fun EnergyScreen() {
                         Text(s.vsYesterday("5%"), fontSize = 12.sp, color = Color.White)
                         }
                     }
-                    Text(
-                        "💡",
-                        fontSize = 56.sp,
-                        modifier = Modifier.align(Alignment.CenterEnd)
+                    Icon(
+                        imageVector = Icons.Filled.Lightbulb,
+                        contentDescription = null,
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                        tint = Color.White.copy(alpha = 0.3f),
                     )
                 }
             }

@@ -3,11 +3,14 @@ package com.vodang.greenmind.preappsurvey
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.unit.size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,7 +33,7 @@ fun DoneScreen(s: AppStrings, onContinue: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(32.dp)
         ) {
-            Text("🌿", fontSize = 72.sp)
+            Icon(Icons.Filled.Eco, contentDescription = null, modifier = Modifier.size(88.dp), tint = Color.White.copy(alpha = 0.9f))
             Spacer(Modifier.height(24.dp))
             Text(
                 text = s.preAppSurveyDone,

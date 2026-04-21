@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,7 +22,8 @@ import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.survey.SurveyAnswerDto
 import com.vodang.greenmind.api.survey.SurveyDetailDto
 import com.vodang.greenmind.api.survey.SurveyQuestionDto
-import com.vodang.greenmind.home.components.HomeTopBar
+import com.vodang.greenmind.components.AppScaffold
+import com.vodang.greenmind.home.components.BottomNavTab
 import com.vodang.greenmind.home.components.UserType
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.SettingsStore
@@ -56,23 +59,20 @@ fun SurveyTakingScreen(
     val roleSwitchEnabled by SettingsStore.roleSwitcherEnabled.collectAsState()
     val userType = UserType.HOUSEHOLD
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(greenBg)
+    AppScaffold(
+        title = survey.title,
+        onBack = onBack,
+        userType = userType,
+        showRoleSwitcher = roleSwitchEnabled,
+        selectedTab = BottomNavTab.HOME,
+        onTabSelected = {},
     ) {
-        // Top bar
-        HomeTopBar(
-            onMenuClick = {},
-            onCameraClick = {},
-            user = user,
-            userType = userType,
-            onSwitchClick = {},
-            showRoleSwitcher = roleSwitchEnabled,
-            scrolled = false,
-        )
-
-        // Progress subtitle
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(greenBg)
+        ) {
+            // Progress subtitle
         Text(
             s.surveyQuestion(currentIndex + 1, questions.size),
             modifier = Modifier
@@ -190,6 +190,7 @@ fun SurveyTakingScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -295,7 +296,12 @@ private fun SurveyThankYouScreen(title: String, onDone: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("✅", fontSize = 64.sp, textAlign = TextAlign.Center)
+        Icon(
+            Icons.Filled.Check,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = green800
+        )
         Spacer(Modifier.height(20.dp))
         Text(
             text = s.surveySubmitted,

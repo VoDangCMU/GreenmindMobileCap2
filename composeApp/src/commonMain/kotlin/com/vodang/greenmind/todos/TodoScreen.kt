@@ -56,33 +56,33 @@ fun TodoScreen() {
             .background(greenBg)
     ) {
             // ── Header metrics ──────────────────────────────────────────────────
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.linearGradient(listOf(green800, green600)))
-                    .padding(horizontal = 20.dp, vertical = 20.dp)
-            ) {
-                Text(
-                    "🌿 ${s.todosScreenTitle}",
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    s.todosCardProgress(done, total),
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 13.sp
-                )
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = Color.White,
-                    trackColor = Color.White.copy(alpha = 0.3f)
-                )
-            }
+            // Column(
+            //     modifier = Modifier
+            //         .fillMaxWidth()
+            //         .background(Brush.linearGradient(listOf(green800, green600)))
+            //         .padding(horizontal = 20.dp, vertical = 20.dp)
+            // ) {
+            //     Text(
+            //         "🌿 ${s.todosScreenTitle}",
+            //         color = Color.White,
+            //         fontSize = 24.sp,
+            //         fontWeight = FontWeight.Bold
+            //     )
+            //     Text(
+            //         s.todosCardProgress(done, total),
+            //         color = Color.White.copy(alpha = 0.8f),
+            //         fontSize = 13.sp
+            //     )
+            //     LinearProgressIndicator(
+            //         progress = { progress },
+            //         modifier = Modifier
+            //             .fillMaxWidth()
+            //             .height(6.dp)
+            //             .clip(RoundedCornerShape(3.dp)),
+            //         color = Color.White,
+            //         trackColor = Color.White.copy(alpha = 0.3f)
+            //     )
+            // }
 
         // ── Add todo row ──────────────────────────────────────────────────────
         Row(

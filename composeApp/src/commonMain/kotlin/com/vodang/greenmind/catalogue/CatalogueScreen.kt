@@ -8,11 +8,40 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.filled.House
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.Pending
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Recycling
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Scale
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,7 +60,7 @@ import com.vodang.greenmind.i18n.LocalAppStrings
 // ──────────────────────────────────────────────────────────────────────────
 
 private data class FeatureEntry(
-    val icon: String,
+    val icon: ImageVector,
     val title: String,
     val desc: String,
     val onClick: (() -> Unit)? = null,
@@ -46,30 +75,35 @@ fun CatalogueScreen(onWasteReport: () -> Unit, onPreAppSurvey: () -> Unit = {}) 
 
     // ── Feature lists ──────────────────────────────────────────────────────
     val allFeatures = listOf(
-        FeatureEntry("📋", s.todos,    s.todosDesc),
-        FeatureEntry("📊", s.surveys,  s.surveysDesc),
-        FeatureEntry("📰", s.blog,     s.blogDesc),
-        FeatureEntry("🌊", s.oceanTitle, s.oceanSubtitle),
-        FeatureEntry("📝", s.preAppSurveyTitle, s.preAppSurveySubtitle, onClick = onPreAppSurvey),
+        FeatureEntry(Icons.Filled.Description, s.todos,    s.todosDesc),
+        FeatureEntry(Icons.Filled.Analytics,   s.surveys,  s.surveysDesc),
+        FeatureEntry(Icons.Filled.Newspaper, s.blog,     s.blogDesc),
+        FeatureEntry(Icons.Filled.Public, s.oceanTitle, s.oceanSubtitle),
+        FeatureEntry(Icons.Filled.Edit,  s.preAppSurveyTitle, s.preAppSurveySubtitle, onClick = onPreAppSurvey),
     )
     val householdFeatures = listOf(
-        FeatureEntry("♻️", s.wasteSort,       s.wasteSortDesc),
-        FeatureEntry("🗑️", s.garbageDrop,     s.garbageDropDesc),
-        FeatureEntry("�", s.wasteReport,    s.wasteReportDesc, onClick = onWasteReport),
-        FeatureEntry("�💡", s.electricityUsage, s.electricityChartDesc),
-        FeatureEntry("🍽️", s.scanMeal,        s.scanMealDesc),
-        FeatureEntry("🧾", s.scanBill,         s.scanBillDesc),
-        FeatureEntry("🚶", s.walkDistance,     s.walkValue),
-        FeatureEntry("☣️", s.environmentalImpact, s.environmentalImpactDesc),
+        FeatureEntry(Icons.Filled.Refresh,  s.wasteSort,              s.wasteSortDesc),
+        FeatureEntry(Icons.Filled.Delete, s.wasteReport,            s.wasteReportDesc, onClick = onWasteReport),
+        FeatureEntry(Icons.Filled.Scale, s.wasteTotalMassTitle,     s.wasteTotalMassDesc),
+        FeatureEntry(Icons.Filled.Warning, s.environmentalImpact,     s.environmentalImpactDesc),
+        FeatureEntry(Icons.Filled.Analytics, s.wasteImpactTitle,        s.wasteImpactDesc),
+        FeatureEntry(Icons.Filled.TrendingUp, s.wasteStatTitle,          s.wasteStatDesc),
+        FeatureEntry(Icons.Filled.Description, s.householdWasteStatusTitle, s.householdWasteStatusDesc),
+        FeatureEntry(Icons.Filled.Lightbulb, s.electricityUsage,         s.electricityChartDesc),
+        FeatureEntry(Icons.Filled.DirectionsWalk, s.walkDistance,            s.walkValue),
+        FeatureEntry(Icons.Filled.Restaurant, s.scanMeal,               s.scanMealDesc),
+        FeatureEntry(Icons.Filled.Receipt, s.scanBill,               s.scanBillDesc),
+        FeatureEntry(Icons.Filled.Newspaper, s.blog,                    s.blogDesc),
+        FeatureEntry(Icons.Filled.Handshake, s.campaignsTitle,         s.campaignsDesc),
     )
     val collectorFeatures = listOf(
-        FeatureEntry("🗺️", s.heatmapFeatureLabel,  s.heatmapFeatureDesc),
-        FeatureEntry("📍", s.routeLabel,            s.scheduleDesc),
-        FeatureEntry("✅", s.checkInCardTitle,      s.checkInButton),
+        FeatureEntry(Icons.Filled.Map, s.heatmapFeatureLabel,  s.heatmapFeatureDesc),
+        FeatureEntry(Icons.Filled.LocationOn, s.routeLabel,            s.scheduleDesc),
+        FeatureEntry(Icons.Filled.CheckCircle, s.checkInCardTitle,      s.checkInButton),
     )
     val volunteerFeatures = listOf(
-        FeatureEntry("🤝", s.volunteerTitle,        s.volunteerSubtitle),
-        FeatureEntry("🗓️", s.volunteerEventsCardTitle, s.volunteerUpcomingTitle),
+        FeatureEntry(Icons.Filled.Handshake, s.volunteerTitle,        s.volunteerSubtitle),
+        FeatureEntry(Icons.Filled.Event, s.volunteerEventsCardTitle, s.volunteerUpcomingTitle),
     )
     // ──────────────────────────────────────────────────────────────────────
 
@@ -84,28 +118,28 @@ fun CatalogueScreen(onWasteReport: () -> Unit, onPreAppSurvey: () -> Unit = {}) 
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
             CatalogueSection(
-                roleIcon = "👥",
+                roleIcon = Icons.Filled.Group,
                 roleLabel = s.allUsersLabel,
                 roleColor = Color(0xFF1565C0),
                 roleBg = Color(0xFFE3F2FD),
                 features = allFeatures
             )
             CatalogueSection(
-                roleIcon = "🏠",
+                roleIcon = Icons.Filled.House,
                 roleLabel = s.householdRole,
                 roleColor = green800,
                 roleBg = green50,
                 features = householdFeatures
             )
             CatalogueSection(
-                roleIcon = "🚛",
+                roleIcon = Icons.Filled.LocalShipping,
                 roleLabel = s.collectorRole,
                 roleColor = Color(0xFFE65100),
                 roleBg = Color(0xFFFFF3E0),
                 features = collectorFeatures
             )
             CatalogueSection(
-                roleIcon = "🤝",
+                roleIcon = Icons.Filled.Handshake,
                 roleLabel = s.volunteerRole,
                 roleColor = Color(0xFF6A1B9A),
                 roleBg = Color(0xFFF3E5F5),
@@ -117,7 +151,7 @@ fun CatalogueScreen(onWasteReport: () -> Unit, onPreAppSurvey: () -> Unit = {}) 
 
 @Composable
 private fun CatalogueSection(
-    roleIcon: String,
+    roleIcon: ImageVector,
     roleLabel: String,
     roleColor: Color,
     roleBg: Color,
@@ -136,7 +170,12 @@ private fun CatalogueSection(
                     .background(roleBg),
                 contentAlignment = Alignment.Center
             ) {
-                Text(roleIcon, fontSize = 16.sp)
+                Icon(
+                    imageVector = roleIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = roleColor,
+                )
             }
             Text(
                 text = roleLabel,
@@ -175,7 +214,12 @@ private fun CatalogueCard(feature: FeatureEntry, accentColor: Color, bgColor: Co
                     .background(bgColor),
                 contentAlignment = Alignment.Center
             ) {
-                Text(feature.icon, fontSize = 22.sp)
+                Icon(
+                    imageVector = feature.icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = bgColor,
+                )
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(feature.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1B1B1B))

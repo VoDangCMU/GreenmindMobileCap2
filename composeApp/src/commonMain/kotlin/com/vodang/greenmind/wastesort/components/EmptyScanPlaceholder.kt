@@ -5,7 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,7 +32,7 @@ fun EmptyScanPlaceholder() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("📷", fontSize = 36.sp)
+        Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(44.dp), tint = Color(0xFF2E7D32))
         Text("No scans yet", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1B1B1B))
         Text(
             "Tap + to scan waste and detect items",
