@@ -1,19 +1,20 @@
 package com.vodang.greenmind.home
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,274 +23,44 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.components.AppScaffold
-import com.vodang.greenmind.home.components.BottomNavTab
-import com.vodang.greenmind.home.components.CollectorDashboard
-import com.vodang.greenmind.home.components.HouseholdDashboard
-import com.vodang.greenmind.home.components.LanguagePickerModal
-import com.vodang.greenmind.home.components.LanguageSwitcher
-import com.vodang.greenmind.home.components.ProfilePlaceholder
-import com.vodang.greenmind.home.components.UserType
-import com.vodang.greenmind.home.components.UserTypePickerModal
-import com.vodang.greenmind.home.components.VolunteerDashboard
-import com.vodang.greenmind.home.components.WalkDistanceScreen
-import com.vodang.greenmind.home.components.CampaignsScreen
+import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.home.components.*
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.location.Geo
+import com.vodang.greenmind.navigation.AppScreen
+import com.vodang.greenmind.navigation.Navigation
 import com.vodang.greenmind.permission.PermissionGroup
 import com.vodang.greenmind.permission.PermissionRequester
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WalkDistanceStore
-import com.vodang.greenmind.ProfileScreen
-import com.vodang.greenmind.SettingsScreen
-import com.vodang.greenmind.bill.BillScreen
-import com.vodang.greenmind.catalogue.CatalogueScreen
-import com.vodang.greenmind.energy.EnergyScreen
-import com.vodang.greenmind.meal.MealScreen
+import com.vodang.greenmind.wastesort.WasteSortScreen
+import com.vodang.greenmind.wastesort.WasteTotalMassScreen
 import com.vodang.greenmind.wastereport.WasteReportScreen
 import com.vodang.greenmind.wasteimpact.WasteImpactScreen
-import com.vodang.greenmind.wastesort.WasteTotalMassScreen
 import com.vodang.greenmind.householdwaste.HouseholdWasteScreen
 import com.vodang.greenmind.wasteanalytics.WasteAnalyticsScreen
-import com.vodang.greenmind.wastesort.WasteSortScreen
-import com.vodang.greenmind.todos.TodoScreen
-import com.vodang.greenmind.blog.BlogScreen
-import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.meal.MealScreen
+import com.vodang.greenmind.bill.BillScreen
+import com.vodang.greenmind.energy.EnergyScreen
+import com.vodang.greenmind.SettingsScreen
+import com.vodang.greenmind.catalogue.CatalogueScreen
 import com.vodang.greenmind.preappsurvey.PreAppSurveyScreen
-import kotlinx.coroutines.launch
+import com.vodang.greenmind.survey.SurveyScreen
+import com.vodang.greenmind.ProfileScreen
+import com.vodang.greenmind.blog.BlogScreen
+import com.vodang.greenmind.todos.TodoScreen
+import com.vodang.greenmind.platform.exitApp
 
 private val green800 = Color(0xFF2E7D32)
 private val green50 = Color(0xFFE8F5E9)
-private val green100 = Color(0xFFC8E6C9)
 private val textSecondary = Color(0xFF757575)
-
-enum class DetailDest { WASTE_SORT, WASTE_REPORT, WASTE_IMPACT, HOUSEHOLD_WASTE, WASTE_ANALYTICS, MEAL, BILL, ENERGY, PROFILE, SETTINGS, CATALOGUE, PRE_APP_SURVEY, CAMPAIGNS, WASTE_TOTAL_MASS, WALK_DISTANCE, ENVIRONMENTAL_IMPACT }
-
-data class FeatureItem(
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val label: String,
-    val onClick: () -> Unit
-)
-
-@Composable
-private fun FeatureCatalogueDrawer(
-    onDismiss: () -> Unit,
-    onFeatureClick: (DetailDest?) -> Unit,
-    currentDest: DetailDest?,
-    modifier: Modifier = Modifier
-) {
-    val s = LocalAppStrings.current
-    var searchQuery by remember { mutableStateOf("") }
-
-    val allFeatures = listOf(
-        FeatureItem(Icons.Filled.QrCodeScanner, s.wasteSort, { onFeatureClick(DetailDest.WASTE_SORT) }),
-        FeatureItem(Icons.Filled.Delete, s.wasteReport, { onFeatureClick(DetailDest.WASTE_REPORT) }),
-        FeatureItem(Icons.Filled.Analytics, s.wasteStatTitle, { onFeatureClick(DetailDest.WASTE_ANALYTICS) }),
-        FeatureItem(Icons.Filled.Scale, s.wasteTotalMassTitle, { onFeatureClick(DetailDest.WASTE_TOTAL_MASS) }),
-        FeatureItem(Icons.Filled.Restaurant, s.scanMeal, { onFeatureClick(DetailDest.MEAL) }),
-        FeatureItem(Icons.Filled.Receipt, s.billScreenTitle, { onFeatureClick(DetailDest.BILL) }),
-        FeatureItem(Icons.Filled.House, s.household, { onFeatureClick(DetailDest.HOUSEHOLD_WASTE) }),
-        FeatureItem(Icons.Filled.ElectricBolt, s.electricityUsage, { onFeatureClick(DetailDest.ENERGY) }),
-        FeatureItem(Icons.Filled.DirectionsWalk, s.walkDistance, { onFeatureClick(DetailDest.WALK_DISTANCE) }),
-        FeatureItem(Icons.Filled.Eco, s.environmentalImpact, { onFeatureClick(DetailDest.ENVIRONMENTAL_IMPACT) }),
-        FeatureItem(Icons.Filled.Groups, s.blog, { onFeatureClick(null) }),
-        FeatureItem(Icons.Filled.Campaign, s.campaignsTitle, { onFeatureClick(DetailDest.CAMPAIGNS) }),
-        FeatureItem(Icons.Filled.CheckCircle, s.todos, { onFeatureClick(null) }),
-        FeatureItem(Icons.Filled.Assignment, s.surveys, { onFeatureClick(null) }),
-        FeatureItem(Icons.Filled.Person, s.profileTitle, { onFeatureClick(DetailDest.PROFILE) }),
-        FeatureItem(Icons.Filled.Settings, s.settings, { onFeatureClick(DetailDest.SETTINGS) }),
-        FeatureItem(Icons.Filled.BugReport, s.editProfile, { onFeatureClick(DetailDest.CATALOGUE) }),
-    )
-
-    val filteredFeatures = if (searchQuery.isBlank()) {
-        allFeatures
-    } else {
-        allFeatures.filter { it.label.contains(searchQuery, ignoreCase = true) }
-    }
-
-    Surface(
-        modifier = modifier.fillMaxHeight(),
-        color = Color.White,
-        shadowElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(green50),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Apps,
-                            contentDescription = null,
-                            tint = green800,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Text(
-                        text = s.catalogue,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = green800
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFF5F5F5))
-                        .clickable { onDismiss() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = "Close",
-                        tint = textSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
-                placeholder = { Text(s.blogSearchHint, fontSize = 14.sp) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = null,
-                        tint = textSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
-                            Icon(
-                                imageVector = Icons.Filled.Clear,
-                                contentDescription = "Clear",
-                                tint = textSecondary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = green800,
-                    unfocusedBorderColor = Color(0xFFE0E0E0),
-                    focusedContainerColor = green50.copy(alpha = 0.3f),
-                    unfocusedContainerColor = Color(0xFFF5F5F5)
-                ),
-                textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
-            )
-
-            HorizontalDivider(color = Color(0xFFE0E0E0))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                filteredFeatures.forEach { feature ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable {
-                                feature.onClick()
-                                onDismiss()
-                            }
-                            .padding(horizontal = 12.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(green50),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = feature.icon,
-                                contentDescription = null,
-                                tint = green800,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                        Text(
-                            text = feature.label,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.DarkGray,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = Icons.Filled.ChevronRight,
-                            contentDescription = null,
-                            tint = textSecondary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                if (filteredFeatures.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.SearchOff,
-                                contentDescription = null,
-                                tint = textSecondary,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Text(
-                                text = "No features found",
-                                fontSize = 14.sp,
-                                color = textSecondary
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-    }
-}
+private val SurfaceWhite = Color(0xFFFFFFFF)
+private val SurfaceGray = Color(0xFFF5F5F5)
 
 @Composable
 fun HomeScreen(
@@ -298,25 +69,57 @@ fun HomeScreen(
     onPreAppSurveyCompleted: () -> Unit = {},
 ) {
     val s = LocalAppStrings.current
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
+    val navState by Navigation.state.collectAsState()
     val user by SettingsStore.user.collectAsState()
     val language by SettingsStore.language.collectAsState()
     val roleSwitchEnabled by SettingsStore.roleSwitcherEnabled.collectAsState()
     val household by HouseholdStore.household.collectAsState()
+
     var userType by remember { mutableStateOf(UserType.HOUSEHOLD) }
-    var bottomNavTab by remember { mutableStateOf(BottomNavTab.HOME) }
+    var showPicker by remember { mutableStateOf(false) }
+    var showLangPicker by remember { mutableStateOf(false) }
+    var showMenuDrawer by remember { mutableStateOf(false) }
+    var showRightDrawer by remember { mutableStateOf(false) }
+    var showSearchBar by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var exitToastShown by remember { mutableStateOf(false) }
+    var showBlogLeaderboard by remember { mutableStateOf(false) }
+
+    // Scroll states for header hide/show
     val dashboardScrollState = rememberScrollState()
     val collectorScrollState = rememberScrollState()
     val volunteerScrollState = rememberScrollState()
-    var showPicker by remember { mutableStateOf(false) }
-    var showLangPicker by remember { mutableStateOf(false) }
-    var detailDest by remember { mutableStateOf<DetailDest?>(null) }
-    var showRightDrawer by remember { mutableStateOf(false) }
-    var dragOffsetX by remember { mutableFloatStateOf(0f) }
+    val todosScrollState = rememberScrollState()
+    val blogScrollState = rememberScrollState()
+    val blogLazyListState = rememberLazyListState()
+    val profileScrollState = rememberScrollState()
+    val householdScrollState = rememberScrollState()
+    val wasteReportLazyListState = rememberLazyListState()
 
-    BackHandler(enabled = detailDest != null) { detailDest = null }
+    val currentTab = Navigation.getCurrentTab()
+    val showBackButton = navState.backStack.isNotEmpty()
 
+    // Get active scroll state based on current screen
+    val activeScrollState = when (navState.currentScreen) {
+        AppScreen.HOME -> when (userType) {
+            UserType.COLLECTOR -> collectorScrollState
+            UserType.VOLUNTEER -> volunteerScrollState
+            else -> dashboardScrollState
+        }
+        AppScreen.TODOS -> todosScrollState
+        AppScreen.BLOG -> blogScrollState
+        AppScreen.PROFILE -> profileScrollState
+        AppScreen.HOUSEHOLD -> householdScrollState
+        else -> null
+    }
+
+    val activeLazyListState: androidx.compose.foundation.lazy.LazyListState? = when (navState.currentScreen) {
+        AppScreen.BLOG -> blogLazyListState
+        AppScreen.WASTE_REPORT -> wasteReportLazyListState
+        else -> null
+    }
+
+    // Initialize services
     val locationGranted by PermissionRequester.grantedFlow(PermissionGroup.LOCATION).collectAsState()
     LaunchedEffect(Unit) {
         if (!PermissionRequester.grantedFlow(PermissionGroup.LOCATION).value) {
@@ -331,86 +134,165 @@ fun HomeScreen(
         WalkDistanceStore.startPolling()
     }
 
-    val activeScrollState = when {
-        userType == UserType.COLLECTOR -> collectorScrollState
-        userType == UserType.VOLUNTEER -> volunteerScrollState
-        else -> dashboardScrollState
+    // Show exit toast on first back press when at root
+    LaunchedEffect(exitToastShown) {
+        if (exitToastShown) {
+            kotlinx.coroutines.delay(2000)
+            exitToastShown = false
+        }
     }
-    val topBarScrolled = detailDest != null ||
-        activeScrollState?.value?.let { it > 0 } ?: false
 
-    val trailingIconsForTab: @Composable (RowScope.() -> Unit) = {
-        when (bottomNavTab) {
-            BottomNavTab.HOME -> {
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "Add", tint = green800, modifier = Modifier.size(22.dp))
+    // Handle back button with double-back-to-exit
+    BackHandler(enabled = true) {
+        if (showBlogLeaderboard && navState.currentScreen == AppScreen.BLOG) {
+            showBlogLeaderboard = false
+        } else if (showBackButton) {
+            Navigation.goBack()
+        } else {
+            if (Navigation.shouldExit()) {
+                // Exit app
+                exitApp()
+            } else {
+                exitToastShown = true
+            }
+        }
+    }
+
+    val title: String
+    val subtitle: String?
+    when (navState.currentScreen) {
+        AppScreen.HOME -> {
+            title = "GreenMind"
+            subtitle = s.welcomeBack
+        }
+        AppScreen.WASTE_SCAN -> {
+            title = s.wasteScan
+            subtitle = null
+        }
+        AppScreen.TODOS -> {
+            title = s.todos
+            subtitle = null
+        }
+        AppScreen.HOUSEHOLD -> {
+            title = household?.address ?: s.household
+            subtitle = household?.members?.size?.let { s.memberCount(it) }
+        }
+        AppScreen.BLOG -> {
+            title = if (showBlogLeaderboard) s.blogTabLeaderboard else s.blog
+            subtitle = null
+        }
+        AppScreen.PROFILE -> {
+            title = s.profileTitle
+            subtitle = null
+        }
+        AppScreen.WASTE_SORT -> {
+            title = s.wasteSort
+            subtitle = null
+        }
+        AppScreen.WASTE_REPORT -> {
+            title = s.wasteReport
+            subtitle = null
+        }
+        AppScreen.WASTE_IMPACT, AppScreen.ENVIRONMENTAL_IMPACT -> {
+            title = s.environmentalImpact
+            subtitle = null
+        }
+        AppScreen.WASTE_ANALYTICS -> {
+            title = s.wasteStatTitle
+            subtitle = null
+        }
+        AppScreen.WASTE_TOTAL_MASS -> {
+            title = s.wasteTotalMassTitle
+            subtitle = null
+        }
+        AppScreen.HOUSEHOLD_WASTE -> {
+            title = s.household
+            subtitle = null
+        }
+        AppScreen.MEAL_SCAN -> {
+            title = s.scanMeal
+            subtitle = null
+        }
+        AppScreen.BILL_SCAN -> {
+            title = s.billScreenTitle
+            subtitle = null
+        }
+        AppScreen.ENERGY -> {
+            title = s.electricityUsage
+            subtitle = null
+        }
+        AppScreen.WALK_DISTANCE -> {
+            title = s.walkDistance
+            subtitle = null
+        }
+        AppScreen.CAMPAIGNS -> {
+            title = s.campaignsTitle
+            subtitle = null
+        }
+        AppScreen.PROFILE_DETAIL -> {
+            title = s.profileTitle
+            subtitle = null
+        }
+        AppScreen.SETTINGS -> {
+            title = s.settings
+            subtitle = null
+        }
+        AppScreen.CATALOGUE -> {
+            title = s.catalogue
+            subtitle = null
+        }
+        AppScreen.PRE_APP_SURVEY -> {
+            title = s.preAppSurveyTitle
+            subtitle = null
+        }
+        AppScreen.SURVEY -> {
+            title = s.surveys
+            subtitle = null
+        }
+    }
+
+    val trailingActions: @Composable RowScope.() -> Unit = {
+        when (currentTab) {
+            AppScreen.HOME -> {
+                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add", tint = green800, modifier = Modifier.size(22.dp))
                 }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Search, contentDescription = "Search", tint = green800, modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.ChatBubbleOutline, contentDescription = "Chat", tint = green800, modifier = Modifier.size(20.dp))
+                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.Search, contentDescription = "Search", tint = green800, modifier = Modifier.size(20.dp))
                 }
             }
-            BottomNavTab.WASTE_SCAN -> {
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan", tint = green800, modifier = Modifier.size(22.dp))
+            AppScreen.WASTE_SCAN -> {
+                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan", tint = green800, modifier = Modifier.size(22.dp))
                 }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.CloudUpload, contentDescription = "Upload", tint = green800, modifier = Modifier.size(22.dp))
-                }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.ChatBubbleOutline, contentDescription = "Chat", tint = green800, modifier = Modifier.size(22.dp))
+                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.CloudUpload, contentDescription = "Upload", tint = green800, modifier = Modifier.size(20.dp))
                 }
             }
-            BottomNavTab.TODOS -> {
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "Add", tint = green800, modifier = Modifier.size(22.dp))
-                }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Search, contentDescription = "Search", tint = green800, modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.ChatBubbleOutline, contentDescription = "Chat", tint = green800, modifier = Modifier.size(20.dp))
+            AppScreen.TODOS -> {
+                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add", tint = green800, modifier = Modifier.size(22.dp))
                 }
             }
-            BottomNavTab.HOUSEHOLD -> {
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = green800, modifier = Modifier.size(22.dp))
+            AppScreen.BLOG -> {
+                IconButton(onClick = { showBlogLeaderboard = !showBlogLeaderboard }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.EmojiEvents,
+                        contentDescription = s.blogTabLeaderboard,
+                        tint = if (showBlogLeaderboard) green800 else textSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.ChatBubbleOutline, contentDescription = "Chat", tint = green800, modifier = Modifier.size(22.dp))
-                }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "Add", tint = green800, modifier = Modifier.size(22.dp))
-                }
-            }
-            BottomNavTab.BLOG -> {
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Campaign, contentDescription = "Campaign", tint = green800, modifier = Modifier.size(22.dp))
-                }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "New Post", tint = green800, modifier = Modifier.size(22.dp))
-                }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Leaderboard, contentDescription = "Leaderboard", tint = green800, modifier = Modifier.size(22.dp))
-                }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Search, contentDescription = "Search", tint = green800, modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.ChatBubbleOutline, contentDescription = "Chat", tint = green800, modifier = Modifier.size(20.dp))
+                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.Search, contentDescription = "Search", tint = green800, modifier = Modifier.size(20.dp))
                 }
             }
-            BottomNavTab.PROFILE -> {
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = green800, modifier = Modifier.size(22.dp))
-                }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.BugReport, contentDescription = "Dev Settings", tint = green800, modifier = Modifier.size(22.dp))
+            AppScreen.PROFILE -> {
+                IconButton(onClick = { Navigation.navigate(AppScreen.SETTINGS) }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = green800, modifier = Modifier.size(20.dp))
                 }
                 if (roleSwitchEnabled) {
-                    IconButton(onClick = { showPicker = true }, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { showPicker = true }, modifier = Modifier.size(36.dp)) {
                         Icon(
                             imageVector = when (userType) {
                                 UserType.HOUSEHOLD -> Icons.Filled.House
@@ -419,288 +301,397 @@ fun HomeScreen(
                             },
                             contentDescription = "Switch Role",
                             tint = green800,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
+            else -> {}
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            gesturesEnabled = detailDest == null && userType != UserType.COLLECTOR,
-            drawerContent = {
-                Surface(
-                    modifier = Modifier.fillMaxHeight(),
-                    color = Color.White,
-                ) {
-                    BoxWithConstraints(
-                        modifier = Modifier.fillMaxHeight()
-                    ) {
-                        val isSmallDrawer = maxHeight < 520.dp
-                        val itemPad = if (isSmallDrawer) 6.dp else 8.dp
-                        val dividerPad = if (isSmallDrawer) 2.dp else 4.dp
-                        val closeBtnPad = if (isSmallDrawer) 2.dp else 4.dp
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 12.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = closeBtnPad, end = closeBtnPad),
-                                horizontalArrangement = Arrangement.End,
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFFF5F5F5))
-                                        .clickable { scope.launch { drawerState.close() } },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(Icons.Filled.Close, contentDescription = null, tint = Color(0xFF757575), modifier = Modifier.size(18.dp))
-                                }
-                            }
-                            ProfilePlaceholder(
-                                user = user,
-                                onEditClick = {
-                                    detailDest = DetailDest.PROFILE
-                                    scope.launch { drawerState.close() }
-                                },
-                                compact = isSmallDrawer,
-                            )
-                            HorizontalDivider()
-                            Spacer(Modifier.height(dividerPad))
-                            DrawerItem(label = s.home, onClick = {
-                                detailDest = null
-                                scope.launch { drawerState.close() }
-                            }, pad = itemPad)
-                            DrawerItem(label = s.todos, onClick = {
-                                bottomNavTab = BottomNavTab.TODOS
-                                scope.launch { drawerState.close() }
-                            }, pad = itemPad)
-                            DrawerItem(label = s.surveys, onClick = {
-                                scope.launch { drawerState.close() }
-                            }, pad = itemPad)
-                            DrawerItem(label = s.blog, onClick = {
-                                bottomNavTab = BottomNavTab.BLOG
-                                scope.launch { drawerState.close() }
-                            }, pad = itemPad)
-                            DrawerItem(label = s.catalogue, onClick = {
-                                scope.launch { drawerState.close() }
-                                showRightDrawer = true
-                            }, pad = itemPad)
-                            DrawerItem(label = s.settings, onClick = {
-                                detailDest = DetailDest.SETTINGS
-                                scope.launch { drawerState.close() }
-                            }, pad = itemPad)
-                            Spacer(Modifier.height(dividerPad))
-                            HorizontalDivider()
-                            Spacer(Modifier.height(dividerPad))
-                            LanguageSwitcher(
-                                currentLang = language,
-                                onClick = { showLangPicker = true }
-                            )
-                            HorizontalDivider()
-                            Spacer(Modifier.height(dividerPad))
-                            Row(
-                                modifier = Modifier.padding(vertical = itemPad).clickable {
-                                    scope.launch { drawerState.close() }
-                                    SettingsStore.clearAll()
-                                    onLogout()
-                                },
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(Icons.Filled.Logout, contentDescription = null, tint = Color(0xFFC62828), modifier = Modifier.size(18.dp))
-                                Text(text = s.logout, color = Color(0xFFC62828))
-                            }
-                            Spacer(Modifier.height(dividerPad))
-                        }
+        AppScaffold(
+            title = title,
+            subtitle = subtitle,
+            showBackButton = showBackButton,
+            onBackClick = { Navigation.goBack() },
+            onMenuClick = { showMenuDrawer = true },
+            onSearchClick = { showRightDrawer = true },
+            actions = trailingActions,
+            selectedNavItem = currentTab,
+            onNavItemSelected = { Navigation.navigate(it) },
+            scrollState = activeScrollState,
+            lazyListState = activeLazyListState,
+        ) {
+            when (navState.currentScreen) {
+                AppScreen.HOME -> {
+                    when (userType) {
+                        UserType.HOUSEHOLD -> HouseholdDashboard(
+                            scrollState = dashboardScrollState,
+                            onWasteSortClick = { Navigation.navigate(AppScreen.WASTE_SORT) },
+                            onWasteImpactClick = { Navigation.navigate(AppScreen.WASTE_IMPACT) },
+                            onHouseholdWasteClick = { Navigation.navigate(AppScreen.HOUSEHOLD_WASTE) },
+                            onWasteStatClick = { Navigation.navigate(AppScreen.WASTE_ANALYTICS) },
+                            onWasteReportClick = { Navigation.navigate(AppScreen.WASTE_REPORT) },
+                            onWasteTotalMassClick = { Navigation.navigate(AppScreen.WASTE_TOTAL_MASS) },
+                            onScanMealClick = { Navigation.navigate(AppScreen.MEAL_SCAN) },
+                            onScanBillClick = { Navigation.navigate(AppScreen.BILL_SCAN) },
+                            onElectricityClick = { Navigation.navigate(AppScreen.ENERGY) },
+                            onWalkDistanceClick = { Navigation.navigate(AppScreen.WALK_DISTANCE) },
+                            onEnvironmentalImpactClick = { Navigation.navigate(AppScreen.ENVIRONMENTAL_IMPACT) },
+                            onBlogClick = { Navigation.navigate(AppScreen.BLOG) },
+                            onCampaignsClick = { Navigation.navigate(AppScreen.CAMPAIGNS) },
+                            showPreAppSurveyBadge = !hasPreAppSurvey,
+                            onPreAppSurveyClick = { Navigation.navigate(AppScreen.PRE_APP_SURVEY) },
+                        )
+                        UserType.COLLECTOR -> CollectorDashboard(user = user, scrollState = collectorScrollState)
+                        UserType.VOLUNTEER -> VolunteerDashboard(user = user, scrollState = volunteerScrollState)
                     }
                 }
-            },
-            content = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures(
-                                onDragStart = { offset ->
-                                    dragOffsetX = 0f
-                                },
-                                onDragEnd = {
-                                    if (dragOffsetX < -100f && detailDest == null) {
-                                        showRightDrawer = true
-                                    }
-                                    dragOffsetX = 0f
-                                },
-                                onDragCancel = {
-                                    dragOffsetX = 0f
-                                },
-                                onHorizontalDrag = { _, dragAmount ->
-                                    dragOffsetX += dragAmount
-                                }
-                            )
-                        }
+                AppScreen.WASTE_SCAN -> ScanHubCard(
+                    onWasteSortClick = { Navigation.navigate(AppScreen.WASTE_SORT) },
+                    onMealScanClick = { Navigation.navigate(AppScreen.MEAL_SCAN) },
+                    onBillScanClick = { Navigation.navigate(AppScreen.BILL_SCAN) },
+                    onWasteDetectClick = { Navigation.navigate(AppScreen.ENVIRONMENTAL_IMPACT) }
+                )
+                AppScreen.TODOS -> TodoScreen(scrollState = todosScrollState)
+                AppScreen.HOUSEHOLD -> HouseholdWasteScreen(
+                    onBack = { Navigation.navigate(AppScreen.HOME) },
+                    onNavigateToWasteImpact = { Navigation.navigate(AppScreen.WASTE_IMPACT) },
+                    scrollState = householdScrollState,
+                    onSettingsClick = { Navigation.navigate(AppScreen.SETTINGS) },
+                )
+                AppScreen.BLOG -> BlogScreen()
+                AppScreen.PROFILE -> ProfileScreen(scrollState = profileScrollState)
+                AppScreen.WASTE_SORT -> WasteSortScreen(onScanClick = { Navigation.goBack() })
+                AppScreen.WASTE_REPORT -> WasteReportScreen(lazyListState = wasteReportLazyListState)
+                AppScreen.WASTE_IMPACT, AppScreen.ENVIRONMENTAL_IMPACT -> WasteImpactScreen()
+                AppScreen.WASTE_ANALYTICS -> WasteAnalyticsScreen()
+                AppScreen.WASTE_TOTAL_MASS -> WasteTotalMassScreen(onBack = { Navigation.goBack() })
+                AppScreen.HOUSEHOLD_WASTE -> HouseholdWasteScreen(
+                    onBack = { Navigation.goBack() },
+                    onNavigateToWasteImpact = { Navigation.navigate(AppScreen.WASTE_IMPACT) },
+                    onSettingsClick = { Navigation.navigate(AppScreen.SETTINGS) },
+                )
+                AppScreen.MEAL_SCAN -> MealScreen()
+                AppScreen.BILL_SCAN -> BillScreen()
+                AppScreen.ENERGY -> EnergyScreen()
+                AppScreen.WALK_DISTANCE -> WalkDistanceCard(onBack = { Navigation.goBack() })
+                AppScreen.CAMPAIGNS -> CampaignsList(onBack = { Navigation.goBack() })
+                AppScreen.SETTINGS -> SettingsScreen()
+                AppScreen.CATALOGUE -> CatalogueScreen(
+                    onWasteReport = { Navigation.navigate(AppScreen.WASTE_REPORT) },
+                    onPreAppSurvey = { Navigation.navigate(AppScreen.PRE_APP_SURVEY) },
+                    onWasteSort = { Navigation.navigate(AppScreen.WASTE_SORT) },
+                    onWasteTotalMass = { Navigation.navigate(AppScreen.WASTE_TOTAL_MASS) },
+                    onEnvironmentalImpact = { Navigation.navigate(AppScreen.ENVIRONMENTAL_IMPACT) },
+                    onWasteImpact = { Navigation.navigate(AppScreen.WASTE_IMPACT) },
+                    onWasteStat = { Navigation.navigate(AppScreen.WASTE_ANALYTICS) },
+                    onHouseholdWaste = { Navigation.navigate(AppScreen.HOUSEHOLD_WASTE) },
+                    onElectricityUsage = { Navigation.navigate(AppScreen.ENERGY) },
+                    onWalkDistance = { Navigation.navigate(AppScreen.WALK_DISTANCE) },
+                    onScanMeal = { Navigation.navigate(AppScreen.MEAL_SCAN) },
+                    onScanBill = { Navigation.navigate(AppScreen.BILL_SCAN) },
+                    onBlog = { Navigation.navigate(AppScreen.BLOG) },
+                    onCampaigns = { Navigation.navigate(AppScreen.CAMPAIGNS) },
+                    onHeatmap = { /* TODO: Collector heatmap feature */ },
+                    onRoute = { /* TODO: Collector route feature */ },
+                    onCheckIn = { /* TODO: Collector check-in feature */ },
+                    onVolunteerEvents = { /* TODO: Volunteer events feature */ },
+                    onOceanScore = { /* TODO: Ocean score screen */ },
+                    onSurveys = { Navigation.navigate(AppScreen.SURVEY) },
+                    onTodos = { Navigation.navigate(AppScreen.TODOS) },
+                )
+                AppScreen.PRE_APP_SURVEY -> PreAppSurveyScreen(
+                    onCompleted = {
+                        onPreAppSurveyCompleted()
+                        Navigation.goBack()
+                    }
+                )
+                AppScreen.SURVEY -> SurveyScreen()
+                AppScreen.PROFILE_DETAIL -> ProfileScreen()
+            }
+        }
+
+        // Exit toast overlay
+        if (exitToastShown) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Card(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF323232))
                 ) {
-                    AppScaffold(
-                        title = when (bottomNavTab) {
-                            BottomNavTab.HOME -> "GreenMind"
-                            BottomNavTab.HOUSEHOLD -> household?.address ?: s.household
-                            else -> bottomNavTab.label(s)
-                        },
-                        subtitle = when (bottomNavTab) {
-                            BottomNavTab.HOME -> s.welcomeBack
-                            BottomNavTab.HOUSEHOLD -> household?.members?.size?.let { s.memberCount(it) }
-                            else -> null
-                        },
-                        onMenuClick = { scope.launch { drawerState.open() } },
-                        userType = userType,
-                        showRoleSwitcher = bottomNavTab == BottomNavTab.PROFILE,
-                        onSwitchClick = { showPicker = true },
-                        selectedTab = bottomNavTab,
-                        onTabSelected = { bottomNavTab = it },
-                        scrolled = topBarScrolled,
-                        trailingIcons = trailingIconsForTab,
+                    Text(
+                        text = "Press back again to exit",
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+
+        // Left drawer overlay
+        if (showMenuDrawer) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable { showMenuDrawer = false }
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(280.dp)
+                        .fillMaxHeight()
+                        .clickable(enabled = false) { },
+                    color = SurfaceWhite,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)
                     ) {
-                        when (detailDest) {
-                            DetailDest.WASTE_SORT -> WasteSortScreen(
-                                onScanClick = { detailDest = null },
-                            )
-                            DetailDest.WASTE_REPORT -> WasteReportScreen()
-                            DetailDest.WASTE_IMPACT -> WasteImpactScreen()
-                            DetailDest.HOUSEHOLD_WASTE -> HouseholdWasteScreen(
-                                onBack = { detailDest = null },
-                                onNavigateToWasteImpact = { detailDest = DetailDest.WASTE_IMPACT },
-                            )
-                            DetailDest.WASTE_ANALYTICS -> WasteAnalyticsScreen()
-                            DetailDest.MEAL -> MealScreen()
-                            DetailDest.BILL -> BillScreen()
-                            DetailDest.ENERGY -> EnergyScreen()
-                            DetailDest.PROFILE -> ProfileScreen()
-                            DetailDest.SETTINGS -> SettingsScreen()
-                            DetailDest.CATALOGUE -> CatalogueScreen(
-                                onWasteReport = { detailDest = DetailDest.WASTE_REPORT },
-                                onPreAppSurvey = { detailDest = DetailDest.PRE_APP_SURVEY },
-                            )
-                            DetailDest.PRE_APP_SURVEY -> PreAppSurveyScreen(
-                                onCompleted = {
-                                    onPreAppSurveyCompleted()
-                                    detailDest = null
-                                }
-                            )
-                            DetailDest.CAMPAIGNS -> CampaignsScreen(
-                                onBack = { detailDest = null },
-                            )
-                            DetailDest.WASTE_TOTAL_MASS -> WasteTotalMassScreen(
-                                onBack = { detailDest = null },
-                            )
-                            DetailDest.WALK_DISTANCE -> WalkDistanceScreen(
-                                onBack = { detailDest = null },
-                            )
-                            DetailDest.ENVIRONMENTAL_IMPACT -> WasteImpactScreen()
-                            null -> {
-                                when (bottomNavTab) {
-                                    BottomNavTab.HOME -> {
-                                        when (userType) {
-                                            UserType.HOUSEHOLD -> HouseholdDashboard(
-                                                scrollState = dashboardScrollState,
-                                                onWasteSortClick = { detailDest = DetailDest.WASTE_SORT },
-                                                onWasteImpactClick = { detailDest = DetailDest.WASTE_IMPACT },
-                                                onHouseholdWasteClick = { detailDest = DetailDest.HOUSEHOLD_WASTE },
-                                                onWasteStatClick = { detailDest = DetailDest.WASTE_ANALYTICS },
-                                                onWasteReportClick = { detailDest = DetailDest.WASTE_REPORT },
-                                                onWasteTotalMassClick = { detailDest = DetailDest.WASTE_TOTAL_MASS },
-                                                onScanMealClick = { detailDest = DetailDest.MEAL },
-                                                onScanBillClick = { detailDest = DetailDest.BILL },
-                                                onElectricityClick = { detailDest = DetailDest.ENERGY },
-                                                onWalkDistanceClick = { detailDest = DetailDest.WALK_DISTANCE },
-                                                onEnvironmentalImpactClick = { detailDest = DetailDest.ENVIRONMENTAL_IMPACT },
-                                                onBlogClick = { bottomNavTab = BottomNavTab.BLOG },
-                                                onCampaignsClick = { detailDest = DetailDest.CAMPAIGNS },
-                                                showPreAppSurveyBadge = !hasPreAppSurvey,
-                                                onPreAppSurveyClick = { detailDest = DetailDest.PRE_APP_SURVEY },
-                                            )
-                                            UserType.COLLECTOR -> CollectorDashboard(user = user, scrollState = collectorScrollState)
-                                            UserType.VOLUNTEER -> VolunteerDashboard(user = user, scrollState = volunteerScrollState)
-                                        }
-                                    }
-                                    BottomNavTab.WASTE_SCAN -> WasteSortScreen(onScanClick = { bottomNavTab = BottomNavTab.HOME })
-                                    BottomNavTab.TODOS -> TodoScreen()
-                                    BottomNavTab.HOUSEHOLD -> HouseholdWasteScreen(
-                                        onBack = { bottomNavTab = BottomNavTab.HOME },
-                                        onNavigateToWasteImpact = { detailDest = DetailDest.WASTE_IMPACT },
-                                    )
-                                    BottomNavTab.BLOG -> BlogScreen()
-                                    BottomNavTab.PROFILE -> ProfileScreen()
-                                }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            IconButton(onClick = { showMenuDrawer = false }) {
+                                Icon(Icons.Filled.Close, contentDescription = "Close", tint = textSecondary)
                             }
                         }
-
-                        if (showPicker) {
-                            UserTypePickerModal(
-                                current = userType,
-                                onSelect = { userType = it; detailDest = null },
-                                onDismiss = { showPicker = false }
-                            )
-                        }
-                        if (showLangPicker) {
-                            LanguagePickerModal(
-                                currentLang = language,
-                                onSelect = { SettingsStore.setLanguage(it) },
-                                onDismiss = { showLangPicker = false }
-                            )
+                        ProfilePlaceholder(user = user, onEditClick = { }, compact = false)
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                        DrawerItem(label = s.home, icon = Icons.Filled.Home, onClick = {
+                            Navigation.clearAndNavigate(AppScreen.HOME)
+                            showMenuDrawer = false
+                        })
+                        DrawerItem(label = s.todos, icon = Icons.Filled.CheckCircle, onClick = {
+                            Navigation.navigate(AppScreen.TODOS)
+                            showMenuDrawer = false
+                        })
+                        DrawerItem(label = s.surveys, icon = Icons.Filled.Assignment, onClick = {
+                            showMenuDrawer = false
+                        })
+                        DrawerItem(label = s.blog, icon = Icons.Filled.Article, onClick = {
+                            Navigation.navigate(AppScreen.BLOG)
+                            showMenuDrawer = false
+                        })
+                        DrawerItem(label = s.catalogue, icon = Icons.Filled.Apps, onClick = {
+                            Navigation.navigate(AppScreen.CATALOGUE)
+                            showMenuDrawer = false
+                        })
+                        DrawerItem(label = s.settings, icon = Icons.Filled.Settings, onClick = {
+                            Navigation.navigate(AppScreen.SETTINGS)
+                            showMenuDrawer = false
+                        })
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                        LanguageSwitcher(currentLang = language, onClick = { showLangPicker = true })
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    SettingsStore.clearAll()
+                                    onLogout()
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = Color(0xFFC62828), modifier = Modifier.size(20.dp))
+                            Text(text = s.logout, color = Color(0xFFC62828), fontWeight = FontWeight.Medium)
                         }
                     }
                 }
             }
-        )
+        }
 
-        // Scrim for right drawer (behind the drawer)
-        if (showRightDrawer) {
+        // Right drawer overlay
+        AnimatedVisibility(
+            visible = showRightDrawer,
+            enter = slideInHorizontally(tween(300)) { it },
+            exit = slideOutHorizontally(tween(300)) { it }
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.5f))
                     .clickable { showRightDrawer = false }
-            )
-        }
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(300.dp)
+                        .fillMaxHeight()
+                        .align(Alignment.CenterEnd)
+                        .clickable(enabled = false) { },
+                    color = SurfaceWhite,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(s.catalogue, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = green800)
+                            IconButton(onClick = { showRightDrawer = false }) {
+                                Icon(Icons.Filled.Close, contentDescription = "Close", tint = textSecondary)
+                            }
+                        }
 
-        // Right Drawer - Feature Catalogue
-        AnimatedVisibility(
-            visible = showRightDrawer,
-            enter = slideInHorizontally(initialOffsetX = { it }),
-            exit = slideOutHorizontally(targetOffsetX = { it }),
-            modifier = Modifier.align(Alignment.CenterEnd)
-        ) {
-            FeatureCatalogueDrawer(
-                onDismiss = { showRightDrawer = false },
-                onFeatureClick = { dest ->
-                    detailDest = dest
-                    showRightDrawer = false
-                },
-                currentDest = detailDest,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(300.dp)
-            )
+                        // Search bar
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text(s.blogSearchHint, fontSize = 14.sp) },
+                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = textSecondary) },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Filled.Clear, contentDescription = "Clear", tint = textSecondary)
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = green800,
+                                unfocusedBorderColor = Color(0xFFE0E0E0),
+                            ),
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                        // Function items
+                        RightDrawerItem(label = s.wasteSort, icon = Icons.Filled.Refresh, onClick = {
+                            Navigation.navigate(AppScreen.WASTE_SORT)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.wasteReport, icon = Icons.Filled.Delete, onClick = {
+                            Navigation.navigate(AppScreen.WASTE_REPORT)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.wasteTotalMassTitle, icon = Icons.Filled.Scale, onClick = {
+                            Navigation.navigate(AppScreen.WASTE_TOTAL_MASS)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.environmentalImpact, icon = Icons.Filled.Warning, onClick = {
+                            Navigation.navigate(AppScreen.WASTE_IMPACT)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.wasteImpactTitle, icon = Icons.Filled.Analytics, onClick = {
+                            Navigation.navigate(AppScreen.WASTE_ANALYTICS)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.electricityUsage, icon = Icons.Filled.Lightbulb, onClick = {
+                            Navigation.navigate(AppScreen.ENERGY)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.walkDistance, icon = Icons.Filled.DirectionsWalk, onClick = {
+                            Navigation.navigate(AppScreen.WALK_DISTANCE)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.scanMeal, icon = Icons.Filled.Restaurant, onClick = {
+                            Navigation.navigate(AppScreen.MEAL_SCAN)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.scanBill, icon = Icons.Filled.Receipt, onClick = {
+                            Navigation.navigate(AppScreen.BILL_SCAN)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.campaignsTitle, icon = Icons.Filled.Handshake, onClick = {
+                            Navigation.navigate(AppScreen.CAMPAIGNS)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.preAppSurveyTitle, icon = Icons.Filled.Edit, onClick = {
+                            Navigation.navigate(AppScreen.PRE_APP_SURVEY)
+                            showRightDrawer = false
+                        })
+                        RightDrawerItem(label = s.settings, icon = Icons.Filled.Settings, onClick = {
+                            Navigation.navigate(AppScreen.SETTINGS)
+                            showRightDrawer = false
+                        })
+                    }
+                }
+            }
         }
+    }
+
+    // Role picker
+    if (showPicker) {
+        UserTypePickerModal(
+            current = userType,
+            onSelect = { userType = it; showPicker = false },
+            onDismiss = { showPicker = false }
+        )
+    }
+
+    // Language picker
+    if (showLangPicker) {
+        LanguagePickerModal(
+            currentLang = language,
+            onSelect = { SettingsStore.setLanguage(it) },
+            onDismiss = { showLangPicker = false }
+        )
     }
 }
 
 @Composable
-private fun DrawerItem(label: String, onClick: () -> Unit, pad: androidx.compose.ui.unit.Dp) {
-    Text(
-        text = label,
+private fun DrawerItem(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = pad),
-        fontSize = 14.sp,
-    )
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = green800, modifier = Modifier.size(24.dp))
+        Text(text = label, fontSize = 15.sp, color = Color(0xFF424242))
+    }
+}
+
+@Composable
+private fun RightDrawerItem(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(icon, contentDescription = null, tint = green800, modifier = Modifier.size(22.dp))
+            Text(text = label, fontSize = 14.sp, color = Color(0xFF424242))
+        }
+    }
 }

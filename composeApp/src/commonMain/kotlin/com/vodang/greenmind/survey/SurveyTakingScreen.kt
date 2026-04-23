@@ -56,16 +56,13 @@ fun SurveyTakingScreen(
     val progress = (currentIndex + 1).toFloat() / questions.size
 
     val user by SettingsStore.user.collectAsState()
-    val roleSwitchEnabled by SettingsStore.roleSwitcherEnabled.collectAsState()
     val userType = UserType.HOUSEHOLD
 
     AppScaffold(
         title = survey.title,
-        onBack = onBack,
-        userType = userType,
-        showRoleSwitcher = roleSwitchEnabled,
-        selectedTab = BottomNavTab.HOME,
-        onTabSelected = {},
+        subtitle = s.surveyQuestion(currentIndex + 1, questions.size),
+        showBackButton = true,
+        onBackClick = onBack,
     ) {
         Column(
             modifier = Modifier

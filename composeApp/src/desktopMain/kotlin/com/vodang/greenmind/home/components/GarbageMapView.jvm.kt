@@ -40,3 +40,18 @@ actual fun RouteMapView(
         Text("🗺️  Route map not available on desktop", fontSize = 14.sp, color = Color(0xFF2E7D32))
     }
 }
+
+@Composable
+actual fun CampaignMapView(
+    campaign: CampaignMapPoint,
+    center: Location?,
+    zoomLevel: Float,
+    modifier: Modifier,
+) {
+    Box(
+        modifier = modifier.background(Color(0xFFE8F5E9)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("🗺️  Campaign map not available on desktop", fontSize = 14.sp, color = Color(0xFF2E7D32))
+    }
+}

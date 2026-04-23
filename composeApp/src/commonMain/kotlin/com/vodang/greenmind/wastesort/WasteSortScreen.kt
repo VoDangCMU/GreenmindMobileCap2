@@ -20,8 +20,8 @@ import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WasteSortStore
 import com.vodang.greenmind.time.nowIso8601
-import com.vodang.greenmind.wastesort.components.ScanDetailScreen
-import com.vodang.greenmind.wastesort.components.WasteSortListScreen
+import com.vodang.greenmind.wastesort.components.ScanDetailCard
+import com.vodang.greenmind.wastesort.components.WasteSortList
 import com.vodang.greenmind.util.AppLogger
 import com.vodang.greenmind.i18n.AppStrings
 
@@ -158,7 +158,7 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
         selectedEntry != null -> {
             // Keep selectedEntry in sync with store updates (e.g. status changes)
             val liveEntry = entries.find { it.id == selectedEntry!!.id } ?: selectedEntry!!
-            ScanDetailScreen(
+            ScanDetailCard(
                 entry = liveEntry,
                 onBack = { selectedEntry = null },
                 onStatusChange = { newStatus ->
@@ -168,7 +168,7 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
             )
         }
         else -> {
-            WasteSortListScreen(
+            WasteSortList(
                 entries = entries,
                 apiHistory = apiHistory,
                 isLoadingHistory = isLoadingHistory,

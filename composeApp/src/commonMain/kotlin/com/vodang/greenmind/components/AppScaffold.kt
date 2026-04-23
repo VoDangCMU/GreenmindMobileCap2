@@ -1,206 +1,197 @@
 package com.vodang.greenmind.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.home.components.BottomNavTab
-import com.vodang.greenmind.home.components.UserType
-import com.vodang.greenmind.i18n.LocalAppStrings
-
-private val green800 = Color(0xFF2E7D32)
-private val green50 = Color(0xFFE8F5E9)
-private val textSecondary = Color(0xFF757575)
+import com.vodang.greenmind.navigation.AppNavItems
+import com.vodang.greenmind.navigation.AppScreen
+import com.vodang.greenmind.theme.Green800
+import com.vodang.greenmind.theme.Green50
+import com.vodang.greenmind.theme.SurfaceWhite
+import com.vodang.greenmind.theme.SurfaceGray
+import com.vodang.greenmind.theme.TextSecondary
+import com.vodang.greenmind.theme.DividerColor
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun AppScaffold(
     title: String,
     subtitle: String? = null,
-    onMenuClick: () -> Unit = {},
-    onBack: (() -> Unit)? = null,
-    userType: UserType = UserType.HOUSEHOLD,
-    showRoleSwitcher: Boolean = false,
-    showRoleSwitcherIcon: Boolean = false,
-    onSwitchClick: (() -> Unit)? = null,
-    trailingIcons: @Composable RowScope.() -> Unit = {},
-    selectedTab: BottomNavTab = BottomNavTab.HOME,
-    onTabSelected: (BottomNavTab) -> Unit = {},
-    scrolled: Boolean = false,
-    content: @Composable (PaddingValues) -> Unit,
+    showBackButton: Boolean = false,
+    onBackClick: (() -> Unit)? = null,
+    onMenuClick: (() -> Unit)? = null,
+    onSearchClick: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+    selectedNavItem: AppScreen? = null,
+    onNavItemSelected: ((AppScreen) -> Unit)? = null,
+    scrollState: ScrollState? = null,
+    lazyListState: LazyListState? = null,
+    content: @Composable () -> Unit,
 ) {
-    val s = LocalAppStrings.current
-    val bgColor by animateColorAsState(
-        targetValue = if (scrolled) Color.White else Color.Transparent,
-        animationSpec = tween(durationMillis = 200),
-        label = "topBarBg"
-    )
-    val elevation = if (scrolled) 4.dp else 0.dp
+    val navItems = AppNavItems.items
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .shadow(elevation)
-            .background(bgColor)
-    ) {
-        // App Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (onBack != null) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(green50)
-                        .clickable { onBack() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = green800,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(green50)
-                        .clickable { onMenuClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(s.menuIcon, fontSize = 16.sp)
-                }
+    // Scroll detection for hide/show header
+    var headerVisible by remember { mutableStateOf(true) }
+    var lastScrollValue by remember { mutableIntStateOf(0) }
+
+    // Observe scroll changes from either ScrollState or LazyListState
+    LaunchedEffect(scrollState, lazyListState) {
+        val scrollFlow = when {
+            scrollState != null -> snapshotFlow { scrollState.value }
+            lazyListState != null -> snapshotFlow { lazyListState.firstVisibleItemScrollOffset }
+            else -> return@LaunchedEffect
+        }
+
+        scrollFlow.distinctUntilChanged().collect { current ->
+            if (current > lastScrollValue && current > 50) {
+                headerVisible = false
+            } else if (current < lastScrollValue) {
+                headerVisible = true
             }
+            lastScrollValue = current
+        }
+    }
 
-            Spacer(Modifier.width(10.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = green800
-                )
-                if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        fontSize = 10.sp,
-                        color = Color.Gray
-                    )
-                }
-            }
-
-            trailingIcons()
-
-            if (showRoleSwitcher && onSwitchClick != null) {
-                Spacer(Modifier.width(4.dp))
-                if (showRoleSwitcherIcon) {
-                    IconButton(
-                        onClick = { onSwitchClick() },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = when (userType) {
-                                UserType.HOUSEHOLD -> Icons.Filled.House
-                                UserType.COLLECTOR -> Icons.Filled.LocalShipping
-                                UserType.VOLUNTEER -> Icons.Filled.VolunteerActivism
-                            },
-                            contentDescription = "Switch Role",
-                            tint = green800,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                } else {
+    Scaffold(
+        containerColor = SurfaceGray,
+        topBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceWhite)
+            ) {
+                // App Bar Row - compact (hides on scroll)
+                if (headerVisible) {
                     Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(green50)
-                            .clickable { onSwitchClick() }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = when (userType) {
-                                UserType.HOUSEHOLD -> Icons.Filled.House
-                                UserType.COLLECTOR -> Icons.Filled.LocalShipping
-                                UserType.VOLUNTEER -> Icons.Filled.VolunteerActivism
-                            },
-                            contentDescription = null,
-                            tint = green800,
-                            modifier = Modifier.size(16.dp)
+                        // Leading icon (menu or back) - smaller
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Green50)
+                                .clickable {
+                                    if (showBackButton && onBackClick != null) {
+                                        onBackClick()
+                                    } else if (onMenuClick != null) {
+                                        onMenuClick()
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (showBackButton) Icons.AutoMirrored.Filled.ArrowBack else Icons.Filled.Menu,
+                                contentDescription = if (showBackButton) "Back" else "Menu",
+                                tint = Green800,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(8.dp))
+
+                        // Title and subtitle column - smaller text
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = title,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Green800,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (subtitle != null) {
+                                Text(
+                                    text = subtitle,
+                                    fontSize = 11.sp,
+                                    color = TextSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        if (onSearchClick != null) {
+                            IconButton(onClick = onSearchClick, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Filled.Search, contentDescription = "Search", tint = Green800, modifier = Modifier.size(20.dp))
+                            }
+                        }
+
+                        // Actions - smaller
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            content = actions
                         )
-                        Text(s.roleSwitch, fontSize = 14.sp, color = green800, fontWeight = FontWeight.Bold)
+                    }
+
+                    HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+                }
+
+                // Top Navigation Bar - always visible
+                if (selectedNavItem != null && onNavItemSelected != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(SurfaceWhite)
+                            .then(if (!headerVisible) Modifier.statusBarsPadding() else Modifier)
+                            .padding(vertical = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        navItems.forEach { item ->
+                            val isSelected = item.screen == selectedNavItem
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { onNavItemSelected(item.screen) }
+                                    .padding(vertical = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
+                                    contentDescription = item.label,
+                                    tint = if (isSelected) Green800 else TextSecondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.height(1.dp))
+                                Text(
+                                    text = item.label,
+                                    fontSize = 9.sp,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (isSelected) Green800 else TextSecondary
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
-
-        HorizontalDivider(color = Color(0xFFE0E0E0))
-
-        // Navigation Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BottomNavTab.entries.forEach { tab ->
-                val selected = tab == selectedTab
-                IconButton(
-                    onClick = { onTabSelected(tab) },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = when (tab) {
-                            BottomNavTab.HOME -> if (selected) Icons.Filled.Home else Icons.Outlined.Home
-                            BottomNavTab.WASTE_SCAN -> if (selected) Icons.Filled.QrCodeScanner else Icons.Outlined.QrCodeScanner
-                            BottomNavTab.TODOS -> if (selected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle
-                            BottomNavTab.HOUSEHOLD -> if (selected) Icons.Filled.House else Icons.Outlined.House
-                            BottomNavTab.BLOG -> if (selected) Icons.Filled.Article else Icons.Outlined.Article
-                            BottomNavTab.PROFILE -> if (selected) Icons.Filled.Person else Icons.Outlined.Person
-                        },
-                        contentDescription = tab.label(s),
-                        tint = if (selected) green800 else textSecondary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
-
-        // Content
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .weight(1f)
-        ) {
-            content(PaddingValues())
+    ) { padding ->
+        Box(modifier = Modifier.padding(padding)) {
+            content()
         }
     }
 }
+
+// BackHandler is provided by platform.BackHandler

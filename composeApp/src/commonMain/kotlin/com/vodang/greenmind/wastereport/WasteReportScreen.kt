@@ -43,7 +43,7 @@ private val green800 = Color(0xFF2E7D32)
 private val green600 = Color(0xFF388E3C)
 
 @Composable
-fun WasteReportScreen() {
+fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListState? = null) {
     val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
 
@@ -137,7 +137,7 @@ fun WasteReportScreen() {
         return
     }
 
-    val myListState  = rememberLazyListState()
+    val myListState  = lazyListState ?: rememberLazyListState()
     val allListState = rememberLazyListState()
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {

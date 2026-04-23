@@ -63,37 +63,36 @@ fun PreAppSurveyScreen(onCompleted: () -> Unit = {}) {
 
     Box(modifier = Modifier.fillMaxSize().background(surfaceColor)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // ── Header ────────────────────────────────────────────────────────
-            Box(
+            // ── Progress indicator (inside content) ──────────────────────────
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(listOf(green800, green600))
-                    )
-                    .padding(horizontal = 20.dp, vertical = 24.dp)
+                    .background(Color.White)
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
-                Column {
-                    Text(
-                        text = s.preAppSurveyTitle,
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
                     Text(
                         text = s.preAppSurveyStep(currentStep + 1, total),
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
+                        color = Color.Gray,
                     )
-                    Spacer(Modifier.height(12.dp))
-                    // Progress bar
-                    LinearProgressIndicator(
-                        progress = { (currentStep + 1).toFloat() / total },
-                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                        color = green400,
-                        trackColor = Color.White.copy(alpha = 0.3f),
+                    Text(
+                        text = "${((currentStep + 1) * 100 / total)}%",
+                        fontSize = 13.sp,
+                        color = green800,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { (currentStep + 1).toFloat() / total },
+                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                    color = green800,
+                    trackColor = Color(0xFFE0E0E0),
+                )
             }
 
             // ── Question card ─────────────────────────────────────────────────

@@ -40,7 +40,7 @@ import com.vodang.greenmind.wasteimpact.components.HeroStat
 import com.vodang.greenmind.wasteimpact.components.ImpactMeter
 import com.vodang.greenmind.wasteimpact.components.ImpactSummary
 import com.vodang.greenmind.wasteimpact.components.PollutantBar
-import com.vodang.greenmind.wasteimpact.components.ScanDetailScreen
+import com.vodang.greenmind.wasteimpact.components.WasteImpactScanDetail
 import com.vodang.greenmind.wasteimpact.components.ScanHistoryRow
 import com.vodang.greenmind.wasteimpact.components.ecoScoreColor
 import com.vodang.greenmind.wasteimpact.components.ecoScoreLabel
@@ -230,7 +230,7 @@ fun WasteImpactScreen() {
 
     val current = selectedEntry
     if (current != null) {
-        ScanDetailScreen(entry = current, onBack = { selectedEntry = null })
+        WasteImpactScanDetail(entry = current, onBack = { selectedEntry = null })
         return
     }
 

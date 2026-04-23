@@ -1,11 +1,13 @@
 package com.vodang.greenmind.store
 
 import com.vodang.greenmind.api.location.CreateLocationRequest
+import com.vodang.greenmind.api.location.LocationDto
 import com.vodang.greenmind.api.location.createLocation
 import com.vodang.greenmind.api.location.getLatestLocation
 import com.vodang.greenmind.api.nominatim.ReverseOptions
 import com.vodang.greenmind.api.nominatim.nominatimReverse
 import com.vodang.greenmind.location.Geo
+import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,18 +20,17 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-// Called every 55 s from LocationForegroundService (Android foreground service —
-// survives app closure). All logic lives here in commonMain.
-
-const val LOCATION_TICK_MS            = 55_000L  // default; runtime value from SettingsStore
-private const val NOMINATIM_THRESHOLD = 100.0   // only re-geocode if moved > 100 m
-private const val MAX_RECENT          = 5
+private const val NOMINATIM_THRESHOLD_METERS = 100.0
+private const val MAX_RECENT_TICKS = 5
+private const val LOCATION_FETCH_INTERVAL_TICKS = 6
+private const val MIN_ACCURACY_METERS = 50f
+private const val GPS_TIMEOUT_MS = 2000L
 
 data class GpsTick(
     val timestampMs: Long,
     val latitude: Double,
     val longitude: Double,
-    val distanceMeters: Double,   // raw metres to previous point (0.0 = stationary)
+    val distanceMeters: Double,
     val address: String,
 )
 
@@ -38,31 +39,52 @@ object LocationTrackingStore {
     private val _recentTicks = MutableStateFlow<List<GpsTick>>(emptyList())
     val recentTicks: StateFlow<List<GpsTick>> = _recentTicks.asStateFlow()
 
-    // ── Nominatim address cache ───────────────────────────────────────────────
+    private var cachedLastSaved: LocationDto? = null
+    private var tickCountSinceLastFetch = 0
+
     private var cachedAddress: String = ""
     private var cacheAtLat: Double = Double.NaN
     private var cacheAtLon: Double = Double.NaN
 
-    // ── Core tick — called by the foreground service loop ─────────────────────
+    private var lastSentLat: Double = Double.NaN
+    private var lastSentLon: Double = Double.NaN
+    private var lastSentTimestamp: Long = 0L
 
     suspend fun tick() {
-        if (!SettingsStore.locationEnabled.value) return
-        val token  = SettingsStore.getAccessToken() ?: return
-        val userId = SettingsStore.getUser()?.id    ?: return
-
-        // Wait up to 4 s for a GPS fix (SharedFlow replay=1 returns instantly when cached)
-        val current = withTimeoutOrNull(4_000L) {
-            Geo.service.locationUpdates.first()
-        } ?: return  // no GPS fix yet — skip this tick
-
-        // Fetch the last server-saved point to measure displacement.
-        // If none exists (first ever save, or API error) → distance = 0, which is correct:
-        // there is no "previous location" to measure from.
-        val lastSaved = try {
-            getLatestLocation(token).data
-        } catch (_: Throwable) {
-            null  // 404 / network error — treat as "no previous point"
+        if (!SettingsStore.locationEnabled.value) {
+            LocationLogStore.log("DISABLED", "Location tracking is disabled")
+            return
         }
+        val token  = SettingsStore.getAccessToken() ?: run {
+            LocationLogStore.log("NO_TOKEN", "No access token available")
+            return
+        }
+        val userId = SettingsStore.getUser()?.id ?: run {
+            LocationLogStore.log("NO_USER", "No user ID available")
+            return
+        }
+
+        val current = getCurrentLocation() ?: run {
+            LocationLogStore.log("NO_GPS", "No valid GPS fix")
+            return
+        }
+
+        if (current.accuracy != null && current.accuracy > MIN_ACCURACY_METERS) {
+            LocationLogStore.log("LOW_ACCURACY", "Accuracy ${current.accuracy}m exceeds ${MIN_ACCURACY_METERS}m")
+            return
+        }
+
+        if (isDuplicateLocation(current)) {
+            LocationLogStore.log("DUPLICATE", "Same location within 5s and < 10m")
+            return
+        }
+
+        if (cachedLastSaved == null || tickCountSinceLastFetch >= LOCATION_FETCH_INTERVAL_TICKS) {
+            refreshLastSaved(token)
+        }
+        tickCountSinceLastFetch++
+
+        val lastSaved = cachedLastSaved
 
         val distanceMeters = if (lastSaved != null) {
             haversineMeters(
@@ -70,19 +92,12 @@ object LocationTrackingStore {
                 lastSaved.latitude, lastSaved.longitude
             )
         } else {
-            0.0   // no previous point → distance is undefined, store 0
+            0.0
         }
 
-        // Reject vehicle speeds — read thresholds live from SettingsStore
-        val minMove    = SettingsStore.minMoveMeters.value.toDouble()
-        val maxSpeed   = SettingsStore.maxWalkSpeedMs.value.toDouble()
-        val elapsedSec = SettingsStore.locationIntervalMs.value / 1000.0
-        if (distanceMeters / elapsedSec > maxSpeed) return
+        val minMove = SettingsStore.minMoveMeters.value.toDouble()
+        val lengthToPrevious = if (distanceMeters < minMove) 0.0001 else distanceMeters
 
-        val lengthToPrevious = if (distanceMeters < minMove) 0.0001
-                               else distanceMeters
-
-        // Reverse-geocode only when moved far enough (Nominatim rate-limit guard)
         val address = reverseCached(current.latitude, current.longitude)
 
         val tick = GpsTick(
@@ -92,7 +107,7 @@ object LocationTrackingStore {
             distanceMeters = distanceMeters,
             address        = address,
         )
-        _recentTicks.value = (_recentTicks.value + tick).takeLast(MAX_RECENT)
+        _recentTicks.value = (_recentTicks.value + tick).takeLast(MAX_RECENT_TICKS)
 
         try {
             createLocation(
@@ -104,16 +119,48 @@ object LocationTrackingStore {
                     lengthToPreviousLocation = lengthToPrevious
                 )
             )
-        } catch (_: Throwable) {
-            // Silent fail — foreground service will retry on the next tick
+            lastSentLat = current.latitude
+            lastSentLon = current.longitude
+            lastSentTimestamp = current.timestampMillis
+            LocationLogStore.log("SENT", "lat=${current.latitude.fmt(6)}, lon=${current.longitude.fmt(6)}, dist=${distanceMeters.fmt(1)}m")
+            AppLogger.i("Location", "Sent: lat=${current.latitude}, lon=${current.longitude}, dist=${distanceMeters}m")
+        } catch (e: Throwable) {
+            LocationLogStore.log("API_ERROR", "Failed: ${e.message}")
+            AppLogger.e("Location", "Failed to create location: ${e.message}")
         }
     }
 
-    // ── Nominatim with cache ──────────────────────────────────────────────────
+    private suspend fun getCurrentLocation(): Location? {
+        return withTimeoutOrNull(GPS_TIMEOUT_MS) {
+            Geo.service.locationUpdates.first()
+        }
+    }
+
+    private fun isDuplicateLocation(current: Location): Boolean {
+        if (lastSentTimestamp == 0L) return false
+        val timeDiff = current.timestampMillis - lastSentTimestamp
+        if (timeDiff < 5000) {
+            val dist = haversineMeters(current.latitude, current.longitude, lastSentLat, lastSentLon)
+            if (dist < 10.0) return true
+        }
+        return false
+    }
+
+    private suspend fun refreshLastSaved(token: String) {
+        tickCountSinceLastFetch = 0
+        try {
+            cachedLastSaved = getLatestLocation(token).data
+            LocationLogStore.log("FETCHED_LAST", "lat=${cachedLastSaved?.latitude?.fmt(6)}, lon=${cachedLastSaved?.longitude?.fmt(6)}")
+            AppLogger.d("Location", "Refreshed lastSaved: ${cachedLastSaved?.latitude}, ${cachedLastSaved?.longitude}")
+        } catch (e: Throwable) {
+            LocationLogStore.log("FETCH_ERROR", "Failed to fetch: ${e.message}")
+            AppLogger.w("Location", "Failed to refresh lastSaved: ${e.message}")
+        }
+    }
 
     private suspend fun reverseCached(lat: Double, lon: Double): String {
         if (cachedAddress.isNotBlank() && !cacheAtLat.isNaN()) {
-            if (haversineMeters(lat, lon, cacheAtLat, cacheAtLon) < NOMINATIM_THRESHOLD) {
+            if (haversineMeters(lat, lon, cacheAtLat, cacheAtLon) < NOMINATIM_THRESHOLD_METERS) {
                 return cachedAddress
             }
         }
@@ -123,21 +170,33 @@ object LocationTrackingStore {
             cacheAtLat = lat
             cacheAtLon = lon
             cachedAddress
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            LocationLogStore.log("NOMINATIM_FAIL", "${e.message}")
+            AppLogger.w("Location", "Nominatim failed: ${e.message}")
             cachedAddress.ifBlank { "$lat,$lon" }
         }
     }
-}
 
-// ── Haversine — distance in metres ───────────────────────────────────────────
+    fun reset() {
+        cachedLastSaved = null
+        tickCountSinceLastFetch = 0
+        lastSentLat = Double.NaN
+        lastSentLon = Double.NaN
+        lastSentTimestamp = 0L
+        LocationLogStore.log("RESET", "Tracking state cleared")
+    }
+}
 
 fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val R = 6_371_000.0
     val dLat = (lat2 - lat1).toRad()
     val dLon = (lon2 - lon1).toRad()
-    val a = sin(dLat / 2).pow(2) +
-            cos(lat1.toRad()) * cos(lat2.toRad()) * sin(dLon / 2).pow(2)
+    val a = sin(dLat / 2).pow(2) + cos(lat1.toRad()) * cos(lat2.toRad()) * sin(dLon / 2).pow(2)
     return R * 2 * atan2(sqrt(a), sqrt(1 - a))
 }
 
-private fun Double.toRad() = this * PI / 180.0
+fun Double.toRad() = this * PI / 180.0
+
+fun Double.fmt(decimals: Int = 2): String = "%.${decimals}f".format(this)
+
+typealias Location = com.vodang.greenmind.location.Location

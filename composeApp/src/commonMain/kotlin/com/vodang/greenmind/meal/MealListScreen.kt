@@ -7,6 +7,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,7 +46,12 @@ fun MealListScreen(onScanClick: () -> Unit, onCardClick: (MealRecord) -> Unit = 
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(s.emptyMealEmoji, fontSize = 48.sp)
+                    Icon(
+                        Icons.Filled.Restaurant,
+                        contentDescription = null,
+                        modifier = Modifier.size(56.dp),
+                        tint = Color(0xFFBDBDBD)
+                    )
                     Text(s.mealListEmpty, color = Color.Gray, fontSize = 15.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(
@@ -55,7 +63,12 @@ fun MealListScreen(onScanClick: () -> Unit, onCardClick: (MealRecord) -> Unit = 
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(s.scanMealEmoji, fontSize = 15.sp)
+                        Icon(
+                            Icons.Filled.CameraAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = Color.White
+                        )
                         Text(s.mealScanTitle, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }

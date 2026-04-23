@@ -1,10 +1,11 @@
 package com.vodang.greenmind.blog
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -26,22 +27,29 @@ import com.vodang.greenmind.api.blog.deleteBlog
 import com.vodang.greenmind.api.blog.getBlog
 import com.vodang.greenmind.api.blog.toggleBlogLike
 import com.vodang.greenmind.api.blog.updateComment
+import com.vodang.greenmind.api.campaign.CampaignDto
+import com.vodang.greenmind.api.campaign.getAllCampaigns
+import com.vodang.greenmind.home.components.CampaignDetailScreen
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.platform.BackHandler
 import com.vodang.greenmind.store.SettingsStore
 import kotlinx.coroutines.launch
 
-// -- Palette (green scheme preserved) ------------------------------------------
+// -- Material 3 Color Scheme (Green Theme) -------------------------------------
 
-private val dGreen800 = Color(0xFF2E7D32)
-private val dGreen100 = Color(0xFFC8E6C9)
-private val dGray700  = Color(0xFF374151)
-private val dGray500  = Color(0xFF6B7280)
-private val dGray400  = Color(0xFF9CA3AF)
-private val dRed500   = Color(0xFFE53935)
-private val dBgGray   = Color(0xFFEEF0F3)
-private val dDivider  = Color(0xFFE4E6EB)
-private val dGray100  = Color(0xFFF3F4F6)
+private val GreenPrimary = Color(0xFF2E7D32)
+private val GreenOnPrimary = Color(0xFFFFFFFF)
+private val GreenPrimaryContainer = Color(0xFFA5D6A7)
+private val GreenOnPrimaryContainer = Color(0xFF1B5E20)
+
+private val SurfaceLight = Color(0xFFFFFFFF)
+private val SurfaceVariantLight = Color(0xFFF5F5F5)
+private val BackgroundLight = Color(0xFFEEF0F3)
+private val OnSurfaceLight = Color(0xFF1C1B1F)
+private val OnSurfaceVariantLight = Color(0xFF49454F)
+
+private val OutlineLight = Color(0xFFE4E6EB)
+private val ErrorColor = Color(0xFFE53935)
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -78,6 +86,17 @@ private fun initials(fullName: String, username: String) =
 
 private fun readMinutes(content: String?) = ((content?.split(" ")?.size ?: 0) / 200).coerceAtLeast(1)
 
+// Extract report ID from post title or content (RPT* pattern)
+private fun extractReportId(post: BlogDto): String? {
+    val text = "${post.title} ${post.content ?: ""}"
+    return Regex("RPT\\d+").find(text)?.value
+}
+
+private fun isoNow(): String {
+    val now = java.time.Instant.now()
+    return now.toString()
+}
+
 // -- Screen --------------------------------------------------------------------
 
 @Composable
@@ -87,6 +106,7 @@ fun BlogDetailScreen(
     onBack: () -> Unit,
     onBlogLiked: (String, Boolean, Int) -> Unit = { _, _, _ -> },
     onBlogDeleted: () -> Unit = {},
+    lazyListState: LazyListState = rememberLazyListState(),
 ) {
     BackHandler(onBack = onBack)
 
@@ -103,6 +123,26 @@ fun BlogDetailScreen(
     var showMenu  by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isDeleting by remember { mutableStateOf(false) }
+
+    // Campaign state
+    var allCampaigns by remember { mutableStateOf<List<CampaignDto>>(emptyList()) }
+    var selectedCampaignId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(accessToken) {
+        try {
+            allCampaigns = getAllCampaigns(accessToken)
+        } catch (_: Throwable) { }
+    }
+
+    val selectedCampaign = selectedCampaignId?.let { id -> allCampaigns.find { it.id == id } }
+    if (selectedCampaign != null) {
+        CampaignDetailScreen(
+            campaign = selectedCampaign,
+            accessToken = accessToken,
+            onBack = { selectedCampaignId = null },
+        )
+        return
+    }
 
     fun loadBlog() {
         scope.launch {
@@ -121,7 +161,6 @@ fun BlogDetailScreen(
 
     LaunchedEffect(blogId) { loadBlog() }
 
-    // Delete confirmation dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -142,7 +181,7 @@ fun BlogDetailScreen(
                             }
                         }
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = dRed500),
+                    colors = ButtonDefaults.textButtonColors(contentColor = ErrorColor),
                 ) {
                     if (isDeleting) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     else Text(s.delete)
@@ -154,10 +193,10 @@ fun BlogDetailScreen(
         )
     }
 
-    Box(Modifier.fillMaxSize().background(dBgGray)) {
+    Box(Modifier.fillMaxSize().background(BackgroundLight)) {
         when {
             isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = dGreen800)
+                CircularProgressIndicator(color = GreenPrimary)
             }
 
             error != null -> ErrorState(
@@ -178,70 +217,77 @@ fun BlogDetailScreen(
                 },
             )
 
-            blog != null -> PostDetail(
-                post      = blog!!,
-                likeCount = likeCount,
-                isLiked   = isLiked,
-                isLiking  = isLiking,
-                onBack    = onBack,
-                onLike    = {
-                    if (isLiking) return@PostDetail
-                    scope.launch {
-                        isLiking = true
-                        val wasLiked = isLiked
-                        isLiked   = !wasLiked
-                        likeCount = (likeCount + if (!wasLiked) 1 else -1).coerceAtLeast(0)
-                        try {
-                            val result = toggleBlogLike(blog!!.id, accessToken)
-                            if (result.likeCount > 0) likeCount = result.likeCount
-                            onBlogLiked(blog!!.id, isLiked, likeCount)
-                        } catch (_: Throwable) {
-                            isLiked   = wasLiked
-                            likeCount = (likeCount + if (wasLiked) 1 else -1).coerceAtLeast(0)
+            blog != null -> {
+                val post = blog!!
+                val reportId = extractReportId(post)
+                val linkedCampaign = if (reportId != null) {
+                    allCampaigns.find { campaign -> campaign.reports.any { it.id == reportId } }
+                } else null
+
+                PostDetail(
+                    post = post,
+                    linkedCampaign = linkedCampaign,
+                    likeCount = likeCount,
+                    isLiked = isLiked,
+                    isLiking = isLiking,
+                    onBack = onBack,
+                    onLike = {
+                        if (isLiking) return@PostDetail
+                        scope.launch {
+                            isLiking = true
+                            val wasLiked = isLiked
+                            isLiked   = !wasLiked
+                            likeCount = (likeCount + if (!wasLiked) 1 else -1).coerceAtLeast(0)
+                            try {
+                                val result = toggleBlogLike(post.id, accessToken)
+                                if (result.likeCount > 0) likeCount = result.likeCount
+                                onBlogLiked(post.id, isLiked, likeCount)
+                            } catch (_: Throwable) {
+                                isLiked   = wasLiked
+                                likeCount = (likeCount + if (wasLiked) 1 else -1).coerceAtLeast(0)
+                            }
+                            isLiking = false
                         }
-                        isLiking = false
-                    }
-                },
-                currentUserId = currentUser?.id,
-                onDeleteClick = { showDeleteDialog = true },
-                onCommentAdded = { newComment ->
-                    blog = blog?.copy(
-                        comments = blog!!.comments + newComment,
-                        commentCount = blog!!.commentCount + 1,
-                    )
-                },
-                onCommentUpdated = { commentId, content ->
-                    blog = blog?.copy(
-                        comments = blog!!.comments.map {
-                            if (it.id == commentId) it.copy(content = content, updatedAt = isoNow())
-                            else it
-                        },
-                    )
-                },
-                onCommentDeleted = { commentId ->
-                    blog = blog?.copy(
-                        comments = blog!!.comments.filter { it.id != commentId },
-                        commentCount = blog!!.commentCount - 1,
-                    )
-                },
-                accessToken = accessToken,
-                showMenu = showMenu,
-                onShowMenu = { showMenu = it },
-            )
+                    },
+                    currentUserId = currentUser?.id,
+                    onDeleteClick = { showDeleteDialog = true },
+                    onCommentAdded = { newComment ->
+                        blog = blog?.copy(
+                            comments = blog!!.comments + newComment,
+                            commentCount = blog!!.commentCount + 1,
+                        )
+                    },
+                    onCommentUpdated = { commentId, content ->
+                        blog = blog?.copy(
+                            comments = blog!!.comments.map {
+                                if (it.id == commentId) it.copy(content = content, updatedAt = isoNow())
+                                else it
+                            },
+                        )
+                    },
+                    onCommentDeleted = { commentId ->
+                        blog = blog?.copy(
+                            comments = blog!!.comments.filter { it.id != commentId },
+                            commentCount = blog!!.commentCount - 1,
+                        )
+                    },
+                    accessToken = accessToken,
+                    showMenu = showMenu,
+                    onShowMenu = { showMenu = it },
+                    onViewCampaign = { campaignId -> selectedCampaignId = campaignId },
+                    lazyListState = lazyListState,
+                )
+            }
         }
     }
 }
 
-private fun isoNow(): String {
-    val now = java.time.Instant.now()
-    return now.toString()
-}
-
-// -- Post detail (Facebook-style) ----------------------------------------------
+// -- Post detail (Material 3 style) --------------------------------------------
 
 @Composable
 private fun PostDetail(
     post: BlogDto,
+    linkedCampaign: CampaignDto?,
     likeCount: Int,
     isLiked: Boolean,
     isLiking: Boolean,
@@ -255,104 +301,137 @@ private fun PostDetail(
     accessToken: String,
     showMenu: Boolean,
     onShowMenu: (Boolean) -> Unit,
+    onViewCampaign: (String) -> Unit,
+    lazyListState: LazyListState = rememberLazyListState(),
 ) {
     val s = LocalAppStrings.current
     val isOwner = currentUserId == post.authorId
+    val isActive = linkedCampaign?.status?.equals("ACTIVE", ignoreCase = true) == true ||
+            linkedCampaign?.status?.equals("IN_PROGRESS", ignoreCase = true) == true
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        state = lazyListState,
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
-        // -- Back bar ------------------------------------------------------
         item {
-            Surface(modifier = Modifier.fillMaxWidth(), color = Color.White) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(onClick = onBack) {
-                        Text(s.back, color = dGreen800, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    }
-                    Spacer(Modifier.weight(1f))
-                    if (isOwner) {
-                        Box {
-                            IconButton(onClick = { onShowMenu(!showMenu) }) {
-                                Text("\u22EE", fontSize = 20.sp, color = dGray500)
-                            }
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { onShowMenu(false) },
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = SurfaceLight),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+            ) {
+                Column {
+                    // Campaign badge if this is a campaign post
+                    if (linkedCampaign != null) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(GreenPrimaryContainer.copy(alpha = 0.3f))
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            AssistChip(
+                                onClick = { },
+                                label = { Text(s.blogCampaignBadge, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+                                leadingIcon = { Text("🎯", fontSize = 14.sp) },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = GreenPrimary,
+                                    labelColor = GreenOnPrimary,
+                                ),
+                                border = null,
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isActive) GreenPrimary.copy(alpha = 0.2f) else SurfaceVariantLight,
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text(s.blogEdit, color = dGray700) },
-                                    onClick = { onShowMenu(false) },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(s.blogDelete, color = dRed500) },
-                                    onClick = {
-                                        onShowMenu(false)
-                                        onDeleteClick()
-                                    },
+                                Text(
+                                    if (isActive) s.campaignActive else s.campaignInactive,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (isActive) GreenPrimary else OnSurfaceVariantLight,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 )
                             }
                         }
                     }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
 
-        // -- Post card (full-width white block) ----------------------------
-        item {
-            Surface(modifier = Modifier.fillMaxWidth(), color = Color.White) {
-                Column {
-                    // -- Author header -------------------------------------
+                    // Author header
                     val avInitials = initials(post.author?.fullName ?: "", post.author?.username ?: "?")
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Box(
-                            Modifier.size(44.dp).clip(CircleShape).background(dGreen100),
-                            contentAlignment = Alignment.Center,
+                        Surface(
+                            modifier = Modifier.size(44.dp),
+                            shape = CircleShape,
+                            color = GreenPrimaryContainer,
                         ) {
-                            Text(avInitials, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = dGreen800)
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(avInitials, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = GreenOnPrimaryContainer)
+                            }
                         }
                         Column(Modifier.weight(1f)) {
                             Text(
                                 post.author?.fullName ?: post.author?.username ?: post.authorId,
-                                fontSize   = 15.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color      = Color(0xFF050505),
+                                color = OnSurfaceLight,
                             )
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
-                                Text(formatDate(post.createdAt), fontSize = 12.sp, color = dGray500)
-                                Text("\u00B7", fontSize = 12.sp, color = dGray500)
-                                Text("\uD83D\uDD50 ${readMinutes(post.content)} min read", fontSize = 12.sp, color = dGray500)
+                                Text(formatDate(post.createdAt), fontSize = 12.sp, color = OnSurfaceVariantLight)
+                                Text("·", fontSize = 12.sp, color = OnSurfaceVariantLight)
+                                Text("${readMinutes(post.content)} min read", fontSize = 12.sp, color = OnSurfaceVariantLight)
                             }
+                        }
+                        if (isOwner) {
+                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.TopEnd) {
+                                IconButton(onClick = { onShowMenu(!showMenu) }) {
+                                    Text("⋮", fontSize = 20.sp, color = OnSurfaceVariantLight)
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { onShowMenu(false) },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(s.blogEdit, color = OnSurfaceLight) },
+                                        onClick = { onShowMenu(false) },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(s.blogDelete, color = ErrorColor) },
+                                        onClick = {
+                                            onShowMenu(false)
+                                            onDeleteClick()
+                                        },
+                                    )
+                                }
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
 
-                    // -- Title ---------------------------------------------
+                    // Title
                     Text(
                         post.title,
-                        modifier   = Modifier.padding(horizontal = 16.dp),
-                        fontSize   = 20.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color      = Color(0xFF050505),
-                        lineHeight = 28.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurfaceLight,
+                        lineHeight = 30.sp,
                     )
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                    // -- Content body --------------------------------------
+                    // Content body
                     val contentText = post.content?.let { stripHtml(it) }?.ifBlank { null }
 
                     if (contentText != null) {
@@ -365,19 +444,19 @@ private fun PostDetail(
                                 val trimmed = para.trim()
                                 when {
                                     trimmed.startsWith("- ") -> {
-                                        Text(trimmed, fontSize = 15.sp, color = dGray700, lineHeight = 24.sp)
+                                        Text(trimmed, fontSize = 15.sp, color = OnSurfaceLight, lineHeight = 24.sp)
                                     }
                                     trimmed.length < 80 && !trimmed.contains('.') -> {
                                         Text(
                                             trimmed,
-                                            fontSize   = 17.sp,
+                                            fontSize = 17.sp,
                                             fontWeight = FontWeight.SemiBold,
-                                            color      = Color(0xFF111827),
+                                            color = OnSurfaceLight,
                                             lineHeight = 26.sp,
                                         )
                                     }
                                     else -> {
-                                        Text(trimmed, fontSize = 15.sp, color = dGray700, lineHeight = 26.sp)
+                                        Text(trimmed, fontSize = 15.sp, color = OnSurfaceLight, lineHeight = 26.sp)
                                     }
                                 }
                             }
@@ -385,77 +464,169 @@ private fun PostDetail(
                     } else {
                         Text(
                             s.noContentAvailable,
-                            modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            fontSize  = 15.sp,
-                            color     = dGray400,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            fontSize = 15.sp,
+                            color = OnSurfaceVariantLight,
                             textAlign = TextAlign.Center,
                         )
                     }
 
                     Spacer(Modifier.height(12.dp))
 
-                    // -- Tags (as #hashtags) -------------------------------
+                    // Tags
                     if (post.tags.isNotEmpty()) {
                         Row(
                             Modifier.padding(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             post.tags.forEach { tag ->
-                                Text("#$tag", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = dGreen800)
+                                AssistChip(
+                                    onClick = { },
+                                    label = { Text("#$tag", fontSize = 13.sp, fontWeight = FontWeight.Medium) },
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = GreenPrimaryContainer.copy(alpha = 0.5f),
+                                        labelColor = GreenOnPrimaryContainer,
+                                    ),
+                                    border = null,
+                                )
                             }
                         }
                         Spacer(Modifier.height(12.dp))
                     }
 
-                    // -- Like & comment count summary ----------------------
+                    // Embedded Campaign Card
+                    if (linkedCampaign != null) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .clickable { onViewCampaign(linkedCampaign.id) },
+                            shape = RoundedCornerShape(12.dp),
+                            color = GreenPrimaryContainer.copy(alpha = 0.3f),
+                            tonalElevation = 1.dp,
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    s.blogCampaignInfo,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = GreenPrimary,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    Surface(
+                                        modifier = Modifier.size(48.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = if (isActive) GreenPrimary else OnSurfaceVariantLight.copy(alpha = 0.3f),
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(if (isActive) "🎯" else "📅", fontSize = 24.sp)
+                                        }
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            linkedCampaign.name,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = OnSurfaceLight,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Text(
+                                            s.dateRange(formatDate(linkedCampaign.startDate), formatDate(linkedCampaign.endDate)),
+                                            fontSize = 12.sp,
+                                            color = OnSurfaceVariantLight,
+                                        )
+                                        if (linkedCampaign.participantsCount > 0) {
+                                            Text(
+                                                "${linkedCampaign.participantsCount} participants",
+                                                fontSize = 12.sp,
+                                                color = OnSurfaceVariantLight,
+                                            )
+                                        }
+                                    }
+                                }
+                                if (linkedCampaign.description.isNotBlank()) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        linkedCampaign.description,
+                                        fontSize = 13.sp,
+                                        color = OnSurfaceVariantLight,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                Spacer(Modifier.height(12.dp))
+                                Button(
+                                    onClick = { onViewCampaign(linkedCampaign.id) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
+                                    shape = RoundedCornerShape(10.dp),
+                                ) {
+                                    Text(s.blogViewCampaign, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    // Like & comment count summary
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .height(24.dp),
+                            .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         if (likeCount > 0) {
-                            Text("\u2665", fontSize = 15.sp, color = if (isLiked) dRed500 else dGray500)
-                            Text("$likeCount", fontSize = 14.sp, color = dGray500)
+                            Text(
+                                if (isLiked) "♥" else "♡",
+                                fontSize = 15.sp,
+                                color = if (isLiked) ErrorColor else OnSurfaceVariantLight,
+                            )
+                            Text("$likeCount", fontSize = 14.sp, color = OnSurfaceVariantLight)
                         }
                         if (post.commentCount > 0) {
-                            if (likeCount > 0) Text("\u00B7", fontSize = 14.sp, color = dGray500)
-                            Text("${post.commentCount} ${s.blogCommentsLabel}", fontSize = 14.sp, color = dGray500)
+                            if (likeCount > 0) Text("·", fontSize = 14.sp, color = OnSurfaceVariantLight)
+                            Text("${post.commentCount} ${s.blogCommentsLabel}", fontSize = 14.sp, color = OnSurfaceVariantLight)
                         }
                     }
 
-                    // -- Divider -------------------------------------------
-                    HorizontalDivider(Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = dDivider)
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), thickness = 1.dp, color = OutlineLight)
 
-                    // -- Action bar: Like ----------------------------------
+                    // Action bar
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        TextButton(
+                        FilledTonalButton(
                             onClick = onLike,
                             enabled = !isLiking,
                             modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = if (isLiked) ErrorColor.copy(alpha = 0.1f) else SurfaceVariantLight,
+                                contentColor = if (isLiked) ErrorColor else OnSurfaceVariantLight,
+                            ),
+                            shape = RoundedCornerShape(12.dp),
                         ) {
                             if (isLiking) {
-                                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = dGreen800, strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = GreenPrimary, strokeWidth = 2.dp)
                             } else {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
                                     Text(
-                                        if (isLiked) "\u2665" else "\u2661",
-                                        fontSize = 20.sp,
-                                        color = if (isLiked) dRed500 else dGray500,
+                                        if (isLiked) "♥" else "♡",
+                                        fontSize = 18.sp,
                                     )
                                     Text(
                                         if (isLiked) s.blogLiked else s.blogLike,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = if (isLiked) dRed500 else dGray500,
                                     )
                                 }
                             }
@@ -466,7 +637,7 @@ private fun PostDetail(
             Spacer(Modifier.height(8.dp))
         }
 
-        // -- Add comment input --------------------------------------------
+        // Add comment input
         item {
             AddCommentSection(
                 accessToken = accessToken,
@@ -476,16 +647,21 @@ private fun PostDetail(
             Spacer(Modifier.height(8.dp))
         }
 
-        // -- Comments list ------------------------------------------------
+        // Comments list
         if (post.comments.isNotEmpty()) {
             item {
-                Surface(modifier = Modifier.fillMaxWidth(), color = Color.White) {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    colors = CardDefaults.elevatedCardColors(containerColor = SurfaceLight),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+                ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             s.blogCommentsTitle(post.commentCount),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = dGray700,
+                            color = OnSurfaceLight,
                         )
                     }
                 }
@@ -507,7 +683,11 @@ private fun PostDetail(
     }
 }
 
-// -- Add comment section -------------------------------------------------------
+private fun Modifier.clickable(onClick: () -> Unit): Modifier = this.then(
+    Modifier.clickable(onClick = onClick)
+)
+
+// -- Add comment section (Material 3 style) -------------------------------------
 
 @Composable
 private fun AddCommentSection(
@@ -521,7 +701,12 @@ private fun AddCommentSection(
     var text by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
 
-    Surface(modifier = Modifier.fillMaxWidth(), color = Color.White) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = SurfaceLight),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+    ) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -529,25 +714,27 @@ private fun AddCommentSection(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            val initials = initials(user?.fullName ?: "", user?.username ?: "?")
-            Box(
-                Modifier.size(32.dp).clip(CircleShape).background(dGreen100),
-                contentAlignment = Alignment.Center,
+            Surface(
+                modifier = Modifier.size(32.dp),
+                shape = CircleShape,
+                color = GreenPrimaryContainer,
             ) {
-                Text(initials, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = dGreen800)
+                Box(contentAlignment = Alignment.Center) {
+                    Text(initials(user?.fullName ?: "", user?.username ?: "?"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GreenOnPrimaryContainer)
+                }
             }
             OutlinedTextField(
                 value = text,
                 onValueChange = { if (it.length <= 500) text = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text(s.blogAddCommentHint, fontSize = 14.sp, color = dGray400) },
+                placeholder = { Text(s.blogAddCommentHint, fontSize = 14.sp, color = OnSurfaceVariantLight) },
                 singleLine = true,
                 shape = RoundedCornerShape(20.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor   = dGreen800,
-                    unfocusedBorderColor = dDivider,
-                    focusedContainerColor = dGray100,
-                    unfocusedContainerColor = dGray100,
+                    focusedBorderColor = GreenPrimary,
+                    unfocusedBorderColor = OutlineLight,
+                    focusedContainerColor = SurfaceVariantLight,
+                    unfocusedContainerColor = SurfaceVariantLight,
                 ),
             )
             IconButton(
@@ -560,23 +747,23 @@ private fun AddCommentSection(
                             val result = addComment(blogId, trimmed, accessToken)
                             onCommentAdded(result.data)
                             text = ""
-                        } catch (_: Throwable) { /* silent */ }
+                        } catch (_: Throwable) { }
                         isSubmitting = false
                     }
                 },
                 enabled = text.isNotBlank() && !isSubmitting,
             ) {
                 if (isSubmitting) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = dGreen800, strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = GreenPrimary, strokeWidth = 2.dp)
                 } else {
-                    Text("\u27A4", fontSize = 18.sp, color = if (text.isNotBlank()) dGreen800 else dGray400)
+                    Text("➤", fontSize = 18.sp, color = if (text.isNotBlank()) GreenPrimary else OnSurfaceVariantLight)
                 }
             }
         }
     }
 }
 
-// -- Comment item --------------------------------------------------------------
+// -- Comment item (Material 3 style) -------------------------------------------
 
 @Composable
 private fun CommentItem(
@@ -597,7 +784,6 @@ private fun CommentItem(
     var editText by remember { mutableStateOf(comment.content) }
     var isSubmitting by remember { mutableStateOf(false) }
 
-    // Edit dialog
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
@@ -622,7 +808,7 @@ private fun CommentItem(
                                 val result = updateComment(blogId, comment.id, trimmed, accessToken)
                                 onUpdated(comment.id, result.data.content)
                                 showEditDialog = false
-                            } catch (_: Throwable) { /* silent */ }
+                            } catch (_: Throwable) { }
                             isSubmitting = false
                         }
                     },
@@ -638,7 +824,6 @@ private fun CommentItem(
         )
     }
 
-    // Delete dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -653,11 +838,11 @@ private fun CommentItem(
                                 deleteComment(blogId, comment.id, accessToken)
                                 onDeleted(comment.id)
                                 showDeleteDialog = false
-                            } catch (_: Throwable) { /* silent */ }
+                            } catch (_: Throwable) { }
                             isSubmitting = false
                         }
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = dRed500),
+                    colors = ButtonDefaults.textButtonColors(contentColor = ErrorColor),
                 ) {
                     if (isSubmitting) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     else Text(s.delete)
@@ -669,7 +854,12 @@ private fun CommentItem(
         )
     }
 
-    Surface(modifier = Modifier.fillMaxWidth(), color = Color.White) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = SurfaceLight),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+    ) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -677,12 +867,14 @@ private fun CommentItem(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            val initials = initials(comment.user.fullName, comment.user.username)
-            Box(
-                Modifier.size(32.dp).clip(CircleShape).background(dGreen100),
-                contentAlignment = Alignment.Center,
+            Surface(
+                modifier = Modifier.size(32.dp),
+                shape = CircleShape,
+                color = GreenPrimaryContainer,
             ) {
-                Text(initials, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = dGreen800)
+                Box(contentAlignment = Alignment.Center) {
+                    Text(initials(comment.user.fullName, comment.user.username), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GreenOnPrimaryContainer)
+                }
             }
             Column(Modifier.weight(1f)) {
                 Row(
@@ -693,15 +885,15 @@ private fun CommentItem(
                         comment.user.fullName,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF050505),
+                        color = OnSurfaceLight,
                     )
-                    Text(formatDateTime(comment.createdAt), fontSize = 11.sp, color = dGray400)
+                    Text(formatDateTime(comment.createdAt), fontSize = 11.sp, color = OnSurfaceVariantLight)
                 }
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     comment.content,
                     fontSize = 14.sp,
-                    color = dGray700,
+                    color = OnSurfaceLight,
                     lineHeight = 20.sp,
                 )
             }
@@ -711,14 +903,14 @@ private fun CommentItem(
                         onClick = { showMenu = true },
                         modifier = Modifier.size(28.dp),
                     ) {
-                        Text("\u22EE", fontSize = 18.sp, color = dGray400)
+                        Text("⋮", fontSize = 18.sp, color = OnSurfaceVariantLight)
                     }
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
                     ) {
                         DropdownMenuItem(
-                            text = { Text(s.blogEdit, color = dGray700) },
+                            text = { Text(s.blogEdit, color = OnSurfaceLight) },
                             onClick = {
                                 showMenu = false
                                 editText = comment.content
@@ -726,7 +918,7 @@ private fun CommentItem(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text(s.blogDelete, color = dRed500) },
+                            text = { Text(s.blogDelete, color = ErrorColor) },
                             onClick = {
                                 showMenu = false
                                 showDeleteDialog = true
@@ -739,7 +931,7 @@ private fun CommentItem(
     }
 }
 
-// -- Error state ---------------------------------------------------------------
+// -- Error state (Material 3 style) --------------------------------------------
 
 @Composable
 private fun ErrorState(
@@ -755,17 +947,17 @@ private fun ErrorState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("\uD83D\uDE15", fontSize = 40.sp)
-            Text(message, fontSize = 14.sp, color = dGray500, textAlign = TextAlign.Center)
+            Text("😕", fontSize = 40.sp)
+            Text(message, fontSize = 14.sp, color = OnSurfaceVariantLight, textAlign = TextAlign.Center)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = onBack,
-                    shape   = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(10.dp),
                 ) { Text(s.back) }
                 Button(
                     onClick = onRetry,
-                    colors  = ButtonDefaults.buttonColors(containerColor = dGreen800),
-                    shape   = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
+                    shape = RoundedCornerShape(10.dp),
                 ) { Text(retryLabel) }
             }
         }

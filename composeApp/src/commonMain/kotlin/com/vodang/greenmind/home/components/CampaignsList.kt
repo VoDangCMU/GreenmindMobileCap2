@@ -81,7 +81,7 @@ private enum class CampaignsTab { ALL, MY }
 private enum class MyCampaignsTab { ACTIVE, HISTORY }
 
 @Composable
-fun CampaignsScreen(onBack: () -> Unit) {
+fun CampaignsList(onBack: () -> Unit) {
     val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
 

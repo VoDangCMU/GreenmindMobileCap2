@@ -16,12 +16,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.households.HouseholdMemberDto
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.theme.Green700
+import com.vodang.greenmind.theme.Green50Light
+import com.vodang.greenmind.theme.Gray700Dark
+import com.vodang.greenmind.theme.Gray400Neutral
+import com.vodang.greenmind.theme.Red600Alert
 
-private val green700 = Color(0xFF2E7D32)
-private val green50s = Color(0xFFE8F5E9)
-private val gray700s = Color(0xFF374151)
-private val gray400s = Color(0xFF9CA3AF)
-private val red600s  = Color(0xFFDC2626)
+private val green700 = Green700
+private val green50 = Green50Light
+private val gray700 = Gray700Dark
+private val gray400 = Gray400Neutral
+private val red600  = Red600Alert
 
 @Composable
 internal fun MemberRow(
@@ -54,7 +59,7 @@ internal fun MemberRow(
                 Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(green50s),
+                    .background(green50),
                 contentAlignment = Alignment.Center
             ) {
                 Text(initials, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = green700)
@@ -65,19 +70,19 @@ internal fun MemberRow(
                     member.fullName,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = gray700s,
+                    color = gray700,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     "@${member.username}",
                     fontSize = 12.sp,
-                    color = gray400s
+                    color = gray400
                 )
                 Text(
                     member.email,
                     fontSize = 11.sp,
-                    color = gray400s,
+                    color = gray400,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -87,7 +92,7 @@ internal fun MemberRow(
             Box(
                 Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(green50s)
+                    .background(green50)
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
@@ -103,14 +108,14 @@ internal fun MemberRow(
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp,
-                    color = red600s
+                    color = red600
                 )
             } else {
                 IconButton(
                     onClick = onRemove,
                     modifier = Modifier.size(32.dp)
                 ) {
-                    Text(s.removeMember, fontSize = 14.sp, color = red600s)
+                    Text(s.removeMember, fontSize = 14.sp, color = red600)
                 }
             }
         }

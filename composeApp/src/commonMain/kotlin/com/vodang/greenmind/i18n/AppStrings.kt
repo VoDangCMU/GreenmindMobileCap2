@@ -78,6 +78,7 @@ class AppStrings(val langCode: String) {
     var langEnglish: String = ""
     var todayOverview: String = ""
     var greenScoreShort: String = ""
+    var greenScoreLabel: String = ""
     var walkDistanceShort: String = ""
     var energyShort: String = ""
     var wasteKgShort: String = ""
@@ -130,6 +131,7 @@ class AppStrings(val langCode: String) {
     var householdWasteStatusTitle: String = ""
     var householdWasteStatusDesc: String = ""
     var wasteStatTitle: String = ""
+    var wasteStatShort: String = ""
     var wasteStatDesc: String = ""
     var scanBillMealTitle: String = ""
     var scanBillMealDesc: String = ""
@@ -288,6 +290,9 @@ class AppStrings(val langCode: String) {
     var blogComments: String = ""
     var blogSponsored: String = ""
     var blogSponsoredCta: String = ""
+    var blogCampaignBadge: String = ""
+    var blogCampaignInfo: String = ""
+    var blogViewCampaign: String = ""
     var surveyMinutes: (Int) -> String = { p0 -> "" }
     var surveyQuestions: (Int) -> String = { p0 -> "" }
     var surveyCompleted: String = ""
@@ -475,6 +480,7 @@ class AppStrings(val langCode: String) {
 
     // ── Catalogue ─────────────────────────────────────────────────────────────────
     var environmentalImpact: String = ""
+    var environmentalImpactShort: String = ""
     var environmentalImpactDesc: String = ""
     var allUsersLabel: String = ""
 
@@ -516,6 +522,7 @@ class AppStrings(val langCode: String) {
     var itemsDetected: String = ""
     var avgEcoScore: String = ""
     var greenScoreDescription: String = ""
+    var greenScoreSection: String = ""
     var basedOnScans: (Int) -> String = { _ -> "" }
     var averagePollutionImpact: String = ""
     var topPollutantsAvg: String = ""
@@ -552,6 +559,9 @@ class AppStrings(val langCode: String) {
     var waterPollutionLabel: String = ""
     var soilPollutionLabel: String = ""
     var greenScoreHistory: String = ""
+    var viewAllHistory: String = ""
+    var viewAllItems: String = ""
+    var householdScansSection: String = ""
     var scanHistoryTitle: String = ""
 
     // ── Waste Analytics ─────────────────────────────────────────────────────────
@@ -676,6 +686,7 @@ class AppStrings(val langCode: String) {
     // ── Bottom Navigation ───────────────────────────────────────────────────────
     var community: String = ""
     var profileTab: String = ""
+    var misc: String? = null
 }
 
 val LocalAppStrings = compositionLocalOf<AppStrings> { EnStrings }

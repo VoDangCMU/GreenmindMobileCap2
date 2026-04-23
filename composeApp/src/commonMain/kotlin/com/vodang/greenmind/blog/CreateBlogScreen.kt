@@ -47,70 +47,6 @@ fun CreateBlogScreen(
         .joinToString("").ifBlank { (user?.username ?: "?").take(2).uppercase() }
 
     Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
-        // -- Top bar (FB-style: Cancel \u00B7 Create Post \u00B7 Post) ---------------
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color.White,
-            shadowElevation = 1.dp,
-        ) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onBack, enabled = !isSubmitting) {
-                    Text("\u2190 ${s.back}", color = green800, fontSize = 14.sp)
-                }
-                Spacer(Modifier.weight(1f))
-                Text(
-                    s.blogCreate,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF050505),
-                )
-                Spacer(Modifier.weight(1f))
-                Button(
-                    onClick = {
-                        val trimTitle = title.trim()
-                        val trimContent = content.trim()
-                        if (trimTitle.isEmpty() || trimContent.isEmpty()) {
-                            error = s.blogCreateErrorEmpty
-                            return@Button
-                        }
-                        val tags = tagsRaw.split(',').map { it.trim() }.filter { it.isNotEmpty() }
-                        scope.launch {
-                            isSubmitting = true; error = null
-                            try {
-                                createBlog(accessToken, CreateBlogRequest(trimTitle, trimContent, tags))
-                                onCreated()
-                            } catch (e: Throwable) {
-                                error = e.message ?: s.blogErrorLoad
-                            }
-                            isSubmitting = false
-                        }
-                    },
-                    enabled = !isSubmitting && title.isNotBlank() && content.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = green800,
-                        disabledContainerColor = green800.copy(alpha = 0.4f),
-                    ),
-                    shape = RoundedCornerShape(20.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                ) {
-                    if (isSubmitting) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
-                        Spacer(Modifier.width(6.dp))
-                    }
-                    Text(
-                        if (isSubmitting) s.blogCreateSubmitting else s.blogCreateSubmit,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-        }
-
         // -- Author row ----------------------------------------------------
         Row(
             Modifier
@@ -138,7 +74,7 @@ fun CreateBlogScreen(
         // -- Form fields ---------------------------------------------------
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -196,6 +132,55 @@ fun CreateBlogScreen(
             // Error
             if (error != null) {
                 Text(error!!, fontSize = 13.sp, color = Color(0xFFC62828))
+            }
+        }
+
+        // -- Bottom Post bar ---------------------------------------------
+        Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shadowElevation = 2.dp) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Button(
+                    onClick = {
+                        val trimTitle = title.trim()
+                        val trimContent = content.trim()
+                        if (trimTitle.isEmpty() || trimContent.isEmpty()) {
+                            error = s.blogCreateErrorEmpty
+                            return@Button
+                        }
+                        val tags = tagsRaw.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                        scope.launch {
+                            isSubmitting = true; error = null
+                            try {
+                                createBlog(accessToken, CreateBlogRequest(trimTitle, trimContent, tags))
+                                onCreated()
+                            } catch (e: Throwable) {
+                                error = e.message ?: s.blogErrorLoad
+                            }
+                            isSubmitting = false
+                        }
+                    },
+                    enabled = !isSubmitting && title.isNotBlank() && content.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = green800,
+                        disabledContainerColor = green800.copy(alpha = 0.4f),
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(
+                        if (isSubmitting) s.blogCreateSubmitting else s.blogCreateSubmit,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
         }
     }

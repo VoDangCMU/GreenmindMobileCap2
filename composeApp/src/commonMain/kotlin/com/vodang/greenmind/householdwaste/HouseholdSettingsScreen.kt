@@ -22,13 +22,18 @@ import com.vodang.greenmind.householdwaste.components.MemberRow
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.theme.Green700
+import com.vodang.greenmind.theme.Gray700Dark
+import com.vodang.greenmind.theme.Gray400Neutral
+import com.vodang.greenmind.theme.Red600Alert
+import com.vodang.greenmind.theme.Red50Light
 import kotlinx.coroutines.launch
 
-private val green700  = Color(0xFF2E7D32)
-private val gray700s  = Color(0xFF374151)
-private val gray400s  = Color(0xFF9CA3AF)
-private val red600s   = Color(0xFFDC2626)
-private val red50s    = Color(0xFFFEF2F2)
+private val green700  = Green700
+private val gray700  = Gray700Dark
+private val gray400  = Gray400Neutral
+private val red600   = Red600Alert
+private val red50    = Red50Light
 
 @Composable
 fun HouseholdSettingsScreen(onBack: () -> Unit) {
@@ -111,7 +116,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                             s.addMember,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = gray700s
+                            color = gray700
                         )
                         OutlinedTextField(
                             value = addUserId,
@@ -126,7 +131,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                             modifier = Modifier.fillMaxWidth(),
                             isError = addError != null,
                             supportingText = when {
-                                addError != null -> { { Text(addError!!, color = red600s) } }
+                                addError != null -> { { Text(addError!!, color = red600) } }
                                 addSuccess -> { { Text(s.memberAddedSuccess, color = green700) } }
                                 else -> null
                             },
@@ -182,7 +187,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                         s.members,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = gray700s
+                        color = gray700
                     )
                     Box(
                         Modifier
@@ -190,7 +195,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                             .background(Color(0xFFE5E7EB))
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
-                        Text("${members.size}", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = gray700s)
+                        Text("${members.size}", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = gray700)
                     }
                 }
 
@@ -198,13 +203,13 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                     Card(
                         Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(containerColor = red50s),
+                        colors = CardDefaults.cardColors(containerColor = red50),
                     ) {
                         Text(
                             removeError!!,
                             modifier = Modifier.padding(12.dp),
                             fontSize = 12.sp,
-                            color = red600s
+                            color = red600
                         )
                     }
                 }
@@ -218,7 +223,7 @@ fun HouseholdSettingsScreen(onBack: () -> Unit) {
                             .padding(vertical = 32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(s.noMembersYet, fontSize = 13.sp, color = gray400s)
+                        Text(s.noMembersYet, fontSize = 13.sp, color = gray400)
                     }
                 } else {
                     members.forEach { member ->

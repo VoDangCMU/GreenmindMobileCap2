@@ -5,38 +5,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.Eco
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.House
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.LocalShipping
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Newspaper
-import androidx.compose.material.icons.filled.Pending
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.Recycling
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.Scale
-import androidx.compose.material.icons.filled.Spa
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,19 +19,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.components.AppScaffold
 import com.vodang.greenmind.i18n.LocalAppStrings
-
-// ── Feature catalogue ──────────────────────────────────────────────────────
-//
-// HOW TO ADD A NEW FEATURE:
-//   1. Add a new FeatureEntry to the appropriate section list below.
-//   2. Use the role that best describes who can use it (ALL / HOUSEHOLD /
-//      COLLECTOR / VOLUNTEER).
-//   3. The description should be one short sentence — what the feature does.
-//
-// This screen is the single source of truth for what the app can do.
-// Keep it up to date whenever a feature is added, changed, or removed.
-// ──────────────────────────────────────────────────────────────────────────
+import com.vodang.greenmind.theme.Green800
+import com.vodang.greenmind.theme.Green50
+import com.vodang.greenmind.theme.SurfaceGray
 
 private data class FeatureEntry(
     val icon: ImageVector,
@@ -66,57 +32,81 @@ private data class FeatureEntry(
     val onClick: (() -> Unit)? = null,
 )
 
-private val green800 = Color(0xFF2E7D32)
-private val green50  = Color(0xFFE8F5E9)
+private val green800 = Green800
+private val green50 = Green50
 
 @Composable
-fun CatalogueScreen(onWasteReport: () -> Unit, onPreAppSurvey: () -> Unit = {}) {
+fun CatalogueScreen(
+    onWasteReport: () -> Unit = {},
+    onPreAppSurvey: () -> Unit = {},
+    onWasteSort: () -> Unit = {},
+    onWasteTotalMass: () -> Unit = {},
+    onEnvironmentalImpact: () -> Unit = {},
+    onWasteImpact: () -> Unit = {},
+    onWasteStat: () -> Unit = {},
+    onHouseholdWaste: () -> Unit = {},
+    onElectricityUsage: () -> Unit = {},
+    onWalkDistance: () -> Unit = {},
+    onScanMeal: () -> Unit = {},
+    onScanBill: () -> Unit = {},
+    onBlog: () -> Unit = {},
+    onCampaigns: () -> Unit = {},
+    onHeatmap: () -> Unit = {},
+    onRoute: () -> Unit = {},
+    onCheckIn: () -> Unit = {},
+    onVolunteerEvents: () -> Unit = {},
+    onOceanScore: () -> Unit = {},
+    onSurveys: () -> Unit = {},
+    onTodos: () -> Unit = {},
+) {
     val s = LocalAppStrings.current
 
-    // ── Feature lists ──────────────────────────────────────────────────────
     val allFeatures = listOf(
-        FeatureEntry(Icons.Filled.Description, s.todos,    s.todosDesc),
-        FeatureEntry(Icons.Filled.Analytics,   s.surveys,  s.surveysDesc),
-        FeatureEntry(Icons.Filled.Newspaper, s.blog,     s.blogDesc),
-        FeatureEntry(Icons.Filled.Public, s.oceanTitle, s.oceanSubtitle),
-        FeatureEntry(Icons.Filled.Edit,  s.preAppSurveyTitle, s.preAppSurveySubtitle, onClick = onPreAppSurvey),
+        FeatureEntry(Icons.Filled.Description, s.todos, s.todosDesc, onClick = onTodos),
+        FeatureEntry(Icons.Filled.Edit, s.surveys, s.surveysDesc, onClick = onSurveys),
+        FeatureEntry(Icons.Filled.Newspaper, s.blog, s.blogDesc, onClick = onBlog),
+        FeatureEntry(Icons.Filled.Public, s.oceanTitle, s.oceanSubtitle, onClick = onOceanScore),
+        FeatureEntry(Icons.Filled.Edit, s.preAppSurveyTitle, s.preAppSurveySubtitle, onClick = onPreAppSurvey),
     )
     val householdFeatures = listOf(
-        FeatureEntry(Icons.Filled.Refresh,  s.wasteSort,              s.wasteSortDesc),
-        FeatureEntry(Icons.Filled.Delete, s.wasteReport,            s.wasteReportDesc, onClick = onWasteReport),
-        FeatureEntry(Icons.Filled.Scale, s.wasteTotalMassTitle,     s.wasteTotalMassDesc),
-        FeatureEntry(Icons.Filled.Warning, s.environmentalImpact,     s.environmentalImpactDesc),
-        FeatureEntry(Icons.Filled.Analytics, s.wasteImpactTitle,        s.wasteImpactDesc),
-        FeatureEntry(Icons.Filled.TrendingUp, s.wasteStatTitle,          s.wasteStatDesc),
-        FeatureEntry(Icons.Filled.Description, s.householdWasteStatusTitle, s.householdWasteStatusDesc),
-        FeatureEntry(Icons.Filled.Lightbulb, s.electricityUsage,         s.electricityChartDesc),
-        FeatureEntry(Icons.Filled.DirectionsWalk, s.walkDistance,            s.walkValue),
-        FeatureEntry(Icons.Filled.Restaurant, s.scanMeal,               s.scanMealDesc),
-        FeatureEntry(Icons.Filled.Receipt, s.scanBill,               s.scanBillDesc),
-        FeatureEntry(Icons.Filled.Newspaper, s.blog,                    s.blogDesc),
-        FeatureEntry(Icons.Filled.Handshake, s.campaignsTitle,         s.campaignsDesc),
+        FeatureEntry(Icons.Filled.Refresh, s.wasteSort, s.wasteSortDesc, onClick = onWasteSort),
+        FeatureEntry(Icons.Filled.Delete, s.wasteReport, s.wasteReportDesc, onClick = onWasteReport),
+        FeatureEntry(Icons.Filled.Scale, s.wasteTotalMassTitle, s.wasteTotalMassDesc, onClick = onWasteTotalMass),
+        FeatureEntry(Icons.Filled.Warning, s.environmentalImpact, s.environmentalImpactDesc, onClick = onEnvironmentalImpact),
+        FeatureEntry(Icons.Filled.Analytics, s.wasteImpactTitle, s.wasteImpactDesc, onClick = onWasteImpact),
+        FeatureEntry(Icons.Filled.TrendingUp, s.wasteStatTitle, s.wasteStatDesc, onClick = onWasteStat),
+        FeatureEntry(Icons.Filled.Description, s.householdWasteStatusTitle, s.householdWasteStatusDesc, onClick = onHouseholdWaste),
+        FeatureEntry(Icons.Filled.Lightbulb, s.electricityUsage, s.electricityChartDesc, onClick = onElectricityUsage),
+        FeatureEntry(Icons.Filled.DirectionsWalk, s.walkDistance, s.walkValue, onClick = onWalkDistance),
+        FeatureEntry(Icons.Filled.Restaurant, s.scanMeal, s.scanMealDesc, onClick = onScanMeal),
+        FeatureEntry(Icons.Filled.Receipt, s.scanBill, s.scanBillDesc, onClick = onScanBill),
+        FeatureEntry(Icons.Filled.Newspaper, s.blog, s.blogDesc, onClick = onBlog),
+        FeatureEntry(Icons.Filled.Handshake, s.campaignsTitle, s.campaignsDesc, onClick = onCampaigns),
     )
     val collectorFeatures = listOf(
-        FeatureEntry(Icons.Filled.Map, s.heatmapFeatureLabel,  s.heatmapFeatureDesc),
-        FeatureEntry(Icons.Filled.LocationOn, s.routeLabel,            s.scheduleDesc),
-        FeatureEntry(Icons.Filled.CheckCircle, s.checkInCardTitle,      s.checkInButton),
+        FeatureEntry(Icons.Filled.Map, s.heatmapFeatureLabel, s.heatmapFeatureDesc, onClick = onHeatmap),
+        FeatureEntry(Icons.Filled.LocationOn, s.routeLabel, s.scheduleDesc, onClick = onRoute),
+        FeatureEntry(Icons.Filled.CheckCircle, s.checkInCardTitle, s.checkInButton, onClick = onCheckIn),
     )
     val volunteerFeatures = listOf(
-        FeatureEntry(Icons.Filled.Handshake, s.volunteerTitle,        s.volunteerSubtitle),
-        FeatureEntry(Icons.Filled.Event, s.volunteerEventsCardTitle, s.volunteerUpcomingTitle),
+        FeatureEntry(Icons.Filled.Handshake, s.volunteerTitle, s.volunteerSubtitle),
+        FeatureEntry(Icons.Filled.Event, s.volunteerEventsCardTitle, s.volunteerUpcomingTitle, onClick = onVolunteerEvents),
     )
-    // ──────────────────────────────────────────────────────────────────────
 
     val scrollState = rememberScrollState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-            .verticalScroll(scrollState)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+    AppScaffold(
+        title = s.catalogue,
+        subtitle = s.catalogueSubtitle,
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SurfaceGray)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
             CatalogueSection(
                 roleIcon = Icons.Filled.Group,
                 roleLabel = s.allUsersLabel,
@@ -146,6 +136,7 @@ fun CatalogueScreen(onWasteReport: () -> Unit, onPreAppSurvey: () -> Unit = {}) 
                 features = volunteerFeatures
             )
             Spacer(Modifier.height(8.dp))
+        }
     }
 }
 
@@ -158,7 +149,6 @@ private fun CatalogueSection(
     features: List<FeatureEntry>,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // Section header
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -185,7 +175,6 @@ private fun CatalogueSection(
             )
         }
 
-        // Feature cards
         features.forEach { feature ->
             CatalogueCard(feature = feature, accentColor = roleColor, bgColor = roleBg)
         }
@@ -194,10 +183,11 @@ private fun CatalogueSection(
 
 @Composable
 private fun CatalogueCard(feature: FeatureEntry, accentColor: Color, bgColor: Color) {
+    val onClick = feature.onClick
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (feature.onClick != null) Modifier.clickable { feature.onClick.invoke() } else Modifier),
+            .clickable(enabled = onClick != null) { onClick?.invoke() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)

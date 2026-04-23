@@ -102,9 +102,11 @@ internal fun DetectScanCard(record: DetectTrashHistoryDto, onClick: () -> Unit) 
                 ) {
                     Box(
                         Modifier
+                            .widthIn(min = 90.dp)
                             .clip(RoundedCornerShape(6.dp))
                             .background(labelBg)
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(detectLabel, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = labelColor)
                     }

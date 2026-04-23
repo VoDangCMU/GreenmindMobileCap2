@@ -23,17 +23,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.vodang.greenmind.components.AppScaffold
 import com.vodang.greenmind.home.components.LanguagePickerModal
 import com.vodang.greenmind.home.components.OceanScoreCard
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.navigation.AppScreen
 import com.vodang.greenmind.store.GpsTick
+import com.vodang.greenmind.store.LocationLogStore
 import com.vodang.greenmind.store.LocationTrackingStore
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.theme.Green800
+import com.vodang.greenmind.theme.Green50
+import com.vodang.greenmind.theme.SurfaceGray
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private val green800 = Color(0xFF2E7D32)
-private val green50  = Color(0xFFE8F5E9)
+private val green800 = Green800
+private val green50  = Green50
 
 @Composable
 fun SettingsScreen() {
@@ -46,6 +52,7 @@ fun SettingsScreen() {
     val language        by SettingsStore.language.collectAsState()
     val roleSwitcherEnabled by SettingsStore.roleSwitcherEnabled.collectAsState()
     val recentTicks     by LocationTrackingStore.recentTicks.collectAsState()
+    val locationLogs    by LocationLogStore.entries.collectAsState()
 
     // Local slider state — committed to store only on finger-lift to avoid excessive writes
     var sliderMove by remember(minMove) { mutableStateOf(minMove) }
@@ -81,12 +88,16 @@ fun SettingsScreen() {
 
     val scrollState = rememberScrollState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF1F8E9))
-            .verticalScroll(scrollState),
+    AppScaffold(
+        title = s.settings,
+        subtitle = currentLangLabel,
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SurfaceGray)
+                .verticalScroll(scrollState),
+        ) {
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -343,6 +354,43 @@ fun SettingsScreen() {
                     }
                 }
 
+                // ── Location Log ───────────────────────────────────────────────────────────
+                SettingsSectionHeader("Location Log", Icons.Filled.LocationOn)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (locationLogs.isEmpty()) {
+                            Text("No location events yet", fontSize = 13.sp, color = Color.Gray)
+                        } else {
+                            locationLogs.asReversed().forEachIndexed { idx, log ->
+                                if (idx > 0) HorizontalDivider(color = Color(0xFFF0F0F0))
+                                val totalSec = (log.timestampMs / 1000L).toInt()
+                                val hh = (totalSec / 3600) % 24
+                                val mm = (totalSec / 60) % 60
+                                val ss = totalSec % 60
+                                val timeLabel = "%02d:%02d:%02d".fmt(hh, mm, ss)
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Surface(shape = RoundedCornerShape(4.dp), color = green50) {
+                                        Text(timeLabel, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = green800, modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp))
+                                    }
+                                    Surface(shape = RoundedCornerShape(4.dp), color = if (log.action == "SENT") Color(0xFFE8F5E9) else Color(0xFFFFF8E1)) {
+                                        Text(log.action, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (log.action == "SENT") green800 else Color(0xFFF57C00), modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp))
+                                    }
+                                    Text(log.detail, fontSize = 11.sp, color = Color(0xFF424242), modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // ── Recent GPS ticks ──────────────────────────────────────────
                 SettingsSectionHeader("${s.settingsLocation} records", Icons.Filled.LocationOn)
                 Card(
@@ -444,6 +492,7 @@ fun SettingsScreen() {
 
                 Spacer(Modifier.height(32.dp))
             }
+        }
     }
 
     if (showTimePicker) {

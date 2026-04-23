@@ -88,6 +88,7 @@ val EnStrings = AppStrings("en").apply {
 
     todayOverview = "Today's overview"
     greenScoreShort = "Green"
+    greenScoreLabel = "Green Score"
     walkDistanceShort = "Walk"
     energyShort = "Energy"
     wasteKgShort = "Waste consumed"
@@ -119,7 +120,7 @@ val EnStrings = AppStrings("en").apply {
     scanBill = "Scan bill"
     scanBillDesc = "Scan your receipt"
     campaignsTitle = "Campaigns"
-    campaignsDesc = "Join volunteer events"
+    campaignsDesc = "Join volunteer campaigns"
     wasteImpactTitle = "Waste Impact"
     greenScoreTitle = "Green Score"
     wasteImpactDesc = "Impact analysis"
@@ -140,6 +141,7 @@ val EnStrings = AppStrings("en").apply {
     householdWasteStatusTitle = "Household Status"
     householdWasteStatusDesc = "Your waste status"
     wasteStatTitle = "Waste Stats"
+    wasteStatShort = "Waste"
     wasteStatDesc = "Waste statistics"
     scanBillMealTitle = "Scan Bill & Meal"
     scanBillMealDesc = "Scan receipts & meals"
@@ -221,12 +223,12 @@ val EnStrings = AppStrings("en").apply {
     volunteerSubtitle = "Environmental protection · Da Nang"
     volunteerHoursLabel = "Hours volunteered"
     volunteerHoursValue = "24h"
-    volunteerEventsLabel = "Events joined"
+    volunteerEventsLabel = "Campaigns joined"
     volunteerEventsValue = "8"
     volunteerPointsLabel = "Points earned"
     volunteerPointsValue = "1,240"
-    volunteerEventsCardTitle = "🗓️ Active events"
-    volunteerUpcomingTitle = "📅 Upcoming events"
+    volunteerEventsCardTitle = "🗓️ Active campaigns"
+    volunteerUpcomingTitle = "📅 Upcoming campaigns"
     volunteerJoinButton = "Register"
     volunteerRegistered = "Registered"
     volunteerCheckIn = "Check-in"
@@ -321,6 +323,9 @@ val EnStrings = AppStrings("en").apply {
     blogComments = "comments"
     blogSponsored = "Campaign"
     blogSponsoredCta = "View Campaign"
+    blogCampaignBadge = "Campaign"
+    blogCampaignInfo = "Campaign Information"
+    blogViewCampaign = "View Campaign"
     surveyMinutes = { n -> "~$n min" }
     surveyQuestions = { n -> "$n questions" }
     surveyCompleted = "✓ Done"
@@ -515,6 +520,7 @@ val EnStrings = AppStrings("en").apply {
 
     // ── Catalogue ──────────────────────────────────────────────────────────────
     environmentalImpact = "Environmental Impact"
+    environmentalImpactShort = "Impact"
     environmentalImpactDesc = "Shows CO₂, microplastic, and pollution scores from waste scans"
     allUsersLabel = "All users"
 
@@ -556,6 +562,7 @@ val EnStrings = AppStrings("en").apply {
     itemsDetected = "Items detected"
     avgEcoScore = "Avg eco score"
     greenScoreDescription = "Green score from household data"
+    greenScoreSection = "Green Score"
     basedOnScans = { n -> "Based on $n scan(s) with impact data" }
     averagePollutionImpact = "Average Pollution Impact"
     topPollutantsAvg = "Top Pollutants (Avg)"
@@ -592,6 +599,9 @@ val EnStrings = AppStrings("en").apply {
     waterPollutionLabel = "Water pollution"
     soilPollutionLabel = "Soil pollution"
     greenScoreHistory = "Green Score History"
+    viewAllHistory = "View all"
+    viewAllItems = "View details"
+    householdScansSection = "Household Scans"
     scanHistoryTitle = "Scan History"
 
     // ── Waste Analytics ────────────────────────────────────────────────────────
@@ -716,4 +726,5 @@ val EnStrings = AppStrings("en").apply {
     // ── Bottom Navigation ─────────────────────────────────────────────────────────
     community = "Community"
     profileTab = "Profile"
+    misc = "Misc"
 }

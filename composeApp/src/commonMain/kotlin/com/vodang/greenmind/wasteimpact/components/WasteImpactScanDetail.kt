@@ -51,7 +51,7 @@ private val allPollutantKeys = listOf(
 // ── Scan detail screen ─────────────────────────────────────────────────────────
 
 @Composable
-fun ScanDetailScreen(entry: WasteSortEntry, onBack: () -> Unit) {
+fun WasteImpactScanDetail(entry: WasteSortEntry, onBack: () -> Unit) {
     val s   = LocalAppStrings.current
     val result = entry.pollutantResult
 

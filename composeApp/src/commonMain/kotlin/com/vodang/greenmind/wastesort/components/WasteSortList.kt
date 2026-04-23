@@ -25,7 +25,7 @@ import com.vodang.greenmind.wastesort.green600
 import com.vodang.greenmind.wastesort.green800
 
 @Composable
-fun WasteSortListScreen(
+fun WasteSortList(
     entries: List<WasteSortEntry>,
     apiHistory: List<DetectTrashHistoryDto> = emptyList(),
     isLoadingHistory: Boolean = false,

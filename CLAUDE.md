@@ -84,7 +84,43 @@ composeApp/src/
 │   │   └── components/           # Reusable home UI cards/components
 │   ├── location/                 # GeolocationService (expect + data)
 │   ├── camera/                   # CameraService (expect)
-│   └── permission/               # PermissionRequester (expect)
+│   ├── permission/               # PermissionRequester (expect)
+│   └── theme/                    # Theme constants (colors, shapes)
 ├── androidMain/                  # Android actuals + MainActivity
 └── iosMain/                      # iOS actuals
+```
+
+## Code Standards
+
+### Naming Conventions
+- **Colors**: PascalCase (e.g., `Gray700`, `Green50`) — use theme constants from `theme/GreenMindColors.kt`
+- **Shapes**: Use `GreenMindShapes` from `theme/GreenMindShapes.kt`
+- **Functions**: camelCase, verb-first (e.g., `fetchData`, not `getData`)
+- **Screens**: `<Feature>Screen.kt` (e.g., `BlogScreen`, not `BlogListScreen`)
+- **Components**: `<Feature><Type>.kt` (e.g., `BlogListItem`, `BlogDetailHeader`)
+- **Avoid suffix "s" in color names** (e.g., `gray700s` → `gray700`)
+
+### Scaffold Requirement
+**ALL screens must use AppScaffold or Scaffold with TopAppBar.**
+- Wrap main content in `AppScaffold(title = ..., subtitle = ...)` from `components/AppScaffold.kt`
+- No raw `Box`/`Column` for full-screen layouts
+- Exception: Router screens that only delegate to child screens
+
+### File Size Limits
+- Target: <200 lines per file
+- Maximum: 300 lines (flag for review if exceeded)
+- If file exceeds 300 lines, extract components into separate files
+
+### Component Organization
+- **Shared UI**: `components/` (buttons, cards, dialogs, scaffold)
+- **Feature UI**: `feature/components/` (feature-specific components)
+- **Screens**: root level or `feature/Screen.kt`
+- **Never name a component as `*Screen.kt`** if it's not a screen — use `*Card.kt`, `*List.kt`, `*Dialog.kt`
+
+### Theme Usage
+Use theme constants instead of hardcoded colors:
+```kotlin
+import com.vodang.greenmind.theme.Green800
+import com.vodang.greenmind.theme.SurfaceGray
+import com.vodang.greenmind.theme.GreenMindShapes
 ```

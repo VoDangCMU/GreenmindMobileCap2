@@ -113,21 +113,6 @@ fun WasteTotalMassScreen(onBack: () -> Unit) {
                 .fillMaxSize()
                 .background(Color.White),
         ) {
-            // ── Top bar ────────────────────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(green800m)
-                    .padding(horizontal = 8.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TextButton(onClick = onBack, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
-                    Text("\u2190", fontSize = 20.sp)
-                }
-                Text(s.wasteTotalMassTitle, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
-
             when {
                 isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = green800m)
@@ -327,21 +312,6 @@ private fun MassDetailScreen(item: DetectTrashHistoryDto, onBack: () -> Unit) {
             .fillMaxSize()
             .background(Color.White),
     ) {
-        // ── Top bar ──────────────────────────────────────────────────────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(green800m)
-                .padding(horizontal = 8.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            TextButton(onClick = onBack, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
-                Text("\u2190", fontSize = 20.sp)
-            }
-            Text(s.wasteTotalMassDetailTitle, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()

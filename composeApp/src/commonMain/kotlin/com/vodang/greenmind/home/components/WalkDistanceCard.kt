@@ -17,7 +17,7 @@ import com.vodang.greenmind.store.WalkDistanceStore
 import com.vodang.greenmind.theme.*
 
 @Composable
-fun WalkDistanceScreen(onBack: () -> Unit) {
+fun WalkDistanceCard(onBack: () -> Unit) {
     val s = LocalAppStrings.current
     val distanceMeters by WalkDistanceStore.distanceMeters.collectAsState()
 

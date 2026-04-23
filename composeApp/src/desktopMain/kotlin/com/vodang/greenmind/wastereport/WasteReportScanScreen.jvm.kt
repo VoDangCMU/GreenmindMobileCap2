@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 actual fun WasteReportScanScreen(
-    onReported: (WasteReportFormData) -> Unit,
+    onStartSubmit: (WasteReportFormData) -> Unit,
     onBack: () -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

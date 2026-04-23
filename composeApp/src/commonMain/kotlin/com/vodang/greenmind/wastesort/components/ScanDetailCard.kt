@@ -413,7 +413,7 @@ private fun ActionButton(
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 @Composable
-fun ScanDetailScreen(
+fun ScanDetailCard(
     entry: WasteSortEntry,
     onBack: () -> Unit,
     onStatusChange: (WasteSortStatus) -> Unit = {},
