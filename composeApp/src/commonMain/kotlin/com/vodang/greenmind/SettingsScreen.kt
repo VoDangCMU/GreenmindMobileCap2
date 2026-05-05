@@ -30,7 +30,10 @@ import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.navigation.AppScreen
 import com.vodang.greenmind.store.GpsTick
 import com.vodang.greenmind.store.LocationLogStore
+import com.vodang.greenmind.permission.PermissionGroup
+import com.vodang.greenmind.permission.PermissionRequester
 import com.vodang.greenmind.store.LocationTrackingStore
+import com.vodang.greenmind.store.NotificationService
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.theme.Green800
 import com.vodang.greenmind.theme.Green50
@@ -88,410 +91,438 @@ fun SettingsScreen() {
 
     val scrollState = rememberScrollState()
 
-    AppScaffold(
-        title = s.settings,
-        subtitle = currentLangLabel,
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SurfaceGray)
+            .verticalScroll(scrollState),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(SurfaceGray)
-                .verticalScroll(scrollState),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+
+            // ── Location Tracking ─────────────────────────────────────────
+            SettingsSectionHeader(s.settingsLocation, Icons.Filled.LocationOn)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
 
-                // ── Location Tracking ─────────────────────────────────────────
-                SettingsSectionHeader(s.settingsLocation, Icons.Filled.LocationOn)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-
-                        // Toggle
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(s.settingsTrackingEnabled, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-                                Text(s.settingsTrackingEnabledDesc, fontSize = 12.sp, color = Color.Gray)
-                            }
-                            Switch(
-                                checked = trackingEnabled,
-                                onCheckedChange = { SettingsStore.setLocationEnabled(it) },
-                                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = green800),
-                            )
+                    // Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(s.settingsTrackingEnabled, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                            Text(s.settingsTrackingEnabledDesc, fontSize = 12.sp, color = Color.Gray)
                         }
-
-                        HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
-
-                        // Interval
-                        Text(s.settingsInterval, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-                        Text(s.settingsIntervalDesc, fontSize = 12.sp, color = Color.Gray)
-                        Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            intervalOptions.forEach { (ms, label) ->
-                                val selected = intervalMs == ms
-                                Surface(
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = if (selected) green800 else Color(0xFFF5F5F5),
-                                    modifier = Modifier.clickable { SettingsStore.setLocationInterval(ms) },
-                                ) {
-                                    Text(
-                                        text = label,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        fontSize = 13.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (selected) Color.White else Color.DarkGray,
-                                    )
-                                }
-                            }
-                        }
-
-                        HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
-
-                        // Stationary threshold slider
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(s.settingsMinMove, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121), modifier = Modifier.weight(1f))
-                            Text(
-                                "${sliderMove.toInt()} m",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = green800,
-                            )
-                        }
-                        Text(s.settingsMinMoveDesc(sliderMove.toInt()), fontSize = 12.sp, color = Color.Gray)
-                        Slider(
-                            value = sliderMove,
-                            onValueChange = { sliderMove = it },
-                            onValueChangeFinished = { SettingsStore.setMinMoveMeters(sliderMove) },
-                            valueRange = 5f..100f,
-                            steps = 18,  // every 5m
-                            colors = SliderDefaults.colors(thumbColor = green800, activeTrackColor = green800, inactiveTrackColor = green50),
-                            modifier = Modifier.fillMaxWidth(),
+                        Switch(
+                            checked = trackingEnabled,
+                            onCheckedChange = { SettingsStore.setLocationEnabled(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = green800),
                         )
+                    }
 
-                        HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
 
-                        // Speed filter
-                        Text(s.settingsSpeedFilter, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-                        Text(s.settingsSpeedFilterDesc(speedPresets[selectedSpeedIdx].first), fontSize = 12.sp, color = Color.Gray)
-                        Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            speedPresets.forEachIndexed { idx, (speed, label) ->
-                                val selected = idx == selectedSpeedIdx
-                                Surface(
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = if (selected) green800 else Color(0xFFF5F5F5),
-                                    modifier = Modifier.clickable { SettingsStore.setMaxWalkSpeedMs(speed) },
-                                ) {
-                                    Text(
-                                        text = label,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        fontSize = 12.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (selected) Color.White else Color.DarkGray,
-                                    )
-                                }
+                    // Interval
+                    Text(s.settingsInterval, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                    Text(s.settingsIntervalDesc, fontSize = 12.sp, color = Color.Gray)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        intervalOptions.forEach { (ms, label) ->
+                            val selected = intervalMs == ms
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (selected) green800 else Color(0xFFF5F5F5),
+                                modifier = Modifier.clickable { SettingsStore.setLocationInterval(ms) },
+                            ) {
+                                Text(
+                                    text = label,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    fontSize = 13.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) Color.White else Color.DarkGray,
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
+
+                    // Stationary threshold slider
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(s.settingsMinMove, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121), modifier = Modifier.weight(1f))
+                        Text(
+                            "${sliderMove.toInt()} m",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = green800,
+                        )
+                    }
+                    Text(s.settingsMinMoveDesc(sliderMove.toInt()), fontSize = 12.sp, color = Color.Gray)
+                    Slider(
+                        value = sliderMove,
+                        onValueChange = { sliderMove = it },
+                        onValueChangeFinished = { SettingsStore.setMinMoveMeters(sliderMove) },
+                        valueRange = 5f..100f,
+                        steps = 18,  // every 5m
+                        colors = SliderDefaults.colors(thumbColor = green800, activeTrackColor = green800, inactiveTrackColor = green50),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
+
+                    // Speed filter
+                    Text(s.settingsSpeedFilter, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                    Text(s.settingsSpeedFilterDesc(speedPresets[selectedSpeedIdx].first), fontSize = 12.sp, color = Color.Gray)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        speedPresets.forEachIndexed { idx, (speed, label) ->
+                            val selected = idx == selectedSpeedIdx
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (selected) green800 else Color(0xFFF5F5F5),
+                                modifier = Modifier.clickable { SettingsStore.setMaxWalkSpeedMs(speed) },
+                            ) {
+                                Text(
+                                    text = label,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    fontSize = 12.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) Color.White else Color.DarkGray,
+                                )
                             }
                         }
                     }
                 }
+            }
 
-                OceanScoreCard()
+            OceanScoreCard()
 
-                // ── Metrics Auto Update ───────────────────────────────────────
-                SettingsSectionHeader(s.metricsAutoUpdate, Icons.Filled.Analytics)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            // ── Metrics Auto Update ───────────────────────────────────────
+            SettingsSectionHeader(s.metricsAutoUpdate, Icons.Filled.Analytics)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
 
-                        // Enable toggle
+                    // Enable toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(s.autoUpdateMetrics, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                            Text(s.autoUpdateMetricsDesc, fontSize = 12.sp, color = Color.Gray)
+                        }
+                        Switch(
+                            checked = metricsAutoEnabled,
+                            onCheckedChange = { metricsAutoEnabled = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = green800),
+                        )
+                    }
+
+                    // Time picker row (only when enabled)
+                    if (metricsAutoEnabled) {
+                        HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { showTimePicker = true }
+                                .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(s.autoUpdateMetrics, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-                                Text(s.autoUpdateMetricsDesc, fontSize = 12.sp, color = Color.Gray)
+                                Text(s.updateTime, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                                Text(s.updateTimeDesc, fontSize = 12.sp, color = Color.Gray)
                             }
-                            Switch(
-                                checked = metricsAutoEnabled,
-                                onCheckedChange = { metricsAutoEnabled = it },
-                                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = green800),
-                            )
-                        }
-
-                        // Time picker row (only when enabled)
-                        if (metricsAutoEnabled) {
-                            HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable { showTimePicker = true }
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = green50,
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(s.updateTime, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-                                    Text(s.updateTimeDesc, fontSize = 12.sp, color = Color.Gray)
+                                Text(
+                                    text = "%02d:%02d".fmt(metricsUpdateHour, metricsUpdateMinute),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = green800,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
+
+                    // Update All button
+                    val metrics = listOf(
+                        Triple("daily_spending",         "💸", s.dailySpending),
+                        Triple("night_out",              "🌙", s.nightOut),
+                        Triple("spend_variability",      "📊", s.spendVariability),
+                        Triple("brand_novelty",          "🛍️", s.brandNovelty),
+                        Triple("list_adherence",         "📋", s.listAdherence),
+                        Triple("daily_distance",         "🚶", s.dailyDistance),
+                        Triple("novel_location_ratio",   "📍", s.novelLocationRatio),
+                        Triple("public_transit_ratio",   "🚌", s.publicTransitRatio),
+                    )
+                    val allKeys = metrics.map { it.first }.toSet()
+                    val isRefreshingAll = allKeys.all { it in refreshingMetrics }
+                    Button(
+                        onClick = {
+                            if (!isRefreshingAll) {
+                                metricsScope.launch {
+                                    refreshingMetrics = allKeys
+                                    delay(1500) // TODO: replace with actual API call
+                                    refreshingMetrics = emptySet()
                                 }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = green800),
+                        enabled = !isRefreshingAll,
+                    ) {
+                        if (isRefreshingAll) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(s.updating, fontSize = 13.sp)
+                        } else {
+                            Text(s.updateAll, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 4.dp))
+
+                    // Metric rows
+                    metrics.forEachIndexed { idx, (key, emoji, label) ->
+                        if (idx > 0) HorizontalDivider(color = Color(0xFFF5F5F5))
+                        val isRefreshing = key in refreshingMetrics
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(emoji, fontSize = 18.sp)
+                            Text(
+                                text = label,
+                                fontSize = 13.sp,
+                                color = Color(0xFF212121),
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (isRefreshing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = green800,
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
                                     color = green50,
+                                    modifier = Modifier.clickable {
+                                        metricsScope.launch {
+                                            refreshingMetrics = refreshingMetrics + key
+                                            delay(1500) // TODO: replace with actual API call
+                                            refreshingMetrics = refreshingMetrics - key
+                                        }
+                                    },
                                 ) {
                                     Text(
-                                        text = "%02d:%02d".fmt(metricsUpdateHour, metricsUpdateMinute),
+                                        text = "↺",
                                         fontSize = 16.sp,
+                                        color = green800,
                                         fontWeight = FontWeight.Bold,
-                                        color = green800,
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                     )
                                 }
                             }
                         }
-
-                        HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
-
-                        // Update All button
-                        val metrics = listOf(
-                            Triple("daily_spending",         "💸", s.dailySpending),
-                            Triple("night_out",              "🌙", s.nightOut),
-                            Triple("spend_variability",      "📊", s.spendVariability),
-                            Triple("brand_novelty",          "🛍️", s.brandNovelty),
-                            Triple("list_adherence",         "📋", s.listAdherence),
-                            Triple("daily_distance",         "🚶", s.dailyDistance),
-                            Triple("novel_location_ratio",   "📍", s.novelLocationRatio),
-                            Triple("public_transit_ratio",   "🚌", s.publicTransitRatio),
-                        )
-                        val allKeys = metrics.map { it.first }.toSet()
-                        val isRefreshingAll = allKeys.all { it in refreshingMetrics }
-                        Button(
-                            onClick = {
-                                if (!isRefreshingAll) {
-                                    metricsScope.launch {
-                                        refreshingMetrics = allKeys
-                                        delay(1500) // TODO: replace with actual API call
-                                        refreshingMetrics = emptySet()
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = green800),
-                            enabled = !isRefreshingAll,
-                        ) {
-                            if (isRefreshingAll) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
-                                Spacer(Modifier.width(8.dp))
-                                Text(s.updating, fontSize = 13.sp)
-                            } else {
-                                Text(s.updateAll, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-
-                        HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 4.dp))
-
-                        // Metric rows
-                        metrics.forEachIndexed { idx, (key, emoji, label) ->
-                            if (idx > 0) HorizontalDivider(color = Color(0xFFF5F5F5))
-                            val isRefreshing = key in refreshingMetrics
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                Text(emoji, fontSize = 18.sp)
-                                Text(
-                                    text = label,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF212121),
-                                    modifier = Modifier.weight(1f),
-                                )
-                                if (isRefreshing) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        color = green800,
-                                        strokeWidth = 2.dp,
-                                    )
-                                } else {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = green50,
-                                        modifier = Modifier.clickable {
-                                            metricsScope.launch {
-                                                refreshingMetrics = refreshingMetrics + key
-                                                delay(1500) // TODO: replace with actual API call
-                                                refreshingMetrics = refreshingMetrics - key
-                                            }
-                                        },
-                                    ) {
-                                        Text(
-                                            text = "↺",
-                                            fontSize = 16.sp,
-                                            color = green800,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        )
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
-
-                // ── Location Log ───────────────────────────────────────────────────────────
-                SettingsSectionHeader("Location Log", Icons.Filled.LocationOn)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (locationLogs.isEmpty()) {
-                            Text("No location events yet", fontSize = 13.sp, color = Color.Gray)
-                        } else {
-                            locationLogs.asReversed().forEachIndexed { idx, log ->
-                                if (idx > 0) HorizontalDivider(color = Color(0xFFF0F0F0))
-                                val totalSec = (log.timestampMs / 1000L).toInt()
-                                val hh = (totalSec / 3600) % 24
-                                val mm = (totalSec / 60) % 60
-                                val ss = totalSec % 60
-                                val timeLabel = "%02d:%02d:%02d".fmt(hh, mm, ss)
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Surface(shape = RoundedCornerShape(4.dp), color = green50) {
-                                        Text(timeLabel, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = green800, modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp))
-                                    }
-                                    Surface(shape = RoundedCornerShape(4.dp), color = if (log.action == "SENT") Color(0xFFE8F5E9) else Color(0xFFFFF8E1)) {
-                                        Text(log.action, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (log.action == "SENT") green800 else Color(0xFFF57C00), modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp))
-                                    }
-                                    Text(log.detail, fontSize = 11.sp, color = Color(0xFF424242), modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ── Recent GPS ticks ──────────────────────────────────────────
-                SettingsSectionHeader("${s.settingsLocation} records", Icons.Filled.LocationOn)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                        if (recentTicks.isEmpty()) {
-                            Text(
-                                s.noGpsRecords,
-                                fontSize = 13.sp,
-                                color = Color.Gray,
-                            )
-                        } else {
-                            recentTicks.asReversed().forEachIndexed { idx, tick ->
-                                if (idx > 0) HorizontalDivider(color = Color(0xFFF0F0F0))
-                                GpsTickRow(tick)
-                            }
-                        }
-                    }
-                }
-
-                // ── Error Log ─────────────────────────────────────────────────
-                ErrorLogSection()
-
-                // ── Network Log ───────────────────────────────────────────────
-                NetworkLogSection()
-
-                // ── General ───────────────────────────────────────────────────
-                SettingsSectionHeader(s.settingsGeneral, Icons.Filled.Settings)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                ) {
-                    Column(modifier = Modifier.padding(4.dp)) {
-                        SettingsNavRow(
-                            icon = "🌐",
-                            title = s.language,
-                            subtitle = currentLangLabel,
-                            onClick = { showLangPicker = true },
-                        )
-                        // Role switcher toggle
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(s.settingsEnableRoleSwitcher, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-                                Text(s.settingsEnableRoleSwitcherDesc, fontSize = 12.sp, color = Color.Gray)
-                            }
-                            Switch(
-                                checked = roleSwitcherEnabled,
-                                onCheckedChange = { SettingsStore.setRoleSwitcherEnabled(it) },
-                                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = green800),
-                            )
-                        }
-                    }
-                }
-
-                // ── About ─────────────────────────────────────────────────────
-                SettingsSectionHeader(s.settingsAbout, Icons.Filled.Info)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Filled.Eco, contentDescription = null, modifier = Modifier.size(24.dp), tint = green800)
-                            Spacer(Modifier.width(10.dp))
-                            Text(s.greenMind, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = green800, modifier = Modifier.weight(1f))
-                            Text(s.version, fontSize = 13.sp, color = Color.Gray)
-                        }
-
-                        HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
-
-                        Text(s.settingsHowWorks, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = s.settingsHowWorksBody(
-                                (intervalMs / 1000).toInt(),
-                                minMove.toInt(),
-                                maxSpeed,
-                            ),
-                            fontSize = 13.sp,
-                            color = Color(0xFF616161),
-                            lineHeight = 20.sp,
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(32.dp))
             }
+
+            // ── Location Log ───────────────────────────────────────────────────────────
+            SettingsSectionHeader("Location Log", Icons.Filled.LocationOn)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (locationLogs.isEmpty()) {
+                        Text("No location events yet", fontSize = 13.sp, color = Color.Gray)
+                    } else {
+                        locationLogs.asReversed().forEachIndexed { idx, log ->
+                            if (idx > 0) HorizontalDivider(color = Color(0xFFF0F0F0))
+                            val totalSec = (log.timestampMs / 1000L).toInt()
+                            val hh = (totalSec / 3600) % 24
+                            val mm = (totalSec / 60) % 60
+                            val ss = totalSec % 60
+                            val timeLabel = "%02d:%02d:%02d".fmt(hh, mm, ss)
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Surface(shape = RoundedCornerShape(4.dp), color = green50) {
+                                    Text(timeLabel, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = green800, modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp))
+                                }
+                                Surface(shape = RoundedCornerShape(4.dp), color = if (log.action == "SENT") Color(0xFFE8F5E9) else Color(0xFFFFF8E1)) {
+                                    Text(log.action, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (log.action == "SENT") green800 else Color(0xFFF57C00), modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp))
+                                }
+                                Text(log.detail, fontSize = 11.sp, color = Color(0xFF424242), modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Recent GPS ticks ──────────────────────────────────────────
+            SettingsSectionHeader("${s.settingsLocation} records", Icons.Filled.LocationOn)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                    if (recentTicks.isEmpty()) {
+                        Text(
+                            s.noGpsRecords,
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                        )
+                    } else {
+                        recentTicks.asReversed().forEachIndexed { idx, tick ->
+                            if (idx > 0) HorizontalDivider(color = Color(0xFFF0F0F0))
+                            GpsTickRow(tick)
+                        }
+                    }
+                }
+            }
+
+            // ── Error Log ─────────────────────────────────────────────────
+            ErrorLogSection()
+
+            // ── Network Log ───────────────────────────────────────────────
+            NetworkLogSection()
+
+            // ── General ───────────────────────────────────────────────────
+            SettingsSectionHeader(s.settingsGeneral, Icons.Filled.Settings)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            ) {
+                Column(modifier = Modifier.padding(4.dp)) {
+                    SettingsNavRow(
+                        icon = "🌐",
+                        title = s.language,
+                        subtitle = currentLangLabel,
+                        onClick = { showLangPicker = true },
+                    )
+                    // Role switcher toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(s.settingsEnableRoleSwitcher, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                            Text(s.settingsEnableRoleSwitcherDesc, fontSize = 12.sp, color = Color.Gray)
+                        }
+                        Switch(
+                            checked = roleSwitcherEnabled,
+                            onCheckedChange = { SettingsStore.setRoleSwitcherEnabled(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = green800),
+                        )
+                    }
+                }
+            }
+
+            // ── About ─────────────────────────────────────────────────────
+            SettingsSectionHeader(s.settingsAbout, Icons.Filled.Info)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.Eco, contentDescription = null, modifier = Modifier.size(24.dp), tint = green800)
+                        Spacer(Modifier.width(10.dp))
+                        Text(s.greenMind, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = green800, modifier = Modifier.weight(1f))
+                        Text(s.version, fontSize = 13.sp, color = Color.Gray)
+                    }
+
+                    HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
+
+                    Text(s.settingsHowWorks, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = s.settingsHowWorksBody(
+                            (intervalMs / 1000).toInt(),
+                            minMove.toInt(),
+                            maxSpeed,
+                        ),
+                        fontSize = 13.sp,
+                        color = Color(0xFF616161),
+                        lineHeight = 20.sp,
+                    )
+                }
+            }
+
+            // ── Test Notification ─────────────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Test Notification", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                    Spacer(Modifier.height(8.dp))
+                    val notifGranted by PermissionRequester.grantedFlow(PermissionGroup.NOTIFICATION).collectAsState()
+                    Button(
+                        onClick = {
+                            if (notifGranted) {
+                                NotificationService().showChatNotification(
+                                    campaignId = "test-campaign-id",
+                                    campaignName = "Test Campaign",
+                                    senderName = "Test User",
+                                    content = "This is a test notification from Settings!",
+                                )
+                            } else {
+                                PermissionRequester.request(PermissionGroup.NOTIFICATION)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)),
+                    ) {
+                        Text("Send Test Notification", color = Color.White, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
         }
     }
 

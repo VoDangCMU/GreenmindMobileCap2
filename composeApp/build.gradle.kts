@@ -44,6 +44,7 @@ kotlin {
             implementation("com.google.android.gms:play-services-location:21.0.1")
             implementation(libs.ktor.client.android)
             implementation("io.coil-kt:coil-compose:2.7.0")
+            implementation(libs.socketio.client)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

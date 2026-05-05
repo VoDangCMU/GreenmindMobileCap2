@@ -48,17 +48,6 @@ fun ViewAllRecordsScreen(
     }
 
     Column(Modifier.fillMaxSize().background(bgGray)) {
-        // Header
-        Box(Modifier.fillMaxWidth().background(green700).padding(top = 16.dp, bottom = 16.dp, start = 8.dp, end = 20.dp).statusBarsPadding()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) {
-                    Text(s.backArrow, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Light)
-                }
-                Spacer(Modifier.width(8.dp))
-                Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
-        }
-
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (mode) {
                 ViewAllMode.HOUSEHOLD_SCANS -> {

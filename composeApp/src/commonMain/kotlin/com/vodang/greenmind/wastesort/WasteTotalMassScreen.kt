@@ -32,6 +32,7 @@ import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.wastereport.NetworkImage
 import com.vodang.greenmind.wastereport.ZoomableImagePreview
 import com.vodang.greenmind.util.AppLogger
+import com.vodang.greenmind.time.formatDateTimeLocal
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -48,11 +49,6 @@ private val gray200m  = Color(0xFFEEEEEE)
 private fun formatDateShort(iso: String): String = try {
     val parts = iso.substringBefore('T').split('-')
     if (parts.size == 3) "${parts[2]}/${parts[1]}/${parts[0]}" else iso
-} catch (_: Throwable) { iso }
-
-private fun formatDateFull(iso: String): String = try {
-    val parts = iso.replace("T", " ").substringBefore(".")
-    if (parts.length > 16) parts.substring(0, 16) else parts
 } catch (_: Throwable) { iso }
 
 @Composable
@@ -347,7 +343,7 @@ private fun MassDetailScreen(item: DetectTrashHistoryDto, onBack: () -> Unit) {
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 ) {
                     ZoomableImagePreview(
-                        url = item.depthMapUrl!!,
+                        url = item.depthMapUrl.orEmpty(),
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -403,7 +399,7 @@ private fun MassDetailScreen(item: DetectTrashHistoryDto, onBack: () -> Unit) {
                         else          -> s.wasteScanned
                     }
                     InfoRow(s.wasteTotalMassDetailStatus, statusLabel, statusColor)
-                    InfoRow(s.wasteTotalMassDetailDate, formatDateFull(item.createdAt ?: ""))
+                    InfoRow(s.wasteTotalMassDetailDate, formatDateTimeLocal(item.createdAt ?: ""))
                     InfoRow(s.wasteTotalMassDetailType, item.detectType?.replaceFirstChar { it.uppercase() } ?: "")
                     item.household?.address?.let { addr ->
                         InfoRow(s.wasteTotalMassDetailLocation, addr)

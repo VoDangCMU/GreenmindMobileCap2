@@ -7,7 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.AssignmentInd
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Scale
 import androidx.compose.material3.LinearProgressIndicator
@@ -141,7 +141,7 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
                 Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MetricCard(Icons.Filled.Map, s.zoneLabel, s.zoneValue, s.today, Color(0xFFFFF8E1), amber600, amber600, Modifier.weight(1f).aspectRatio(1f))
                     MetricCard(Icons.Filled.Scale, s.bagsLabel, "${points.sumOf { it.bags }} kg", s.bagsEstimated, green50, green800, green800, Modifier.weight(1f).aspectRatio(1f))
-                    MetricCard(Icons.Filled.Assignment, s.routeLabel, "$totalCount", s.today, blue50, blue600, blue600, Modifier.weight(1f).aspectRatio(1f))
+                    MetricCard(Icons.Filled.AssignmentInd, s.routeLabel, "$totalCount", s.today, blue50, blue600, blue600, Modifier.weight(1f).aspectRatio(1f))
                 }
 
                 CheckInCard(points, onCheckInClick = { reportId -> checkInReportId = reportId })

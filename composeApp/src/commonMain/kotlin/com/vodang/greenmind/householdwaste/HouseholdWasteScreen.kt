@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -16,36 +17,44 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.households.DetectTrashHistoryDto
 import com.vodang.greenmind.api.households.GreenScoreEntryDto
-import com.vodang.greenmind.api.households.getDetectByHouseholdId
-import com.vodang.greenmind.api.households.getDetectHistoryByUser
+import com.vodang.greenmind.api.households.getHistoryByHouseholdByType
 import com.vodang.greenmind.api.households.getGreenScoreByHousehold
 import com.vodang.greenmind.api.wastereport.WasteReportDto
 import com.vodang.greenmind.api.wastereport.getMyWasteReports
 import com.vodang.greenmind.householdwaste.components.*
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.scandetail.toScanDetailData
+import com.vodang.greenmind.scandetail.components.BottomSheetScanDetail
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.store.WasteSortStore
 import com.vodang.greenmind.wastereport.WasteReportCard
 import com.vodang.greenmind.wastereport.WasteReportDetailSheet
 import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.theme.Green50
+import com.vodang.greenmind.theme.Green500
+import com.vodang.greenmind.theme.Green600
+import com.vodang.greenmind.theme.Green700
+import com.vodang.greenmind.theme.SurfaceGray
+import com.vodang.greenmind.theme.TextPrimary
+import com.vodang.greenmind.theme.TextSecondary
 
-private val Green700 = Color(0xFF2E7D32)
-private val Green500 = Color(0xFF43A047)
-private val Green50  = Color(0xFFE8F5E9)
-private val Red600   = Color(0xFFDC2626)
-private val Red50    = Color(0xFFFEE2E2)
-private val Blue600  = Color(0xFF2563EB)
-private val Blue50   = Color(0xFFDBEAFE)
-private val Surface  = Color(0xFFFFFBFE)
-private val SurfaceVariant = Color(0xFFE7E0EC)
-private val OnSurfaceVariant = Color(0xFF49454F)
-private val Outline = Color(0xFF79747E)
+private val Red600     = Color(0xFFDC2626)
+private val Red50      = Color(0xFFFEE2E2)
+private val Blue600    = Color(0xFF2563EB)
+private val Blue50     = Color(0xFFDBEAFE)
+private val Orange50   = Color(0xFFFFF3E0)
+private val Orange700  = Color(0xFFF57C00)
+private val Purple50   = Color(0xFFF3E5F5)
+private val Purple700  = Color(0xFF7B1FA2)
 
 @Composable
 fun HouseholdWasteScreen(
@@ -56,11 +65,11 @@ fun HouseholdWasteScreen(
 ) {
     val s = LocalAppStrings.current
     val household by HouseholdStore.household.collectAsState()
+    val userHistory by WasteSortStore.userHistory.collectAsState()
     val hasFetched by HouseholdStore.hasFetched.collectAsState()
     val isFetching by HouseholdStore.isFetching.collectAsState()
 
     var householdHistory   by remember { mutableStateOf<List<DetectTrashHistoryDto>>(emptyList()) }
-    var userHistory       by remember { mutableStateOf<List<DetectTrashHistoryDto>>(emptyList()) }
     var greenScoreEntries by remember { mutableStateOf<List<GreenScoreEntryDto>>(emptyList()) }
     var wasteReports      by remember { mutableStateOf<List<WasteReportDto>>(emptyList()) }
     var selectedReport    by remember { mutableStateOf<WasteReportDto?>(null) }
@@ -77,12 +86,15 @@ fun HouseholdWasteScreen(
         val token = SettingsStore.getAccessToken() ?: return@LaunchedEffect
         isLoadingData = true
         try {
-            val scanResp    = runCatching { getDetectByHouseholdId(token, h.id) }
-            val userResp    = runCatching { getDetectHistoryByUser(token) }
+            val allHouseholdScans = mutableListOf<DetectTrashHistoryDto>()
+            try { allHouseholdScans.addAll(getHistoryByHouseholdByType(token, "detect_trash").data) } catch (e: Throwable) { }
+            try { allHouseholdScans.addAll(getHistoryByHouseholdByType(token, "total_mass").data) } catch (e: Throwable) { }
+            try { allHouseholdScans.addAll(getHistoryByHouseholdByType(token, "predict_pollutant_impact").data) } catch (e: Throwable) { }
+            householdHistory = allHouseholdScans
+            WasteSortStore.fetchUserScans(token)
+
             val scoreResp   = runCatching { getGreenScoreByHousehold(token, h.id) }
             val reportsResp = runCatching { getMyWasteReports(token) }
-            scanResp.getOrNull()?.data?.let    { householdHistory  = it }
-            userResp.getOrNull()?.data?.let    { userHistory       = it }
             scoreResp.getOrNull()?.data?.greenScores?.let { greenScoreEntries = it }
             reportsResp.getOrNull()?.data?.let { wasteReports      = it }
         } finally {
@@ -124,171 +136,126 @@ fun HouseholdWasteScreen(
     }
 
     val localScrollState = scrollState ?: rememberScrollState()
+    val totalHouseholdScans = householdHistory.groupBy { it.imageUrl }.filter { (_, records) -> records.any { it.detectType != "detect_trash" } }.size
+    val totalUserScans = userHistory.groupBy { it.imageUrl }.size
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Surface)
+            .background(SurfaceGray)
             .verticalScroll(localScrollState)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                color = Green50
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(Icons.Filled.Eco, contentDescription = null, tint = Green700, modifier = Modifier.size(20.dp))
-                    Column {
-                        Text(s.scoreLabel(currentScore), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Green700)
-                        Text(s.basedOnScans(greenScoreEntries.size), fontSize = 11.sp, color = Green500)
-                    }
-                }
-            }
-            Surface(shape = RoundedCornerShape(12.dp), color = Green50) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(Icons.Filled.Group, contentDescription = null, tint = Green700, modifier = Modifier.size(18.dp))
-                    Text(s.memberCount(h.members?.size ?: 0), fontSize = 12.sp, color = Green700)
-                }
-            }
-            IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Filled.Settings, contentDescription = s.householdSettings, tint = Green700)
-            }
-        }
+        Spacer(Modifier.height(12.dp))
+
+        HeroCard(
+            address = h.address ?: "",
+            score = currentScore,
+            memberCount = h.members?.size ?: 0,
+            onSettings = onSettingsClick,
+            onBack = onBack
+        )
+
+        Spacer(Modifier.height(16.dp))
 
         if (isLoadingData) {
-            Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Green700)
+            Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Green600)
             }
         } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                QuickActionCard(
-                    icon = Icons.Filled.Insights,
-                    title = s.viewWasteImpactAnalysis,
-                    subtitle = s.environmentalImpactShort,
-                    containerColor = Green50,
-                    contentColor = Green700,
-                    onClick = onNavigateToWasteImpact,
-                    modifier = Modifier.weight(1f)
-                )
-                QuickActionCard(
-                    icon = Icons.Filled.Analytics,
-                    title = s.wasteStatTitle,
-                    subtitle = s.wasteStatShort,
-                    containerColor = Blue50,
-                    contentColor = Blue600,
-                    onClick = { },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            StatsGrid(
+                greenScore = currentScore,
+                memberCount = h.members?.size ?: 0,
+                scanCount = totalHouseholdScans,
+                reportCount = wasteReports.size
+            )
 
-            HorizontalDivider(color = Outline.copy(alpha = 0.3f))
+            Spacer(Modifier.height(16.dp))
 
-            val householdGroups = householdHistory.groupBy { it.imageUrl }
-            SectionCard(
-                title = s.greenScoreSection,
-                icon = Icons.Filled.Eco,
-                iconColor = Green700,
-                count = greenScoreEntries.size,
-                onViewAll = if (greenScoreEntries.isNotEmpty()) {{ viewAllMode = ViewAllMode.GREEN_SCORES }} else null
+            Text(s.viewWasteImpactAnalysis, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
+            Spacer(Modifier.height(10.dp))
+            ActionCards(onNavigateToWasteImpact = onNavigateToWasteImpact)
+
+            Spacer(Modifier.height(20.dp))
+
+            // ── Green Score ────────────────────────────────────────────────────
+            SectionHeader(title = s.greenScoreSection, count = greenScoreEntries.size)
+            Spacer(Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 if (greenScoreEntries.isEmpty()) {
                     EmptyStateMessage(icon = Icons.Outlined.Eco, message = s.noScoreHistory)
                 } else {
                     GreenScoreCard(entry = greenScoreEntries.last(), onClick = { selectedScore = greenScoreEntries.last() })
-                    if (greenScoreEntries.size > 1) {
-                        TextButton(onClick = { viewAllMode = ViewAllMode.GREEN_SCORES }, modifier = Modifier.fillMaxWidth()) {
-                            Text(s.viewAllHistory, color = Green700)
-                        }
-                    }
                 }
-            }
-
-            SectionCard(
-                title = s.householdScansSection,
-                icon = Icons.Filled.CameraAlt,
-                iconColor = Green700,
-                count = householdGroups.size,
-                onViewAll = if (householdGroups.isNotEmpty()) {{ viewAllMode = ViewAllMode.HOUSEHOLD_SCANS }} else null
-            ) {
-                if (householdGroups.isEmpty()) {
-                    EmptyStateMessage(icon = Icons.Outlined.CameraAlt, message = s.noHouseholdScans)
-                } else {
-                    householdGroups.values.take(2).forEach { records ->
-                        GroupedDetectScanCard(records = records, onClick = { selectedScanGroup = records })
-                        Spacer(Modifier.height(8.dp))
-                    }
-                    if (householdGroups.size > 2) {
-                        TextButton(onClick = { viewAllMode = ViewAllMode.HOUSEHOLD_SCANS }, modifier = Modifier.fillMaxWidth()) {
-                            Text(s.viewAllItems, color = Green700)
-                        }
-                    }
-                }
-            }
-
-            val userGroups = userHistory.groupBy { it.imageUrl }
-            SectionCard(
-                title = s.myScanReports,
-                icon = Icons.Filled.Person,
-                iconColor = Blue600,
-                count = userGroups.size,
-                onViewAll = if (userGroups.isNotEmpty()) {{ viewAllMode = ViewAllMode.USER_SCANS }} else null
-            ) {
-                if (userGroups.isEmpty()) {
-                    EmptyStateMessage(icon = Icons.Outlined.Person, message = s.myScanReports)
-                } else {
-                    userGroups.values.take(2).forEach { records ->
-                        GroupedDetectScanCard(records = records, onClick = { selectedScanGroup = records })
-                        Spacer(Modifier.height(8.dp))
-                    }
-                    if (userGroups.size > 2) {
-                        TextButton(onClick = { viewAllMode = ViewAllMode.USER_SCANS }, modifier = Modifier.fillMaxWidth()) {
-                            Text(s.viewAllItems, color = Green700)
-                        }
-                    }
-                }
-            }
-
-            SectionCard(
-                title = s.myWasteReports,
-                icon = Icons.Filled.Warning,
-                iconColor = Red600,
-                count = wasteReports.size,
-                onViewAll = if (wasteReports.isNotEmpty()) {{ viewAllMode = ViewAllMode.WASTE_REPORTS }} else null
-            ) {
-                if (wasteReports.isEmpty()) {
-                    EmptyStateMessage(icon = Icons.Outlined.Warning, message = s.noWasteReports)
-                } else {
-                    wasteReports.take(2).forEach { report ->
-                        WasteReportCard(report = report, onClick = { selectedReport = report })
-                        Spacer(Modifier.height(8.dp))
-                    }
-                    if (wasteReports.size > 2) {
-                        TextButton(onClick = { viewAllMode = ViewAllMode.WASTE_REPORTS }, modifier = Modifier.fillMaxWidth()) {
-                            Text(s.viewAllItems, color = Green700)
-                        }
-                    }
+                if (greenScoreEntries.size > 1) {
+                    ViewAllButton(text = s.viewAllHistory, onClick = { viewAllMode = ViewAllMode.GREEN_SCORES })
                 }
             }
 
             Spacer(Modifier.height(16.dp))
+
+            // ── Household Scans ────────────────────────────────────────────────
+            SectionHeader(title = s.householdScansSection, count = totalHouseholdScans)
+            Spacer(Modifier.height(8.dp))
+            if (totalHouseholdScans == 0) {
+                Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    EmptyStateMessage(icon = Icons.Outlined.CameraAlt, message = s.noHouseholdScans)
+                }
+            } else {
+                val householdGroups = householdHistory.groupBy { it.imageUrl }.filter { (_, records) -> records.any { it.detectType != "detect_trash" } }
+                householdGroups.values.take(2).forEach { records ->
+                    GroupedDetectScanCard(records = records, onClick = { selectedScanGroup = records })
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (totalHouseholdScans > 2) {
+                    ViewAllButton(text = s.viewAllItems, onClick = { viewAllMode = ViewAllMode.HOUSEHOLD_SCANS })
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ── My Scan Reports ────────────────────────────────────────────────
+            SectionHeader(title = s.myScanReports, count = totalUserScans)
+            Spacer(Modifier.height(8.dp))
+            if (totalUserScans == 0) {
+                Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    EmptyStateMessage(icon = Icons.Outlined.Person, message = s.myScanReports)
+                }
+            } else {
+                val userGroups = userHistory.groupBy { it.imageUrl }
+                userGroups.values.take(2).forEach { records ->
+                    GroupedDetectScanCard(records = records, onClick = { selectedScanGroup = records })
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (totalUserScans > 2) {
+                    ViewAllButton(text = s.viewAllItems, onClick = { viewAllMode = ViewAllMode.USER_SCANS })
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ── Waste Reports ──────────────────────────────────────────────────
+            SectionHeader(title = s.myWasteReports, count = wasteReports.size)
+            Spacer(Modifier.height(8.dp))
+            if (wasteReports.isEmpty()) {
+                Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    EmptyStateMessage(icon = Icons.Outlined.Warning, message = s.noWasteReports)
+                }
+            } else {
+                wasteReports.take(2).forEach { report ->
+                    WasteReportCard(report = report, onClick = { selectedReport = report })
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (wasteReports.size > 2) {
+                    ViewAllButton(text = s.viewAllItems, onClick = { viewAllMode = ViewAllMode.WASTE_REPORTS })
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 
@@ -296,138 +263,288 @@ fun HouseholdWasteScreen(
         WasteReportDetailSheet(report = report, onDismiss = { selectedReport = null })
     }
     selectedScanGroup?.let { group ->
-        GroupedDetectScanDetailSheet(records = group, onDismiss = { selectedScanGroup = null })
+        BottomSheetScanDetail(data = group.toScanDetailData(), onDismiss = { selectedScanGroup = null })
     }
     selectedScore?.let { score ->
         GreenScoreDetailSheet(entry = score, onDismiss = { selectedScore = null })
     }
 }
 
+// ── Hero Card ─────────────────────────────────────────────────────────────────
+
 @Composable
-private fun SectionCard(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconColor: Color,
-    count: Int,
-    onViewAll: (() -> Unit)?,
-    content: @Composable ColumnScope.() -> Unit
+private fun HeroCard(
+    address: String,
+    score: Int,
+    memberCount: Int,
+    onSettings: () -> Unit,
+    onBack: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(72.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    progress = { (score / 100f).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxSize(),
+                    color = Green600,
+                    trackColor = Green50,
+                    strokeWidth = 6.dp,
+                    strokeCap = StrokeCap.Round
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("$score", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Green700)
+                    Text("pts", fontSize = 9.sp, color = Green500)
+                }
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(address, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Group, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(14.dp))
+                    Text("$memberCount members", fontSize = 12.sp, color = TextSecondary)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Eco, contentDescription = null, tint = Green600, modifier = Modifier.size(14.dp))
+                    Text("Green Score", fontSize = 12.sp, color = TextSecondary)
+                }
+            }
+            IconButton(onClick = onSettings, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Filled.Settings, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(22.dp))
+            }
+        }
+    }
+}
+
+// ── Stats Grid ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun StatsGrid(
+    greenScore: Int,
+    memberCount: Int,
+    scanCount: Int,
+    reportCount: Int,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        StatCard(icon = Icons.Filled.Eco, label = "Green Score", value = "$greenScore", color = Green700, bg = Green50, modifier = Modifier.weight(1f))
+        StatCard(icon = Icons.Filled.Group, label = "Members", value = "$memberCount", color = Blue600, bg = Blue50, modifier = Modifier.weight(1f))
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        StatCard(icon = Icons.Filled.CameraAlt, label = "Scans", value = "$scanCount", color = Purple700, bg = Purple50, modifier = Modifier.weight(1f))
+        StatCard(icon = Icons.Filled.Warning, label = "Reports", value = "$reportCount", color = Orange700, bg = Orange50, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun StatCard(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    color: Color,
+    bg: Color,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(bg),
+                contentAlignment = Alignment.Center
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = iconColor)
-                    Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1C1B1F))
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (count > 0) {
-                        SuggestionChip(
-                            onClick = { },
-                            label = { Text("$count") },
-                            colors = SuggestionChipDefaults.suggestionChipColors(containerColor = iconColor.copy(alpha = 0.1f), labelColor = iconColor),
-                            border = null
-                        )
-                    }
-                    if (onViewAll != null) {
-                        IconButton(onClick = onViewAll, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                }
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
             }
-            content()
+            Column {
+                Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text(label, fontSize = 11.sp, color = TextSecondary)
+            }
         }
     }
 }
 
+// ── Action Cards ──────────────────────────────────────────────────────────────
+
 @Composable
-private fun QuickActionCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    containerColor: Color,
-    contentColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
+private fun ActionCards(onNavigateToWasteImpact: () -> Unit) {
+    val s = LocalAppStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Card(
+            modifier = Modifier.weight(1f).clickable(onClick = onNavigateToWasteImpact),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Green50),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = contentColor)
-            Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = contentColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, fontSize = 10.sp, color = contentColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(
+                modifier = Modifier.padding(16.dp).fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Filled.Insights, contentDescription = null, tint = Green700, modifier = Modifier.size(28.dp))
+                Text(s.viewWasteImpactAnalysis, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Green700, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(s.environmentalImpactShort, fontSize = 11.sp, color = Green700.copy(alpha = 0.7f))
+            }
+        }
+        Card(
+            modifier = Modifier.weight(1f).clickable(onClick = { }),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Blue50),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp).fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Filled.Analytics, contentDescription = null, tint = Blue600, modifier = Modifier.size(28.dp))
+                Text(s.wasteStatTitle, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Blue600, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(s.wasteStatShort, fontSize = 11.sp, color = Blue600.copy(alpha = 0.7f))
+            }
         }
     }
 }
+
+// ── Section Header ────────────────────────────────────────────────────────────
+
+@Composable
+private fun SectionHeader(title: String, count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Spacer(Modifier.width(4.dp))
+        if (count > 0) {
+            Surface(shape = RoundedCornerShape(20.dp), color = Green50) {
+                Text("  $count  ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Green700, modifier = Modifier.padding(vertical = 2.dp))
+            }
+        }
+    }
+}
+
+// ── Reusable Sub-Composables ──────────────────────────────────────────────────
 
 @Composable
 private fun GreenScoreCard(entry: GreenScoreEntryDto, onClick: () -> Unit) {
-    val s = LocalAppStrings.current
-    val isPositive = entry.delta >= 0
-    val deltaColor = if (isPositive) Green700 else Red600
-    val deltaBg = if (isPositive) Green50 else Red50
-    val deltaText = if (isPositive) "+${entry.delta}" else "${entry.delta}"
+    val score = entry.finalScore
+    val scoreIcon = when {
+        score >= 70 -> Icons.Filled.EmojiEvents
+        score >= 40 -> Icons.Filled.Eco
+        else -> Icons.Filled.Warning
+    }
+    val iconTint = when {
+        score >= 70 -> Color(0xFFFFD700)
+        score >= 40 -> Green700
+        else -> Red600
+    }
+    val levelText = when {
+        score >= 70 -> "Xuất sắc"
+        score >= 40 -> "Khá tốt"
+        else -> "Cần cải thiện"
+    }
 
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Green50)
-    ) {
+    Box(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(s.currentScore, fontSize = 12.sp, color = OnSurfaceVariant)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${entry.finalScore}", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Green700)
-                    Box(
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(deltaBg).padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(deltaText, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = deltaColor)
-                    }
-                }
+            Box(
+                modifier = Modifier.size(64.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    progress = { (score / 100f).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxSize(),
+                    color = Green600,
+                    trackColor = Green50,
+                    strokeWidth = 5.dp,
+                    strokeCap = StrokeCap.Round
+                )
+                Text(
+                    "$score",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Green700
+                )
             }
-            Icon(Icons.Filled.EmojiEvents, contentDescription = null, modifier = Modifier.size(40.dp), tint = Green700.copy(alpha = 0.5f))
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(scoreIcon, contentDescription = null, modifier = Modifier.size(20.dp), tint = iconTint)
+                    Text(levelText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                }
+                Text("$score pts — Green Score", fontSize = 12.sp, color = TextSecondary)
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(24.dp))
         }
     }
 }
 
 @Composable
-private fun EmptyStateMessage(icon: androidx.compose.ui.graphics.vector.ImageVector, message: String) {
+private fun EmptyStateMessage(icon: ImageVector, message: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(SurfaceVariant.copy(alpha = 0.5f)).padding(16.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFF5F5F5)).padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = OnSurfaceVariant.copy(alpha = 0.6f))
-        Text(message, fontSize = 14.sp, color = OnSurfaceVariant.copy(alpha = 0.7f))
+        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = TextSecondary.copy(alpha = 0.6f))
+        Text(message, fontSize = 14.sp, color = TextSecondary.copy(alpha = 0.7f))
+    }
+}
+
+@Composable
+private fun ViewAllButton(text: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Text(text, color = Green700, fontWeight = FontWeight.Medium, fontSize = 13.sp)
     }
 }
 
 @Composable
 internal fun RemainingCard(remaining: Int, label: String, onClick: () -> Unit) {
     Box(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(SurfaceVariant.copy(alpha = 0.5f)).clickable(onClick = onClick).padding(vertical = 14.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFF5F5F5)).clickable(onClick = onClick).padding(vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text("+ $remaining more $label${if (remaining != 1) "s" else ""}  ·  View all", fontSize = 12.sp, color = OnSurfaceVariant.copy(alpha = 0.7f), fontWeight = FontWeight.Medium)
+        Text("+ $remaining more $label${if (remaining != 1) "s" else ""}  ·  View all", fontSize = 12.sp, color = TextSecondary.copy(alpha = 0.7f), fontWeight = FontWeight.Medium)
     }
 }

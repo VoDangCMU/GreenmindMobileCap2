@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,27 +59,25 @@ fun SurveyTakingScreen(
     val user by SettingsStore.user.collectAsState()
     val userType = UserType.HOUSEHOLD
 
-    AppScaffold(
-        title = survey.title,
-        subtitle = s.surveyQuestion(currentIndex + 1, questions.size),
-        showBackButton = true,
-        onBackClick = onBack,
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(greenBg)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(greenBg)
+        // Custom header
+        Row(
+            modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Progress subtitle
-        Text(
-            s.surveyQuestion(currentIndex + 1, questions.size),
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            color = Color.Gray,
-            fontSize = 12.sp
-        )
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = green800)
+            }
+            Spacer(Modifier.width(4.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(survey.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = green800)
+                Text(s.surveyQuestion(currentIndex + 1, questions.size), fontSize = 12.sp, color = Color.Gray)
+            }
+        }
 
         // Progress bar
         LinearProgressIndicator(
@@ -186,7 +185,6 @@ fun SurveyTakingScreen(
                 )
             }
         }
-    }
     }
 }
 

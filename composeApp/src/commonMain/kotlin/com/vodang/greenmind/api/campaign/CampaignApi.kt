@@ -241,6 +241,25 @@ suspend fun updateCampaignStatus(accessToken: String, id: String, status: String
     }
 }
 
+/** POST /campaigns/{id}/cancel */
+suspend fun cancelCampaign(accessToken: String, id: String) {
+    AppLogger.i("Campaign", "cancelCampaign id=$id")
+    try {
+        val resp = httpClient.post("$BASE_URL/campaigns/$id/cancel") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("Campaign", "cancelCampaign → HTTP ${resp.status.value}")
+        if (!resp.status.isSuccess()) {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("Campaign", "cancelCampaign error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
 /** Converts ParticipantCampaignDto (API response) to CampaignParticipant (UI model) */
 fun ParticipantCampaignDto.toCampaignParticipant(user: CampaignParticipantUser) = CampaignParticipant(
     id = id,

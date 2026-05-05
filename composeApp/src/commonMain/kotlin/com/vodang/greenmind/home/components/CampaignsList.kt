@@ -81,7 +81,10 @@ private enum class CampaignsTab { ALL, MY }
 private enum class MyCampaignsTab { ACTIVE, HISTORY }
 
 @Composable
-fun CampaignsList(onBack: () -> Unit) {
+fun CampaignsList(
+    onBack: () -> Unit,
+    onSelectCampaign: (CampaignDto) -> Unit = {},
+) {
     val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
 
@@ -106,14 +109,8 @@ fun CampaignsList(onBack: () -> Unit) {
     if (campaignId != null) {
         val campaign = campaigns.find { it.id == campaignId }
         if (campaign != null) {
-            CampaignDetailScreen(
-                campaign = campaign,
-                accessToken = accessToken,
-                onBack = { selectedCampaignId = null },
-                onRegistered = { participant ->
-                    campaignStates[campaign.id] = CampaignsUiState(participant = participant)
-                },
-            )
+            onSelectCampaign(campaign)
+            selectedCampaignId = null
             return
         }
     }

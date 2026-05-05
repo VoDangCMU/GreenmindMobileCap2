@@ -1,7 +1,9 @@
 package com.vodang.greenmind.store
 
+import com.vodang.greenmind.api.households.DetectTrashHistoryDto
 import com.vodang.greenmind.api.households.GreenScoreEntryDto
 import com.vodang.greenmind.api.households.getDetectHistoryByUser
+import com.vodang.greenmind.api.households.getDetectTrashByType
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.wastesort.WasteSortEntry
 import com.vodang.greenmind.wastesort.WasteSortStatus
@@ -22,6 +24,10 @@ object WasteSortStore {
 
     private val _refreshTrigger = MutableStateFlow(0)
     val refreshTrigger: StateFlow<Int> = _refreshTrigger.asStateFlow()
+
+    /** User scan history from API (all 3 types merged) */
+    private val _userHistory = MutableStateFlow<List<DetectTrashHistoryDto>>(emptyList())
+    val userHistory: StateFlow<List<DetectTrashHistoryDto>> = _userHistory.asStateFlow()
 
     /** Total kg of today's waste entries from API */
     private val _todayTotalKg = MutableStateFlow(0.0)
@@ -60,6 +66,16 @@ object WasteSortStore {
             } catch (e: Throwable) {
                 // Silent fail
             }
+        }
+    }
+
+    fun fetchUserScans(token: String) {
+        storeScope.launch {
+            val all = mutableListOf<DetectTrashHistoryDto>()
+            try { all.addAll(getDetectTrashByType(token, "detect_trash").data) } catch (_: Throwable) { }
+            try { all.addAll(getDetectTrashByType(token, "total_mass").data) } catch (_: Throwable) { }
+            try { all.addAll(getDetectTrashByType(token, "predict_pollutant_impact").data) } catch (_: Throwable) { }
+            _userHistory.value = all
         }
     }
 

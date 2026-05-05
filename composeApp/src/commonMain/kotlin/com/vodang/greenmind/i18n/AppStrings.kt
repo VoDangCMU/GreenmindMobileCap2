@@ -265,6 +265,10 @@ class AppStrings(val langCode: String) {
     var leaderboardSubtitle: String = ""
     var leaderboardReports: (Int) -> String = { it.toString() }
     var leaderboardEmpty: String = ""
+    var chatTitle: String = ""
+    var chatPlaceholder: String = ""
+    var chatSend: String = ""
+    var chatEmpty: String = ""
     var blogCreate: String = ""
     var blogCreateTitle: String = ""
     var blogCreateTitleHint: String = ""
@@ -659,6 +663,22 @@ class AppStrings(val langCode: String) {
     var collectedComplete: String = ""
     var byCategory: String = ""
     var categoryTab: (String, Int) -> String = { _, _ -> "" }
+    var pollutantAnalysis: String = ""
+    var noDataYet: String = ""
+    var noPollutantData: String = ""
+    var noPollutantsDetected: String = ""
+    var cleanWaste: String = ""
+    var pollutantsDetected: String = ""
+    var envImpact: String = ""
+    var airPollution: String = ""
+    var waterPollution: String = ""
+    var soilPollution: String = ""
+    var pollutantDetails: String = ""
+    var massAndItems: String = ""
+    var noMassData: String = ""
+    var totalMass: String = ""
+    var detectedItemsList: String = ""
+    var massItemsDetected: (Int) -> String = { _ -> "" }
 
     // ── Error Log ────────────────────────────────────────────────────────────────
     var errorLog: (Int) -> String = { _ -> "" }

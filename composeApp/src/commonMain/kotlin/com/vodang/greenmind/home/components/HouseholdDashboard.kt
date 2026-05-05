@@ -10,6 +10,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -152,28 +154,28 @@ fun HouseholdDashboard(
         Text(s.features, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             // Row 1: Waste core features
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(110.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Max)) {
                 FeatureGridButton(Icons.Filled.Recycling, s.wasteSort, GreenBg50, GreenIcon, Modifier.weight(1f)) { onWasteSortClick() }
                 FeatureGridButton(Icons.Filled.Delete, s.wasteReport, RedBg50, RedIcon, Modifier.weight(1f)) { onWasteReportClick() }
                 FeatureGridButton(Icons.Filled.Scale, s.wasteTotalMassTitle, BlueBg50, BlueIcon, Modifier.weight(1f)) { onWasteTotalMassClick() }
             }
 
             // Row 2: Impact & analytics
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(110.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Max)) {
                 FeatureGridButton(Icons.Filled.Biotech, s.environmentalImpact, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onEnvironmentalImpactClick() }
                 FeatureGridButton(Icons.Filled.Analytics, s.wasteImpactTitle, OrangeBg50, OrangeIcon, Modifier.weight(1f)) { onWasteImpactClick() }
-                FeatureGridButton(Icons.Filled.TrendingUp, s.wasteStatTitle, BlueBg50, BlueIcon, Modifier.weight(1f)) { onWasteStatClick() }
+                FeatureGridButton(Icons.AutoMirrored.Filled.TrendingUp, s.wasteStatTitle, BlueBg50, BlueIcon, Modifier.weight(1f)) { onWasteStatClick() }
             }
 
             // Row 3: Household & lifestyle
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(110.dp)) {
-                FeatureGridButton(Icons.Filled.Assignment, s.householdWasteStatusTitle, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onHouseholdWasteClick() }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Max)) {
+                FeatureGridButton(Icons.Filled.AssignmentInd, s.householdWasteStatusTitle, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onHouseholdWasteClick() }
                 FeatureGridButton(Icons.Filled.Lightbulb, s.electricityUsage, YellowBg50, YellowIcon, Modifier.weight(1f)) { onElectricityClick() }
-                FeatureGridButton(Icons.Filled.DirectionsWalk, s.walkDistance, GreenBg50, GreenIcon, Modifier.weight(1f)) { onWalkDistanceClick() }
+                FeatureGridButton(Icons.AutoMirrored.Filled.DirectionsWalk, s.walkDistance, GreenBg50, GreenIcon, Modifier.weight(1f)) { onWalkDistanceClick() }
             }
 
             // Row 4: Community & scanning
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(110.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Max)) {
                 FeatureGridButton(Icons.Filled.CameraAlt, s.scanBillMealTitle, GreenBg50, GreenIcon, Modifier.weight(1f)) { showScanModal = true }
                 FeatureGridButton(Icons.Filled.Newspaper, s.blog, YellowBg50, YellowIcon, Modifier.weight(1f)) { onBlogClick() }
                 FeatureGridButton(Icons.Filled.Handshake, s.campaignsTitle, TealBg50, TealIcon, Modifier.weight(1f)) { onCampaignsClick() }

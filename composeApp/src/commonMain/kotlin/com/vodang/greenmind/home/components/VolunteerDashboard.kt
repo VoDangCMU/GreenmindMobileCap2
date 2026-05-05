@@ -76,7 +76,11 @@ private data class CampaignUiState(
 )
 
 @Composable
-fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = rememberScrollState()) {
+fun VolunteerDashboard(
+    user: UserDto? = null,
+    scrollState: ScrollState = rememberScrollState(),
+    onSelectCampaign: (CampaignDto) -> Unit = {},
+) {
     val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
 
@@ -100,14 +104,8 @@ fun VolunteerDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
     if (campaignId != null) {
         val campaign = campaigns.find { it.id == campaignId }
         if (campaign != null) {
-            CampaignDetailScreen(
-                campaign = campaign,
-                accessToken = accessToken,
-                onBack = { selectedCampaignId = null },
-                onRegistered = { participant ->
-                    campaignStates[campaign.id] = CampaignUiState(participant = participant)
-                },
-            )
+            onSelectCampaign(campaign)
+            selectedCampaignId = null
             return
         }
     }

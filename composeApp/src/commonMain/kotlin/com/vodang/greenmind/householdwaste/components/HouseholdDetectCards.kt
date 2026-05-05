@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -128,7 +131,10 @@ internal fun DetectScanCard(record: DetectTrashHistoryDto, onClick: () -> Unit) 
                     Text(it, fontSize = 11.sp, color = gray400c, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 record.totalMassKg?.let {
-                    Text("⚖️ ${"%.2f".fmt(it)} kg", fontSize = 11.sp, color = green700)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Filled.Scale, contentDescription = null, modifier = Modifier.size(14.dp), tint = green700)
+                        Text("${"%.2f".fmt(it)} kg", fontSize = 11.sp, color = green700)
+                    }
                 }
             }
         }
@@ -206,10 +212,10 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
             // Summary row
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 scan.totalObjects?.let {
-                    DetectStatChip("🔍 $it objects", green50c, green700)
+                    DetectStatChip("$it objects", green50c, green700, icon = Icons.Filled.Search)
                 }
                 scan.totalMassKg?.let {
-                    DetectStatChip("⚖️ ${"%.2f".fmt(it)} kg", Color(0xFFEFF6FF), Color(0xFF1D4ED8))
+                    DetectStatChip("${"%.2f".fmt(it)} kg", Color(0xFFEFF6FF), Color(0xFF1D4ED8), icon = Icons.Filled.Scale)
                 }
             }
 
@@ -319,9 +325,9 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
                 HorizontalDivider(color = Color(0xFFEEEEEE))
                 Text("Environmental Impact", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    imp.airPollution?.let   { DetectImpactBar("🌬️ Air pollution",   it) }
-                    imp.soilPollution?.let  { DetectImpactBar("🌱 Soil pollution",  it) }
-                    imp.waterPollution?.let { DetectImpactBar("💧 Water pollution", it) }
+                    imp.airPollution?.let   { DetectImpactBar("Air pollution",   it, icon = Icons.Filled.Air) }
+                    imp.soilPollution?.let  { DetectImpactBar("Soil pollution",  it, icon = Icons.Filled.Eco) }
+                    imp.waterPollution?.let { DetectImpactBar("Water pollution", it, icon = Icons.Filled.WaterDrop) }
                 }
             }
 
@@ -361,21 +367,26 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
 // ── DetectStatChip ─────────────────────────────────────────────────────────────
 
 @Composable
-internal fun DetectStatChip(label: String, bg: Color, fg: Color) {
+internal fun DetectStatChip(label: String, bg: Color, fg: Color, icon: ImageVector? = null) {
     Box(
-        Modifier
+        modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(bg)
             .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
-        Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = fg)
+            }
+            Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg)
+        }
     }
 }
 
 // ── DetectImpactBar ─────────────────────────────────────────────────────────────
 
 @Composable
-internal fun DetectImpactBar(label: String, value: Double) {
+internal fun DetectImpactBar(label: String, value: Double, icon: ImageVector? = null) {
     val progress = value.toFloat().coerceIn(0f, 1f)
     val barColor = when {
         value < 0.5  -> Color(0xFF2E7D32)
@@ -385,7 +396,12 @@ internal fun DetectImpactBar(label: String, value: Double) {
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(label, fontSize = 12.sp, color = gray700c)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (icon != null) {
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = gray700c)
+                }
+                Text(label, fontSize = 12.sp, color = gray700c)
+            }
             Text("%.4f".fmt(value), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = barColor)
         }
         LinearProgressIndicator(

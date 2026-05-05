@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.wastereport.NetworkImage
+import com.vodang.greenmind.time.formatChatTime
 import com.vodang.greenmind.wastesort.WasteSortEntry
 import com.vodang.greenmind.wastesort.WasteSortStatus
 import com.vodang.greenmind.wastesort.green50
@@ -67,7 +68,7 @@ fun ScanCard(entry: WasteSortEntry, onClick: () -> Unit) {
                         },
                     )
                 }
-                Text(entry.createdAt, fontSize = 11.sp, color = Color.Gray)
+                Text(formatChatTime(entry.createdAt), fontSize = 11.sp, color = Color.Gray)
             }
         }
     }

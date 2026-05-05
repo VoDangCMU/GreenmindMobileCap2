@@ -4,23 +4,26 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cached
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import com.vodang.greenmind.api.households.DetectTrashHistoryDto
 import com.vodang.greenmind.api.households.GreenScoreEntryDto
-import com.vodang.greenmind.api.households.getDetectHistoryByUser
+import com.vodang.greenmind.api.households.getDetectTrashByType
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.api.wastesort.DetectTrashResponse
-import com.vodang.greenmind.householdwaste.components.GroupedDetectScanDetailSheet
 import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.scandetail.DisplayMode
+import com.vodang.greenmind.scandetail.ScanDetailData
+import com.vodang.greenmind.scandetail.toScanDetailData
+import com.vodang.greenmind.scandetail.components.ScanDetailView
+import com.vodang.greenmind.scandetail.components.BottomSheetScanDetail
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WasteSortStore
 import com.vodang.greenmind.time.nowIso8601
-import com.vodang.greenmind.wastesort.components.ScanDetailCard
 import com.vodang.greenmind.wastesort.components.WasteSortList
 import com.vodang.greenmind.util.AppLogger
 import com.vodang.greenmind.i18n.AppStrings
@@ -85,7 +88,7 @@ fun categoryBg(cat: String) = when (cat.lowercase()) {
 }
 
 fun categoryEmoji(cat: String): ImageVector = when (cat.lowercase()) {
-    "recyclable" -> Icons.Filled.Refresh
+    "recyclable" -> Icons.Filled.Cached
     "residual"   -> Icons.Filled.Delete
     "organic"    -> Icons.Filled.Eco
     "hazardous"  -> Icons.Filled.Warning
@@ -114,31 +117,39 @@ fun DetectTrashResponse.toEntry(scannedBy: String, massKg: Double? = null): Wast
 
 @Composable
 fun WasteSortScreen(onScanClick: () -> Unit = {}) {
+    val apiHistory by WasteSortStore.userHistory.collectAsState()
     val entries by WasteSortStore.entries.collectAsState()
-    var selectedEntry   by remember { mutableStateOf<WasteSortEntry?>(null) }
     var selectedApiGroup by remember { mutableStateOf<List<DetectTrashHistoryDto>?>(null) }
     var showScan        by remember { mutableStateOf(false) }
     var useGallery      by remember { mutableStateOf(false) }
-    var apiHistory      by remember { mutableStateOf<List<DetectTrashHistoryDto>>(emptyList()) }
     var isLoadingHistory by remember { mutableStateOf(false) }
 
     val user by SettingsStore.user.collectAsState()
     val refreshTrigger by WasteSortStore.refreshTrigger.collectAsState()
+
+    var selectedEntryId by remember { mutableStateOf<String?>(null) }
+    var detailData by remember { mutableStateOf<ScanDetailData?>(null) }
+
+    LaunchedEffect(selectedEntryId, refreshTrigger) {
+        selectedEntryId?.let { id ->
+            entries.find { it.id == id }?.let { entry ->
+                detailData = entry.toScanDetailData()
+            }
+        }
+    }
 
     LaunchedEffect(refreshTrigger) {
         HouseholdStore.fetchHousehold()
         val token = SettingsStore.getAccessToken() ?: return@LaunchedEffect
         isLoadingHistory = true
         try {
-            apiHistory = getDetectHistoryByUser(token).data
-        } catch (e: Throwable) {
-            AppLogger.e("WasteSortScreen", "Failed to load scan history: ${e.message}")
+            WasteSortStore.fetchUserScans(token)
         } finally {
             isLoadingHistory = false
         }
     }
 
-    BackHandler(enabled = selectedEntry != null) { selectedEntry = null }
+    BackHandler(enabled = selectedEntryId != null) { selectedEntryId = null }
     BackHandler(enabled = showScan) { showScan = false }
 
     when {
@@ -148,39 +159,49 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
                     val entry = response.toEntry(user?.fullName ?: user?.username ?: "Me")
                     WasteSortStore.add(entry)
                     WasteSortStore.triggerRefresh()
-                    selectedEntry = entry
+                    selectedEntryId = entry.id
+                    detailData = entry.toScanDetailData()
                     showScan = false
                 },
                 onBack = { showScan = false },
                 useGallery = useGallery,
             )
         }
-        selectedEntry != null -> {
-            // Keep selectedEntry in sync with store updates (e.g. status changes)
-            val liveEntry = entries.find { it.id == selectedEntry!!.id } ?: selectedEntry!!
-            ScanDetailCard(
-                entry = liveEntry,
-                onBack = { selectedEntry = null },
-                onStatusChange = { newStatus ->
-                    WasteSortStore.updateStatus(liveEntry.id, newStatus)
-                    selectedEntry = liveEntry.copy(status = newStatus)
+        detailData != null -> {
+            val liveEntry = entries.find { it.id == selectedEntryId }
+            ScanDetailView(
+                data = detailData!!,
+                onBack = {
+                    selectedEntryId = null
+                    detailData = null
                 },
+                onStatusChange = { newStatus ->
+                    selectedEntryId?.let { id ->
+                        WasteSortStore.updateStatus(id, newStatus)
+                        entries.find { it.id == id }?.let { entry ->
+                            detailData = entry.copy(status = newStatus).toScanDetailData()
+                        }
+                    }
+                },
+                displayMode = DisplayMode.FULL_SCREEN,
             )
         }
         else -> {
             WasteSortList(
-                entries = entries,
                 apiHistory = apiHistory,
                 isLoadingHistory = isLoadingHistory,
                 onCameraClick = { useGallery = false; showScan = true },
                 onGalleryClick = { useGallery = true; showScan = true },
-                onCardClick = { selectedEntry = it },
                 onApiScanClick = { selectedApiGroup = it },
             )
         }
     }
 
     selectedApiGroup?.let { group ->
-        GroupedDetectScanDetailSheet(records = group, onDismiss = { selectedApiGroup = null })
+        // Use unified ScanDetailView for grouped records (bottom sheet mode)
+        BottomSheetScanDetail(
+            data = group.toScanDetailData(),
+            onDismiss = { selectedApiGroup = null },
+        )
     }
 }

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +64,8 @@ internal fun GroupedDetectScanCard(records: List<DetectTrashHistoryDto>, onClick
     val primary     = records.minByOrNull { it.createdAt ?: "" } ?: records.first()
     val detectTrash = records.find { it.detectType == "detect_trash" }
     val totalMass   = records.find { it.detectType == "total_mass" }
+    val hasMass     = totalMass?.totalMassKg != null
+    val objCount    = detectTrash?.totalObjects ?: primary.totalObjects
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
@@ -69,67 +73,52 @@ internal fun GroupedDetectScanCard(records: List<DetectTrashHistoryDto>, onClick
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            NetworkImage(
-                url = primary.imageUrl,
-                modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp))
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                // Type chips — scroll horizontally if needed
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    records.mapNotNull { it.detectType }.distinct().forEach { dt ->
-                        Box(
-                            Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(typeLabelBg[dt] ?: Color(0xFFF5F5F5))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                typeLabel[dt] ?: dt,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = typeLabelColor[dt] ?: gray700c,
-                            )
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                NetworkImage(
+                    url = primary.imageUrl,
+                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(12.dp))
+                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        StatusBadge(parseWasteSortStatus(primary.status))
+                        Spacer(Modifier.weight(1f))
+                        Text(primary.createdAt?.take(10) ?: "", fontSize = 11.sp, color = gray400c)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        records.mapNotNull { it.detectType }.distinct().forEach { dt ->
+                            Box(
+                                Modifier.clip(RoundedCornerShape(6.dp)).background(typeLabelBg[dt] ?: Color(0xFFF5F5F5)).padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(typeLabel[dt] ?: dt, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = typeLabelColor[dt] ?: gray700c)
+                            }
                         }
                     }
                 }
-                // Status + date — stacked vertically
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StatusBadge(parseWasteSortStatus(primary.status))
-                    Text(
-                        primary.createdAt?.take(10) ?: "",
-                        fontSize = 10.sp,
-                        color = gray400c,
-                    )
-                }
-                // Object count from detect_trash, fallback to first available
-                val objCount = detectTrash?.totalObjects ?: primary.totalObjects
+            }
+
+            HorizontalDivider(color = Color(0xFFF0F0F0))
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (objCount != null) {
-                    Text(
-                        "$objCount objects detected",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = gray700c,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(14.dp), tint = gray400c)
+                        Text("$objCount objects", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = gray700c)
+                    }
                 }
-                // Items preview
-                (detectTrash ?: primary).items?.take(3)?.joinToString(" · ") {
-                    if (it.massKg != null) "${"%.2f".fmt(it.massKg)}kg ${it.name}"
-                    else "${it.quantity}× ${it.name}"
-                }?.let {
-                    Text(it, fontSize = 11.sp, color = gray400c, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (hasMass) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Filled.Scale, contentDescription = null, modifier = Modifier.size(14.dp), tint = green700)
+                        Text("${"%.2f".fmt(totalMass!!.totalMassKg)} kg", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = green700)
+                    }
                 }
-                // Total mass
-                totalMass?.totalMassKg?.let {
-                    Text("⚖️ ${"%.2f".fmt(it)} kg", fontSize = 11.sp, color = green700)
-                }
+            }
+
+            (detectTrash ?: primary).items?.take(3)?.joinToString(" · ") {
+                if (it.massKg != null) "${"%.2f".fmt(it.massKg)}kg ${it.name}"
+                else "${it.quantity}× ${it.name}"
+            }?.let {
+                Text(it, fontSize = 11.sp, color = gray400c, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -215,8 +204,8 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                totalObjects?.let { DetectStatChip("🔍 $it objects", Color(0xFFE8F5E9), green700) }
-                totalMassKg?.let  { DetectStatChip("⚖️ ${"%.2f".fmt(it)} kg", Color(0xFFEFF6FF), Color(0xFF1D4ED8)) }
+                totalObjects?.let { DetectStatChip("$it objects", Color(0xFFE8F5E9), green700, icon = Icons.Filled.Search) }
+                totalMassKg?.let  { DetectStatChip("${"%.2f".fmt(it)} kg", Color(0xFFEFF6FF), Color(0xFF1D4ED8), icon = Icons.Filled.Scale) }
             }
 
             // Eco score
@@ -292,9 +281,9 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
                 HorizontalDivider(color = Color(0xFFEEEEEE))
                 Text("Environmental Impact", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    impact.airPollution?.let   { DetectImpactBar("🌬️ Air pollution",   it) }
-                    impact.soilPollution?.let  { DetectImpactBar("🌱 Soil pollution",  it) }
-                    impact.waterPollution?.let { DetectImpactBar("💧 Water pollution", it) }
+                    impact.airPollution?.let   { DetectImpactBar("Air pollution",   it, icon = Icons.Filled.Air) }
+                    impact.soilPollution?.let  { DetectImpactBar("Soil pollution",  it, icon = Icons.Filled.Eco) }
+                    impact.waterPollution?.let { DetectImpactBar("Water pollution", it, icon = Icons.Filled.WaterDrop) }
                 }
             }
 
@@ -422,20 +411,26 @@ internal fun DetectActionButton(
             }
 
             WasteSortStatus.BRINGOUTED -> {
-                Box(
+                Row(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFF5F5F5)).padding(vertical = 14.dp),
-                    contentAlignment = Alignment.Center,
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("⏳  Waiting for collector pickup", fontSize = 14.sp, color = Color(0xFF757575), fontWeight = FontWeight.Medium)
+                    Icon(Icons.Filled.HourglassEmpty, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF757575))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Waiting for collector pickup", fontSize = 14.sp, color = Color(0xFF757575), fontWeight = FontWeight.Medium)
                 }
             }
 
             WasteSortStatus.COLLECTED -> {
-                Box(
+                Row(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFE8F5E9)).padding(vertical = 14.dp),
-                    contentAlignment = Alignment.Center,
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("✅  Collected — cycle complete!", fontSize = 14.sp, color = stepDone, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp), tint = stepDone)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Collected — cycle complete!", fontSize = 14.sp, color = stepDone, fontWeight = FontWeight.Bold)
                 }
             }
         }

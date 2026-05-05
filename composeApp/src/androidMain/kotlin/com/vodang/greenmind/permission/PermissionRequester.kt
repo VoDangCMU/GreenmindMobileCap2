@@ -7,6 +7,9 @@ actual object PermissionRequester {
     private val flows = mapOf(
         PermissionGroup.LOCATION to MutableStateFlow(false),
         PermissionGroup.CAMERA  to MutableStateFlow(false),
+        PermissionGroup.NOTIFICATION to MutableStateFlow(
+            android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU
+        ),
     )
     private val launchers = mutableMapOf<PermissionGroup, () -> Unit>()
 

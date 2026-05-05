@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -69,15 +71,15 @@ fun CatalogueScreen(
         FeatureEntry(Icons.Filled.Edit, s.preAppSurveyTitle, s.preAppSurveySubtitle, onClick = onPreAppSurvey),
     )
     val householdFeatures = listOf(
-        FeatureEntry(Icons.Filled.Refresh, s.wasteSort, s.wasteSortDesc, onClick = onWasteSort),
+        FeatureEntry(Icons.Filled.Cached, s.wasteSort, s.wasteSortDesc, onClick = onWasteSort),
         FeatureEntry(Icons.Filled.Delete, s.wasteReport, s.wasteReportDesc, onClick = onWasteReport),
         FeatureEntry(Icons.Filled.Scale, s.wasteTotalMassTitle, s.wasteTotalMassDesc, onClick = onWasteTotalMass),
         FeatureEntry(Icons.Filled.Warning, s.environmentalImpact, s.environmentalImpactDesc, onClick = onEnvironmentalImpact),
         FeatureEntry(Icons.Filled.Analytics, s.wasteImpactTitle, s.wasteImpactDesc, onClick = onWasteImpact),
-        FeatureEntry(Icons.Filled.TrendingUp, s.wasteStatTitle, s.wasteStatDesc, onClick = onWasteStat),
+        FeatureEntry(Icons.AutoMirrored.Filled.TrendingUp, s.wasteStatTitle, s.wasteStatDesc, onClick = onWasteStat),
         FeatureEntry(Icons.Filled.Description, s.householdWasteStatusTitle, s.householdWasteStatusDesc, onClick = onHouseholdWaste),
         FeatureEntry(Icons.Filled.Lightbulb, s.electricityUsage, s.electricityChartDesc, onClick = onElectricityUsage),
-        FeatureEntry(Icons.Filled.DirectionsWalk, s.walkDistance, s.walkValue, onClick = onWalkDistance),
+        FeatureEntry(Icons.AutoMirrored.Filled.DirectionsWalk, s.walkDistance, s.walkValue, onClick = onWalkDistance),
         FeatureEntry(Icons.Filled.Restaurant, s.scanMeal, s.scanMealDesc, onClick = onScanMeal),
         FeatureEntry(Icons.Filled.Receipt, s.scanBill, s.scanBillDesc, onClick = onScanBill),
         FeatureEntry(Icons.Filled.Newspaper, s.blog, s.blogDesc, onClick = onBlog),
@@ -95,48 +97,43 @@ fun CatalogueScreen(
 
     val scrollState = rememberScrollState()
 
-    AppScaffold(
-        title = s.catalogue,
-        subtitle = s.catalogueSubtitle,
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SurfaceGray)
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(SurfaceGray)
-                .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            CatalogueSection(
-                roleIcon = Icons.Filled.Group,
-                roleLabel = s.allUsersLabel,
-                roleColor = Color(0xFF1565C0),
-                roleBg = Color(0xFFE3F2FD),
-                features = allFeatures
-            )
-            CatalogueSection(
-                roleIcon = Icons.Filled.House,
-                roleLabel = s.householdRole,
-                roleColor = green800,
-                roleBg = green50,
-                features = householdFeatures
-            )
-            CatalogueSection(
-                roleIcon = Icons.Filled.LocalShipping,
-                roleLabel = s.collectorRole,
-                roleColor = Color(0xFFE65100),
-                roleBg = Color(0xFFFFF3E0),
-                features = collectorFeatures
-            )
-            CatalogueSection(
-                roleIcon = Icons.Filled.Handshake,
-                roleLabel = s.volunteerRole,
-                roleColor = Color(0xFF6A1B9A),
-                roleBg = Color(0xFFF3E5F5),
-                features = volunteerFeatures
-            )
-            Spacer(Modifier.height(8.dp))
-        }
+        CatalogueSection(
+            roleIcon = Icons.Filled.Group,
+            roleLabel = s.allUsersLabel,
+            roleColor = Color(0xFF1565C0),
+            roleBg = Color(0xFFE3F2FD),
+            features = allFeatures
+        )
+        CatalogueSection(
+            roleIcon = Icons.Filled.House,
+            roleLabel = s.householdRole,
+            roleColor = green800,
+            roleBg = green50,
+            features = householdFeatures
+        )
+        CatalogueSection(
+            roleIcon = Icons.Filled.LocalShipping,
+            roleLabel = s.collectorRole,
+            roleColor = Color(0xFFE65100),
+            roleBg = Color(0xFFFFF3E0),
+            features = collectorFeatures
+        )
+        CatalogueSection(
+            roleIcon = Icons.Filled.Handshake,
+            roleLabel = s.volunteerRole,
+            roleColor = Color(0xFF6A1B9A),
+            roleBg = Color(0xFFF3E5F5),
+            features = volunteerFeatures
+        )
+        Spacer(Modifier.height(8.dp))
     }
 }
 

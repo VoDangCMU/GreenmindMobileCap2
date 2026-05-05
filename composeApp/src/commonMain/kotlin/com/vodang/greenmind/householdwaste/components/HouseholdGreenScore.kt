@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,9 +53,7 @@ fun GreenScoreSection(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(s.currentScore, fontSize = 12.sp, color = gray400)
                 Text("${latest.finalScore}", fontSize = 42.sp, fontWeight = FontWeight.ExtraBold, color = green700)
-                val deltaColor = if (latest.delta >= 0) green700 else red600
-                val deltaPrefix = if (latest.delta >= 0) "+" else ""
-                Text(s.deltaFromLastScan("$deltaPrefix${latest.delta}"), fontSize = 12.sp, color = deltaColor)
+                Text("${latest.finalScore} pts", fontSize = 12.sp, color = green700.copy(alpha = 0.7f))
             }
             // Score ring
             Box(
@@ -62,9 +63,19 @@ fun GreenScoreSection(
                     .background(if (latest.finalScore >= 50) green50 else red50),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    if (latest.finalScore >= 70) "🌟" else if (latest.finalScore >= 40) "🌿" else "⚠️",
-                    fontSize = 32.sp
+                Icon(
+                    imageVector = when {
+                        latest.finalScore >= 70 -> Icons.Filled.EmojiEvents
+                        latest.finalScore >= 40 -> Icons.Filled.Eco
+                        else -> Icons.Filled.Warning
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(36.dp),
+                    tint = when {
+                        latest.finalScore >= 70 -> green700
+                        latest.finalScore >= 40 -> green700
+                        else -> red600
+                    }
                 )
             }
         }

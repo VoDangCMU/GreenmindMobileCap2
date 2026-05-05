@@ -34,6 +34,9 @@ import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.fmt
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.scandetail.DisplayMode
+import com.vodang.greenmind.scandetail.toScanDetailData
+import com.vodang.greenmind.scandetail.components.ScanDetailView
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.wasteimpact.components.HeroStat
@@ -230,7 +233,11 @@ fun WasteImpactScreen() {
 
     val current = selectedEntry
     if (current != null) {
-        WasteImpactScanDetail(entry = current, onBack = { selectedEntry = null })
+        ScanDetailView(
+            data = current.toScanDetailData(),
+            onBack = { selectedEntry = null },
+            displayMode = DisplayMode.FULL_SCREEN,
+        )
         return
     }
 
@@ -287,12 +294,12 @@ private fun WasteImpactContent(
     onRefresh: () -> Unit = {},
 ) {
     val s = LocalAppStrings.current
+    var showAllPollutants by remember { mutableStateOf(false) }
 
     val summary = aggregateImpact(entries)
 
     val totalScans       = summary.totalScans
     val totalItems       = summary.totalItems
-    // Use actual green score from API if available, otherwise fall back to computed eco score
     val latestGreenScore = greenScoreEntries.lastOrNull()
     val avgEcoScore      = latestGreenScore?.finalScore ?: summary.ecoScore
     val totalAir         = summary.air
@@ -301,12 +308,17 @@ private fun WasteImpactContent(
     val aggregatedMap    = summary.pollutants
     val withImpact       = entries.filter { it.pollutantResult != null }
 
-    // Top active pollutants for the bar chart (non-zero, top 6)
     val aggregatedPollutants: List<Pair<String, Double>> =
         aggregatedMap.entries
             .filter { it.value > 0.0 }
             .sortedByDescending { it.value }
             .take(6)
+            .map { it.key to it.value }
+
+    val allActivePollutants: List<Pair<String, Double>> =
+        aggregatedMap.entries
+            .filter { it.value > 0.0 }
+            .sortedByDescending { it.value }
             .map { it.key to it.value }
 
     Column(
@@ -320,12 +332,12 @@ private fun WasteImpactContent(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Brush.linearGradient(listOf(orange700, orange600, orange400)))
+                    .background(Brush.linearGradient(listOf(Color(0xFF1B5E20), Color(0xFF388E3C), Color(0xFF43A047))))
                     .padding(20.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -334,15 +346,9 @@ private fun WasteImpactContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(Icons.Filled.Analytics.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Box(
-                            Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White.copy(alpha = 0.18f))
-                                .clickable { onRefresh() }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(s.refresh, fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Text(s.environmentalImpact, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        IconButton(onClick = onRefresh, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Filled.Refresh, contentDescription = s.refresh, tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                     }
                     Row(
@@ -361,73 +367,94 @@ private fun WasteImpactContent(
             }
         }
 
-        // ── Eco score breakdown ───────────────────────────────────────────────
-        if (avgEcoScore != null) {
+        // ── Eco score + Impact ────────────────────────────────────────────────
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Eco score
+                if (avgEcoScore != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(56.dp).clip(CircleShape).background(ecoScoreColor(avgEcoScore).copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("$avgEcoScore%", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = ecoScoreColor(avgEcoScore))
+                        }
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(ecoScoreLabel(avgEcoScore), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = ecoScoreColor(avgEcoScore))
+                                if (latestGreenScore != null) {
+                                    val delta = latestGreenScore.delta
+                                    val dc = if (delta >= 0) green800 else red600
+                                    Text(if (delta >= 0) "+$delta" else "$delta", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = dc)
+                                }
+                            }
+                            LinearProgressIndicator(
+                                progress = { avgEcoScore / 100f },
+                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                                color = ecoScoreColor(avgEcoScore),
+                                trackColor = ecoScoreColor(avgEcoScore).copy(alpha = 0.15f)
+                            )
+                        }
+                    }
+                    HorizontalDivider(color = Color(0xFFF0F0F0))
+                }
+
+                // Impact meters
+                if (totalAir != null && totalWater != null && totalSoil != null) {
+                    Text(s.averagePollutionImpact, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                    ImpactMeter(s.airIcon, s.air, totalAir.toFloat())
+                    ImpactMeter("💧", s.waterPollutionLabel, totalWater.toFloat())
+                    ImpactMeter("🌱", s.soilPollutionLabel, totalSoil.toFloat())
+                }
+            }
+        }
+
+        // ── Pollutants ────────────────────────────────────────────────────────
+        if (allActivePollutants.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        if (latestGreenScore != null) s.greenScoreTitle else s.ecoScoreLabel(avgEcoScore),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF424242)
-                    )
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(ecoScoreColor(avgEcoScore).copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center
+                        Text(s.topPollutantsAvg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                        Text("${allActivePollutants.size} active", fontSize = 11.sp, color = Color.Gray)
+                    }
+                    val displayList = if (showAllPollutants) allActivePollutants else aggregatedPollutants
+                    displayList.forEachIndexed { idx, (key, value) ->
+                        val barColor = when {
+                            value < 0.5  -> green800
+                            value <= 0.7 -> amber
+                            else         -> red600
+                        }
+                        PollutantBar(rank = idx + 1, label = pollutantLabel[key] ?: key, value = value, barColor = barColor)
+                    }
+                    if (allActivePollutants.size > 6) {
+                        TextButton(
+                            onClick = { showAllPollutants = !showAllPollutants },
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(vertical = 0.dp),
                         ) {
                             Text(
-                                "$avgEcoScore%",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = ecoScoreColor(avgEcoScore)
+                                if (showAllPollutants) "Show less" else "Show all ${allActivePollutants.size} pollutants",
+                                fontSize = 12.sp, color = orange700
                             )
                         }
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            LinearProgressIndicator(
-                                progress = { avgEcoScore / 100f },
-                                modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
-                                color = ecoScoreColor(avgEcoScore),
-                                trackColor = ecoScoreColor(avgEcoScore).copy(alpha = 0.15f)
-                            )
-                            Text(
-                                ecoScoreLabel(avgEcoScore),
-                                fontSize = 12.sp,
-                                color = ecoScoreColor(avgEcoScore)
-                            )
-                        }
-                    }
-                    Text(
-                        if (latestGreenScore != null)
-                            s.greenScoreDescription
-                        else
-                            s.basedOnScans(withImpact.size),
-                        fontSize = 11.sp,
-                        color = Color.Gray
-                    )
-                    // Show delta from green score API
-                    if (latestGreenScore != null) {
-                        val delta = latestGreenScore.delta
-                        val deltaColor = if (delta >= 0) green800 else red600
-                        val deltaPrefix = if (delta >= 0) "+" else ""
-                        Text(
-                            "${latestGreenScore.previousScore} → ${latestGreenScore.finalScore}  ($deltaPrefix$delta)",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = deltaColor
-                        )
                     }
                 }
             }
@@ -441,157 +468,24 @@ private fun WasteImpactContent(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        s.greenScoreHistory,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF424242)
-                    )
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(s.greenScoreHistory, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
                     greenScoreEntries.reversed().forEach { entry ->
                         val isPositive = entry.delta >= 0
-                        val deltaColor = if (isPositive) green800 else red600
-                        val deltaBg = if (isPositive) green50 else Color(0xFFFEF2F2)
-                        val deltaText = if (isPositive) "+${entry.delta}" else "${entry.delta}"
+                        val dc = if (isPositive) green800 else red600
+                        val db = if (isPositive) green50 else Color(0xFFFEF2F2)
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(entry.createdAt.take(10), fontSize = 11.sp, color = Color.Gray)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text("${entry.previousScore} →", fontSize = 12.sp, color = Color.Gray)
-                                Text("${entry.finalScore}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF424242))
-                                Box(
-                                    Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(deltaBg)
-                                        .padding(horizontal = 8.dp, vertical = 3.dp)
-                                ) {
-                                    Text(deltaText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = deltaColor)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("${entry.previousScore} → ${entry.finalScore}", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF424242))
+                                Box(Modifier.clip(RoundedCornerShape(6.dp)).background(db).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                    Text(if (isPositive) "+${entry.delta}" else "${entry.delta}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = dc)
                                 }
                             }
-                        }
-                        HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)
-                    }
-                }
-            }
-        }
-
-        // ── Total pollution impact ────────────────────────────────────────────
-        if (totalAir != null && totalWater != null && totalSoil != null) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        s.averagePollutionImpact,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF424242)
-                    )
-                    ImpactMeter(s.airIcon, s.air,   totalAir.toFloat())
-                    ImpactMeter("💧", s.waterPollutionLabel, totalWater.toFloat())
-                    ImpactMeter(Icons.Filled.Eco.name, s.soilPollutionLabel,  totalSoil.toFloat())
-                }
-            }
-        }
-
-        // ── Top pollutants ────────────────────────────────────────────────────
-        if (aggregatedPollutants.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        s.topPollutantsAvg,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF424242)
-                    )
-                    val maxVal = aggregatedPollutants.first().second
-                    aggregatedPollutants.forEachIndexed { idx, (key, value) ->
-                        val barColor = when {
-                            value < 0.5  -> green800
-                            value <= 0.7 -> amber
-                            else         -> red600
-                        }
-                        PollutantBar(
-                            rank     = idx + 1,
-                            label    = pollutantLabel[key] ?: key,
-                            value    = value,
-                            barColor = barColor,
-                        )
-                    }
-                }
-            }
-        }
-
-        // ── All pollutants table ──────────────────────────────────────────────
-        if (withImpact.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        s.pollutantBreakdownAvg,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF424242)
-                    )
-                    allPollutantKeys.forEach { key ->
-                        val value = aggregatedMap[key] ?: 0.0
-                        val active = value > 0.0
-                        val labelColor = if (active) {
-                            when {
-                                value < 0.5 -> green800
-                                value <= 0.7 -> amber
-                                else -> red600
-                            }
-                        } else Color(0xFF9E9E9E)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(if (active) orange700 else Color(0xFFE0E0E0))
-                            )
-                            Text(
-                                pollutantLabel[key] ?: key,
-                                fontSize = 12.sp,
-                                color = Color(0xFF424242),
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                if (active) value.fmt(3) else "0",
-                                fontSize = 12.sp,
-                                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-                                color = labelColor
-                            )
-                        }
-                        if (active) {
-                            LinearProgressIndicator(
-                                progress = { value.toFloat().coerceIn(0f, 1f) },
-                                modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)),
-                                color = labelColor,
-                                trackColor = labelColor.copy(alpha = 0.08f)
-                            )
-                        }
-                        if (key != allPollutantKeys.last()) {
-                            HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)
                         }
                     }
                 }
@@ -606,36 +500,20 @@ private fun WasteImpactContent(
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    s.scanHistoryTitle,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF424242)
-                )
+                Text(s.scanHistoryTitle, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
                 Spacer(Modifier.height(4.dp))
                 entries.forEachIndexed { idx, entry ->
                     ScanHistoryRow(entry = entry, onClick = { onEntryClick(entry) })
-                    if (idx < entries.lastIndex) {
-                        HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)
-                    }
+                    if (idx < entries.lastIndex) HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 0.5.dp)
                 }
             }
         }
 
         // ── Tip footer ────────────────────────────────────────────────────────
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(green50)
-                .padding(horizontal = 14.dp, vertical = 10.dp)
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(green50).padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            Text(
-                s.wasteImpactTip,
-                fontSize = 12.sp,
-                color = green800,
-                lineHeight = 18.sp
-            )
+            Text(s.wasteImpactTip, fontSize = 12.sp, color = green800, lineHeight = 18.sp)
         }
 
         Spacer(Modifier.navigationBarsPadding())

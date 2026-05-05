@@ -17,7 +17,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -264,7 +264,7 @@ private fun InvoiceDetailSheet(invoice: InvoiceDto, onDismiss: () -> Unit) {
                 if (!invoice.doc?.paymentMethod.isNullOrBlank())
                     SheetRow(Icons.Filled.CreditCard, invoice.doc.paymentMethod)
                 if (!invoice.doc?.notes.isNullOrBlank())
-                    SheetRow(Icons.Filled.Notes, invoice.doc.notes)
+                    SheetRow(Icons.AutoMirrored.Filled.Notes, invoice.doc.notes)
             }
 
             // Items

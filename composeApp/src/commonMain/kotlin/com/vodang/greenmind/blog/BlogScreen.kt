@@ -1,5 +1,6 @@
 package com.vodang.greenmind.blog
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,9 +8,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,8 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.navigationBarsPadding
 import com.vodang.greenmind.api.blog.BlogDto
+import com.vodang.greenmind.api.blog.getBlog
 import com.vodang.greenmind.api.blog.getBlogs
 import com.vodang.greenmind.api.blog.getLeaderboard
 import com.vodang.greenmind.api.blog.toggleBlogLike
@@ -32,6 +36,7 @@ import com.vodang.greenmind.blog.components.LeaderboardTab
 import com.vodang.greenmind.home.components.CampaignDetailScreen
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.store.BlogStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.theme.Green100
 import com.vodang.greenmind.theme.Green800
@@ -40,6 +45,8 @@ import com.vodang.greenmind.theme.Gray400
 import com.vodang.greenmind.theme.Gray500
 import com.vodang.greenmind.theme.Gray600
 import com.vodang.greenmind.theme.Gray700
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 private val green800 = Green800
@@ -54,99 +61,85 @@ private fun authorInitials(name: String, username: String): String =
     name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercaseChar() }.joinToString("")
         .ifBlank { username.take(2).uppercase() }
 
+private fun formatDateShort(iso: String): String = try {
+    val parts = iso.substringBefore('T').split('-')
+    if (parts.size == 3) "${parts[2]}/${parts[1]}/${parts[0]}" else iso
+} catch (_: Throwable) { iso }
+
+private fun stripHtmlBasic(html: String): String =
+    html.replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), " ")
+        .replace(Regex("<[^>]+>"), "")
+        .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+        .replace("&nbsp;", " ").replace("&quot;", "\"").replace("&#39;", "'")
+        .replace(Regex("\\s+"), " ").trim()
+
 @Composable
-fun BlogScreen() {
+fun BlogScreen(
+    selectedTab: Int = 0,
+    onTabChange: (Int) -> Unit = {},
+    onSelectCampaign: (CampaignDto) -> Unit = {},
+) {
     val s = LocalAppStrings.current
     val accessToken = SettingsStore.getAccessToken() ?: return
 
-    var selectedTab by remember { mutableIntStateOf(0) }
-    var selectedBlogId by remember { mutableStateOf<String?>(null) }
+    var selectedBlog by remember { mutableStateOf<BlogDto?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var listRefreshKey by remember { mutableIntStateOf(0) }
-    var likedPosts by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
-    var likeCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var reloadTrigger by remember { mutableIntStateOf(0) }
 
     BackHandler(enabled = showCreate) { showCreate = false }
-    BackHandler(enabled = selectedBlogId != null) { selectedBlogId = null }
+    BackHandler(enabled = selectedBlog != null) { selectedBlog = null }
 
     var allCampaigns by remember { mutableStateOf<List<CampaignDto>>(emptyList()) }
     var selectedCampaignId by remember { mutableStateOf<String?>(null) }
 
     val selectedCampaign = selectedCampaignId?.let { id -> allCampaigns.find { it.id == id } }
     if (selectedCampaign != null) {
-        CampaignDetailScreen(
-            campaign = selectedCampaign,
-            accessToken = accessToken,
-            onBack = { selectedCampaignId = null },
-        )
-        return
+        onSelectCampaign(selectedCampaign)
+        selectedCampaignId = null
     }
 
     if (showCreate) {
         CreateBlogScreen(
             accessToken = accessToken,
             onBack = { showCreate = false },
-            onCreated = { showCreate = false; listRefreshKey++; likedPosts = emptyMap(); likeCounts = emptyMap() },
+            onCreated = { showCreate = false; listRefreshKey++; BlogStore.clearAll() },
         )
         return
     }
 
-    val blogId = selectedBlogId
-    if (blogId != null) {
+    fun onBlogLiked(id: String, liked: Boolean, count: Int) {
+        BlogStore.onBlogLiked(id, liked, count)
+    }
+
+    val currentBlog = selectedBlog
+    if (currentBlog != null) {
         BlogDetailScreen(
-            blogId = blogId,
+            blogId = currentBlog.id,
             accessToken = accessToken,
-            onBack = { selectedBlogId = null; reloadTrigger++ },
-            onBlogLiked = { id, liked, count ->
-                likedPosts = likedPosts + (id to liked)
-                likeCounts = likeCounts + (id to count)
-            },
+            initialPost = currentBlog,
+            onBack = { selectedBlog = null; reloadTrigger++ },
+            onBlogLiked = ::onBlogLiked,
             onBlogDeleted = {
-                selectedBlogId = null
-                likedPosts = likedPosts - blogId
-                likeCounts = likeCounts - blogId
+                selectedBlog = null
+                BlogStore.onBlogDeleted(currentBlog.id)
+                BlogStore.updatePosts(BlogStore.posts.filter { it.id != currentBlog.id })
                 reloadTrigger++
             },
+            onSelectCampaign = onSelectCampaign,
         )
         return
     }
 
-    Column(Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .background(Color.White),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                s.blogTabPosts,
-                fontSize = 14.sp,
-                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
-                color = if (selectedTab == 0) green800 else gray500,
-                modifier = Modifier.clickable { selectedTab = 0 }.padding(vertical = 8.dp)
-            )
-            Text(
-                s.blogTabLeaderboard,
-                fontSize = 14.sp,
-                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
-                color = if (selectedTab == 1) green800 else gray500,
-                modifier = Modifier.clickable { selectedTab = 1 }.padding(vertical = 8.dp)
-            )
-        }
-
-        Box(modifier = Modifier.weight(1f).fillMaxWidth().background(Color(0xFFEEF0F3))) {
-            when (selectedTab) {
-                0 -> BlogListTab(
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFEEF0F3))) {
+        when (selectedTab) {
+            0 -> BlogListTab(
                     accessToken = accessToken,
                     refreshKey = listRefreshKey,
                     reloadTrigger = reloadTrigger,
-                    onSelectBlog = { selectedBlogId = it },
+                    onSelectBlog = { selectedBlog = it },
                     onCreatePost = { showCreate = true },
-                    likedPosts = likedPosts,
-                    likeCounts = likeCounts,
+                    onBlogLiked = ::onBlogLiked,
                     allCampaigns = allCampaigns,
                     onSelectCampaign = { selectedCampaignId = it },
                     onCampaignsLoaded = { allCampaigns = it },
@@ -154,10 +147,10 @@ fun BlogScreen() {
                 1 -> LeaderboardTab(
                     accessToken = accessToken,
                     onLoad = { getLeaderboard(accessToken).data },
+                    currentUserId = SettingsStore.getUser()?.id,
                 )
             }
         }
-    }
 }
 
 @Composable
@@ -199,10 +192,9 @@ private fun BlogListTab(
     accessToken: String,
     refreshKey: Int,
     reloadTrigger: Int,
-    onSelectBlog: (String) -> Unit,
+    onSelectBlog: (BlogDto) -> Unit,
     onCreatePost: () -> Unit,
-    likedPosts: Map<String, Boolean>,
-    likeCounts: Map<String, Int>,
+    onBlogLiked: (String, Boolean, Int) -> Unit,
     allCampaigns: List<CampaignDto>,
     onSelectCampaign: (String) -> Unit,
     onCampaignsLoaded: (List<CampaignDto>) -> Unit,
@@ -210,12 +202,9 @@ private fun BlogListTab(
     val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
 
-    var posts by remember { mutableStateOf<List<BlogDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var isLoadingMore by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var currentPage by remember { mutableIntStateOf(1) }
-    var totalPages by remember { mutableIntStateOf(1) }
 
     LaunchedEffect(accessToken) {
         try {
@@ -224,20 +213,61 @@ private fun BlogListTab(
         } catch (_: Throwable) { }
     }
 
+    suspend fun fetchPostDetails() {
+        val needDetail = BlogStore.posts.filter { it.content.isNullOrBlank() }.map { it.id }.toSet()
+        if (needDetail.isEmpty()) return
+        BlogStore.loadingContentIds = needDetail
+        coroutineScope {
+            val results = needDetail.map { id ->
+                async<Pair<String, BlogDto?>> {
+                    try { id to getBlog(id, accessToken).data } catch (_: Throwable) { id to null }
+                }
+            }
+            results.forEach { deferred ->
+                val (id, detail) = deferred.await()
+                if (detail != null) {
+                    val plainText = detail.content?.let { stripHtmlBasic(it) }
+                    val preview = plainText?.take(150)?.let { "$it..." }
+                    val detailLiked = detail.isLiked || detail.liked
+                    BlogStore.updatePosts(BlogStore.posts.map {
+                        if (it.id == id) it.copy(
+                            content = preview,
+                            comments = detail.comments,
+                            isLiked = detailLiked,
+                            liked = detailLiked,
+                            likeCount = detail.likeCount,
+                            commentCount = detail.commentCount,
+                        ) else it
+                    })
+                }
+                BlogStore.loadingContentIds = BlogStore.loadingContentIds - id
+            }
+        }
+    }
+
     fun load(page: Int, query: String, append: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!append && page == 1 && now - BlogStore.lastFetchTime < 300_000 && BlogStore.posts.isNotEmpty()) {
+            isLoading = false
+            BlogStore.isRefreshing = false
+            return
+        }
+        if (!append) BlogStore.touch()
         scope.launch {
             if (append) isLoadingMore = true else isLoading = true
             error = null
             try {
                 val result = getBlogs(page = page, limit = 10, search = query.ifBlank { null }, accessToken = accessToken)
-                posts = if (append) posts + result.data else result.data
-                currentPage = result.pagination.page
-                totalPages = result.pagination.totalPages
+                BlogStore.updatePosts(if (append) BlogStore.posts + result.data else result.data)
+                BlogStore.currentPage = result.pagination.page
+                BlogStore.totalPages = result.pagination.totalPages
+                if (!append) fetchPostDetails()
             } catch (e: Throwable) {
                 error = e.message ?: s.blogErrorLoad
             }
             isLoading = false
             isLoadingMore = false
+            BlogStore.isRefreshing = false
         }
     }
 
@@ -245,22 +275,24 @@ private fun BlogListTab(
     LaunchedEffect(reloadTrigger) { load(1, "") }
 
     fun toggleLike(postId: String) {
-        val post = posts.find { it.id == postId } ?: return
-        val effectiveLiked = likedPosts[postId] ?: post.isLiked || post.liked
-        posts = posts.map {
-            if (it.id == postId) it.copy(
-                isLiked = !effectiveLiked,
-                likeCount = (it.likeCount + if (!effectiveLiked) 1 else -1).coerceAtLeast(0),
-            ) else it
-        }
+        val post = BlogStore.posts.find { it.id == postId } ?: return
+        val wasLiked = post.isLiked || post.liked
+        val newLiked = !wasLiked
+        val newCount = (post.likeCount + if (newLiked) 1 else -1).coerceAtLeast(0)
+        BlogStore.updatePosts(BlogStore.posts.map {
+            if (it.id == postId) it.copy(isLiked = newLiked, liked = newLiked, likeCount = newCount)
+            else it
+        })
+        onBlogLiked(postId, newLiked, newCount)
         scope.launch {
             try {
                 toggleBlogLike(postId, accessToken)
             } catch (e: Throwable) {
-                posts = posts.map {
-                    if (it.id == postId) it.copy(isLiked = effectiveLiked, likeCount = it.likeCount + if (effectiveLiked) 1 else -1)
+                BlogStore.updatePosts(BlogStore.posts.map {
+                    if (it.id == postId) it.copy(isLiked = wasLiked, liked = wasLiked, likeCount = post.likeCount)
                     else it
-                }
+                })
+                onBlogLiked(postId, wasLiked, post.likeCount)
             }
         }
     }
@@ -283,7 +315,7 @@ private fun BlogListTab(
                 ) { Text(s.blogRetry) }
             }
         }
-        posts.isEmpty() -> Box(
+        BlogStore.posts.isEmpty() -> Box(
             Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
@@ -293,10 +325,13 @@ private fun BlogListTab(
             }
         }
         else -> {
+            // Build feed: every 2 posts, insert 1 campaign
             val feedItems = buildList {
-                val campaigns = allCampaigns.takeIf { it.isNotEmpty() } ?: emptyList()
+                val campaigns = allCampaigns
+                    .sortedByDescending { it.createdAt }
+                    .ifEmpty { emptyList() }
                 var campaignIdx = 0
-                posts.forEachIndexed { index, post ->
+                BlogStore.posts.forEachIndexed { index, post ->
                     add(FeedItem.Blog(post))
                     if ((index + 1) % 2 == 0 && campaignIdx < campaigns.size) {
                         add(FeedItem.Campaign(campaigns[campaignIdx]))
@@ -305,7 +340,16 @@ private fun BlogListTab(
                 }
             }
 
-            LazyColumn(Modifier.fillMaxSize()) {
+            @OptIn(ExperimentalMaterial3Api::class)
+            PullToRefreshBox(
+                isRefreshing = BlogStore.isRefreshing,
+                onRefresh = {
+                    BlogStore.invalidate()
+                    BlogStore.isRefreshing = true
+                    load(1, "")
+                },
+            ) {
+                LazyColumn(Modifier.fillMaxSize()) {
                 item {
                     CreatePostPrompt(onTap = onCreatePost)
                     Spacer(Modifier.height(8.dp))
@@ -318,14 +362,15 @@ private fun BlogListTab(
                 }) { item ->
                     when (item) {
                         is FeedItem.Blog -> {
-                            val effectiveLiked = likedPosts[item.post.id] ?: item.post.isLiked || item.post.liked
-                            val effectiveCount = likeCounts[item.post.id] ?: item.post.likeCount
+                            val effectiveLiked = BlogStore.likedPosts[item.post.id] ?: (item.post.isLiked || item.post.liked)
+                            val effectiveCount = BlogStore.likeCounts[item.post.id] ?: item.post.likeCount
                             BlogCard(
                                 post = item.post,
                                 effectiveLiked = effectiveLiked,
                                 effectiveLikeCount = effectiveCount,
-                                onClick = { onSelectBlog(item.post.id) },
+                                onClick = { onSelectBlog(item.post) },
                                 onLike = { toggleLike(item.post.id) },
+                                isContentLoading = item.post.id in BlogStore.loadingContentIds,
                             )
                             Spacer(Modifier.height(8.dp))
                         }
@@ -338,7 +383,7 @@ private fun BlogListTab(
                         }
                     }
                 }
-                if (currentPage < totalPages) {
+                if (BlogStore.currentPage < BlogStore.totalPages) {
                     item {
                         Box(
                             Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -348,7 +393,7 @@ private fun BlogListTab(
                                 CircularProgressIndicator(color = green800, modifier = Modifier.size(24.dp))
                             } else {
                                 OutlinedButton(
-                                    onClick = { load(currentPage + 1, "", append = true) },
+                                    onClick = { load(BlogStore.currentPage + 1, "", append = true) },
                                     shape = RoundedCornerShape(20.dp),
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = green800),
                                 ) { Text(s.blogLoadMore) }
@@ -356,6 +401,7 @@ private fun BlogListTab(
                         }
                     }
                 }
+            }
             }
         }
     }
@@ -381,10 +427,8 @@ private fun SponsoredCampaignCard(campaign: CampaignDto, onClick: () -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
             Text(campaign.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1B1B1B))
-            campaign.description?.let {
-                Spacer(Modifier.height(4.dp))
-                Text(it, fontSize = 13.sp, color = Gray600, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
+            Spacer(Modifier.height(4.dp))
+                Text(campaign.description, fontSize = 13.sp, color = Gray600, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }

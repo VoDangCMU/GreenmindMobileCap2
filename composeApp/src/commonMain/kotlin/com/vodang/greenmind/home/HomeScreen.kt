@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -37,6 +39,7 @@ import com.vodang.greenmind.permission.PermissionGroup
 import com.vodang.greenmind.permission.PermissionRequester
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.store.TodoStore
 import com.vodang.greenmind.store.WalkDistanceStore
 import com.vodang.greenmind.wastesort.WasteSortScreen
 import com.vodang.greenmind.wastesort.WasteTotalMassScreen
@@ -53,6 +56,11 @@ import com.vodang.greenmind.preappsurvey.PreAppSurveyScreen
 import com.vodang.greenmind.survey.SurveyScreen
 import com.vodang.greenmind.ProfileScreen
 import com.vodang.greenmind.blog.BlogScreen
+import com.vodang.greenmind.chat.ChatScreen
+import com.vodang.greenmind.chat.ChatDetailScreen
+import com.vodang.greenmind.chat.ChatThread
+import com.vodang.greenmind.store.ChatStore
+import com.vodang.greenmind.api.campaign.CampaignDto
 import com.vodang.greenmind.todos.TodoScreen
 import com.vodang.greenmind.platform.exitApp
 
@@ -74,6 +82,7 @@ fun HomeScreen(
     val language by SettingsStore.language.collectAsState()
     val roleSwitchEnabled by SettingsStore.roleSwitcherEnabled.collectAsState()
     val household by HouseholdStore.household.collectAsState()
+    val todos by TodoStore.todos.collectAsState()
 
     var userType by remember { mutableStateOf(UserType.HOUSEHOLD) }
     var showPicker by remember { mutableStateOf(false) }
@@ -83,7 +92,9 @@ fun HomeScreen(
     var showSearchBar by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var exitToastShown by remember { mutableStateOf(false) }
-    var showBlogLeaderboard by remember { mutableStateOf(false) }
+    var blogTab by remember { mutableIntStateOf(0) }
+    var selectedChatThread by remember { mutableStateOf<ChatThread?>(null) }
+    var selectedCampaign by remember { mutableStateOf<CampaignDto?>(null) }
 
     // Scroll states for header hide/show
     val dashboardScrollState = rememberScrollState()
@@ -144,13 +155,21 @@ fun HomeScreen(
 
     // Handle back button with double-back-to-exit
     BackHandler(enabled = true) {
-        if (showBlogLeaderboard && navState.currentScreen == AppScreen.BLOG) {
-            showBlogLeaderboard = false
+        // Chat overlay takes priority - close it first
+        if (selectedChatThread != null) {
+            selectedChatThread = null
+            return@BackHandler
+        }
+        if (selectedCampaign != null) {
+            selectedCampaign = null
+            return@BackHandler
+        }
+        if (blogTab == 1 && navState.currentScreen == AppScreen.BLOG) {
+            blogTab = 0
         } else if (showBackButton) {
             Navigation.goBack()
         } else {
             if (Navigation.shouldExit()) {
-                // Exit app
                 exitApp()
             } else {
                 exitToastShown = true
@@ -178,7 +197,7 @@ fun HomeScreen(
             subtitle = household?.members?.size?.let { s.memberCount(it) }
         }
         AppScreen.BLOG -> {
-            title = if (showBlogLeaderboard) s.blogTabLeaderboard else s.blog
+            title = s.blog
             subtitle = null
         }
         AppScreen.PROFILE -> {
@@ -249,13 +268,25 @@ fun HomeScreen(
             title = s.surveys
             subtitle = null
         }
+        AppScreen.CHAT -> {
+            title = s.chatTitle
+            subtitle = null
+        }
+        AppScreen.CHAT_DETAIL -> {
+            title = ""
+            subtitle = null
+        }
     }
 
     val trailingActions: @Composable RowScope.() -> Unit = {
         when (currentTab) {
             AppScreen.HOME -> {
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add", tint = green800, modifier = Modifier.size(22.dp))
+                IconButton(onClick = { Navigation.navigate(AppScreen.CHAT) }, modifier = Modifier.size(36.dp)) {
+                    BadgedBox(
+                        badge = { if (false) Badge(modifier = Modifier.offset(x = 4.dp, y = (-4).dp)) { Text("0") } }
+                    ) {
+                        Icon(Icons.Filled.Chat, contentDescription = "Chat", tint = green800, modifier = Modifier.size(20.dp))
+                    }
                 }
                 IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Filled.Search, contentDescription = "Search", tint = green800, modifier = Modifier.size(20.dp))
@@ -275,16 +306,21 @@ fun HomeScreen(
                 }
             }
             AppScreen.BLOG -> {
-                IconButton(onClick = { showBlogLeaderboard = !showBlogLeaderboard }, modifier = Modifier.size(36.dp)) {
+                IconButton(onClick = { blogTab = 0 }, modifier = Modifier.size(36.dp)) {
                     Icon(
-                        imageVector = Icons.Filled.EmojiEvents,
-                        contentDescription = s.blogTabLeaderboard,
-                        tint = if (showBlogLeaderboard) green800 else textSecondary,
+                        imageVector = Icons.AutoMirrored.Filled.Article,
+                        contentDescription = s.blogTabPosts,
+                        tint = if (blogTab == 0) green800 else textSecondary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                IconButton(onClick = { /* TODO */ }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Filled.Search, contentDescription = "Search", tint = green800, modifier = Modifier.size(20.dp))
+                IconButton(onClick = { blogTab = 1 }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.EmojiEvents,
+                        contentDescription = s.blogTabLeaderboard,
+                        tint = if (blogTab == 1) green800 else textSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
             AppScreen.PROFILE -> {
@@ -346,7 +382,13 @@ fun HomeScreen(
                             onPreAppSurveyClick = { Navigation.navigate(AppScreen.PRE_APP_SURVEY) },
                         )
                         UserType.COLLECTOR -> CollectorDashboard(user = user, scrollState = collectorScrollState)
-                        UserType.VOLUNTEER -> VolunteerDashboard(user = user, scrollState = volunteerScrollState)
+                        UserType.VOLUNTEER -> VolunteerDashboard(
+                            user = user,
+                            scrollState = volunteerScrollState,
+                            onSelectCampaign = { campaign ->
+                                selectedCampaign = campaign
+                            },
+                        )
                     }
                 }
                 AppScreen.WASTE_SCAN -> ScanHubCard(
@@ -362,7 +404,13 @@ fun HomeScreen(
                     scrollState = householdScrollState,
                     onSettingsClick = { Navigation.navigate(AppScreen.SETTINGS) },
                 )
-                AppScreen.BLOG -> BlogScreen()
+                AppScreen.BLOG -> BlogScreen(
+                    selectedTab = blogTab,
+                    onTabChange = { blogTab = it },
+                    onSelectCampaign = { campaign ->
+                        selectedCampaign = campaign
+                    },
+                )
                 AppScreen.PROFILE -> ProfileScreen(scrollState = profileScrollState)
                 AppScreen.WASTE_SORT -> WasteSortScreen(onScanClick = { Navigation.goBack() })
                 AppScreen.WASTE_REPORT -> WasteReportScreen(lazyListState = wasteReportLazyListState)
@@ -378,7 +426,19 @@ fun HomeScreen(
                 AppScreen.BILL_SCAN -> BillScreen()
                 AppScreen.ENERGY -> EnergyScreen()
                 AppScreen.WALK_DISTANCE -> WalkDistanceCard(onBack = { Navigation.goBack() })
-                AppScreen.CAMPAIGNS -> CampaignsList(onBack = { Navigation.goBack() })
+                AppScreen.CAMPAIGNS -> CampaignsList(
+                    onBack = { Navigation.goBack() },
+                    onSelectCampaign = { campaign ->
+                        selectedCampaign = campaign
+                    },
+                )
+                AppScreen.CHAT -> ChatScreen(
+                    onBack = { Navigation.goBack() },
+                    onThreadClick = {
+                        selectedChatThread = it
+                    },
+                )
+
                 AppScreen.SETTINGS -> SettingsScreen()
                 AppScreen.CATALOGUE -> CatalogueScreen(
                     onWasteReport = { Navigation.navigate(AppScreen.WASTE_REPORT) },
@@ -411,7 +471,43 @@ fun HomeScreen(
                 )
                 AppScreen.SURVEY -> SurveyScreen()
                 AppScreen.PROFILE_DETAIL -> ProfileScreen()
+                AppScreen.CHAT_DETAIL -> { }
             }
+        }
+
+        // Campaign detail overlay (full screen, outside AppScaffold)
+        selectedCampaign?.let { campaign ->
+            CampaignDetailScreen(
+                campaign = campaign,
+                accessToken = SettingsStore.getAccessToken() ?: "",
+                onBack = { selectedCampaign = null },
+                onRegistered = { /* handle registration if needed */ },
+                onOpenChat = { campaignId ->
+                    // Find or create chat thread for this campaign
+                    val thread = ChatThread(
+                        id = campaignId,
+                        name = campaign.name,
+                        initials = campaign.name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercaseChar() }.joinToString("").ifBlank { campaign.name.take(2).uppercase() },
+                        lastMessage = null,
+                        lastMessageAt = null,
+                        isGroup = true,
+                        campaignStatus = campaign.status,
+                        participantCount = campaign.participantsCount,
+                    )
+                    selectedChatThread = thread
+                },
+            )
+        }
+
+        // Chat detail overlay (outside AppScaffold — hides appbar + navbar)
+        selectedChatThread?.let { thread ->
+            ChatDetailScreen(
+                thread = thread,
+                onBack = {
+                    ChatStore.closeCampaign()
+                    selectedChatThread = null
+                },
+            )
         }
 
         // Exit toast overlay
@@ -476,10 +572,11 @@ fun HomeScreen(
                             Navigation.navigate(AppScreen.TODOS)
                             showMenuDrawer = false
                         })
-                        DrawerItem(label = s.surveys, icon = Icons.Filled.Assignment, onClick = {
+                        DrawerItem(label = s.surveys, icon = Icons.Filled.AssignmentInd, onClick = {
+                            Navigation.navigate(AppScreen.SURVEY)
                             showMenuDrawer = false
                         })
-                        DrawerItem(label = s.blog, icon = Icons.Filled.Article, onClick = {
+                        DrawerItem(label = s.blog, icon = Icons.Filled.Newspaper, onClick = {
                             Navigation.navigate(AppScreen.BLOG)
                             showMenuDrawer = false
                         })
@@ -576,7 +673,7 @@ fun HomeScreen(
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
                         // Function items
-                        RightDrawerItem(label = s.wasteSort, icon = Icons.Filled.Refresh, onClick = {
+                        RightDrawerItem(label = s.wasteSort, icon = Icons.Filled.Cached, onClick = {
                             Navigation.navigate(AppScreen.WASTE_SORT)
                             showRightDrawer = false
                         })
@@ -600,7 +697,7 @@ fun HomeScreen(
                             Navigation.navigate(AppScreen.ENERGY)
                             showRightDrawer = false
                         })
-                        RightDrawerItem(label = s.walkDistance, icon = Icons.Filled.DirectionsWalk, onClick = {
+                        RightDrawerItem(label = s.walkDistance, icon = Icons.AutoMirrored.Filled.DirectionsWalk, onClick = {
                             Navigation.navigate(AppScreen.WALK_DISTANCE)
                             showRightDrawer = false
                         })

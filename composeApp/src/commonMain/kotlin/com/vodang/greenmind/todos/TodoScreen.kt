@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,7 +23,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.components.AppScaffold
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.TodoItem
 import com.vodang.greenmind.store.TodoStore
@@ -31,12 +31,9 @@ import com.vodang.greenmind.store.countDone
 import com.vodang.greenmind.theme.Green600
 import com.vodang.greenmind.theme.Green50
 import com.vodang.greenmind.theme.SurfaceGray as SurfaceGrayTheme
-import com.vodang.greenmind.theme.Gray50
-import com.vodang.greenmind.theme.Gray600
 import com.vodang.greenmind.theme.Red500
+import com.vodang.greenmind.theme.TextSecondary
 
-private val Green600Color = Green600
-private val Green50Color  = Green50
 private val SurfaceGrayColor = SurfaceGrayTheme
 
 @Composable
@@ -56,158 +53,107 @@ fun TodoScreen(
     val done  = todos.sumOf { it.countDone() }
     val progress = if (total == 0) 0f else done.toFloat() / total
 
-    AppScaffold(title = s.todos) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(SurfaceGrayColor)
         ) {
-            // ── Progress Card ──────────────────────────────────────────────────
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = s.todosScreenTitle,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1B1B1B)
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = "$done of $total completed",
-                            fontSize = 13.sp,
-                            color = Color(0xFF757575)
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Green50),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${(progress * 100).toInt()}%",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Green600
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = Green600,
-                    trackColor = Green50,
-                    strokeCap = StrokeCap.Round
-                )
-            }
-        }
+            // ── Top spacing ──────────────────────────────────────────────────────────
+            Spacer(modifier = Modifier.height(12.dp))
 
-        // ── Error banner ──────────────────────────────────────────────────────
-        error?.let { msg ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
-            ) {
-                Row(
+            // ── Progress Header Card ──────────────────────────────────────────────
+            if (total > 0) {
+                ProgressHeaderCard(total = total, done = done, progress = progress)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // ── Error banner ──────────────────────────────────────────────────────
+            error?.let { msg ->
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
                 ) {
                     Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Error,
+                                contentDescription = null,
+                                tint = Red500,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(msg, color = Red500, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                        }
+                        IconButton(onClick = { TodoStore.clearError() }) {
+                            Icon(Icons.Filled.Close, contentDescription = s.dismissError, tint = Red500)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // ── List ─────────────────────────────────────────────────────────────
+            if (isLoading && todos.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Green600)
+                }
+            } else if (todos.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Icon(
-                            Icons.Filled.Error,
+                            Icons.Filled.CheckCircle,
                             contentDescription = null,
-                            tint = Red500,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(72.dp),
+                            tint = Color(0xFFBDBDBD)
                         )
-                        Text(msg, color = Red500, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                    }
-                    IconButton(onClick = { TodoStore.clearError() }) {
-                        Icon(Icons.Filled.Close, contentDescription = s.dismissError, tint = Red500)
+                        Text(
+                            s.todosEmpty,
+                            color = Color(0xFF9E9E9E),
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            "Tap + to add your first task",
+                            color = Color(0xFFBDBDBD),
+                            fontSize = 14.sp
+                        )
                     }
                 }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        // ── List ─────────────────────────────────────────────────────────────
-        if (isLoading && todos.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Green600)
-            }
-        } else if (todos.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            } else {
+                val listScroll = scrollState ?: rememberScrollState()
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(listScroll)
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 100.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Icon(
-                        Icons.Filled.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(72.dp),
-                        tint = Color(0xFFBDBDBD)
-                    )
-                    Text(
-                        s.todosEmpty,
-                        color = Color(0xFF9E9E9E),
-                        fontSize = 16.sp
-                    )
-                    Text(
-                        "Tap + to add your first task",
-                        color = Color(0xFFBDBDBD),
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        } else {
-            val listScroll = scrollState ?: rememberScrollState()
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(listScroll)
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 100.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                todos.forEach { todo ->
-                    TodoRootCard(
-                        item = todo,
-                        generatingIds = generatingIds
-                    )
-                }
+                    todos.forEach { todo ->
+                        TodoRootCard(
+                            item = todo,
+                            generatingIds = generatingIds
+                        )
+                    }
                 }
             }
         }
-    }
 
-    // ── Floating Action Button ─────────────────────────────────────────────────
-    Box(modifier = Modifier.fillMaxSize()) {
+        // ── Floating Action Button ─────────────────────────────────────────────────
         ExtendedFloatingActionButton(
             onClick = { showAddDialog = true },
             containerColor = Green600,
@@ -232,6 +178,74 @@ fun TodoScreen(
                 showAddDialog = false
             }
         )
+    }
+}
+
+@Composable
+private fun ProgressHeaderCard(total: Int, done: Int, progress: Float) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Circular progress
+            Box(
+                modifier = Modifier.size(64.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxSize(),
+                    color = Green600,
+                    trackColor = Green50,
+                    strokeWidth = 5.dp,
+                    strokeCap = StrokeCap.Round
+                )
+                Text(
+                    text = "${(progress * 100).toInt()}%",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Green600
+                )
+            }
+
+            // Stats
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Today's Progress",
+                    fontSize = 13.sp,
+                    color = TextSecondary
+                )
+                Text(
+                    text = "$done / $total tasks",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF212121)
+                )
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = Green600,
+                    trackColor = Green50,
+                )
+            }
+        }
     }
 }
 

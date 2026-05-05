@@ -133,14 +133,15 @@ object TodoStore {
         val token = SettingsStore.getAccessToken() ?: return
         val snapshot = _todos.value
 
-        // Optimistic: toggle in UI immediately
-        _todos.value = snapshot.map { it.toggleRecursive(id) }
+        val (newTodos, toggledIds) = snapshot.computeToggleCascade(id)
+        _todos.value = newTodos
 
         scope.launch {
             try {
-                toggleTodo(token, id)
+                for (tid in toggledIds) {
+                    toggleTodo(token, tid)
+                }
             } catch (e: Throwable) {
-                // Revert on failure
                 _todos.value = snapshot
                 _error.value = e.message
             }
@@ -189,6 +190,36 @@ private fun List<TodoItem>.removeItemRecursive(targetId: String): List<TodoItem>
         else item.copy(children = item.children.removeItemRecursive(targetId))
     }
 
-private fun TodoItem.toggleRecursive(targetId: String): TodoItem =
-    if (id == targetId) copy(done = !done)
-    else copy(children = children.map { it.toggleRecursive(targetId) })
+private fun TodoItem.setDeep(done: Boolean, collect: MutableList<String>? = null): TodoItem {
+    if (collect != null && this.done != done) collect.add(id)
+    return copy(done = done, children = children.map { it.setDeep(done, collect) })
+}
+
+private fun TodoItem.allChildrenDeepDone(): Boolean =
+    children.isNotEmpty() && children.all { it.done && it.allChildrenDeepDone() }
+
+private fun List<TodoItem>.computeToggleCascade(targetId: String): Pair<List<TodoItem>, List<String>> {
+    val toggledIds = mutableListOf<String>()
+
+    fun TodoItem.process(id: String): TodoItem {
+        if (this.id == id) {
+            toggledIds.add(id)
+            val newDone = !done
+            return setDeep(newDone, toggledIds)
+        }
+        val newChildren = children.map { it.process(id) }
+
+        if (newChildren.isNotEmpty() && newChildren.all { it.done }) {
+            if (!done) { toggledIds.add(this.id) }
+            return copy(children = newChildren, done = true)
+        }
+        if (done && newChildren.isNotEmpty() && newChildren.any { !it.done }) {
+            toggledIds.add(this.id)
+            return copy(children = newChildren, done = false)
+        }
+        return copy(children = newChildren)
+    }
+
+    val result = map { it.process(targetId) }
+    return result to toggledIds.distinct()
+}

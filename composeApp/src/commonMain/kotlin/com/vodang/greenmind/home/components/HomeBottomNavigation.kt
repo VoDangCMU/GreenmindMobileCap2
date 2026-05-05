@@ -1,6 +1,7 @@
 package com.vodang.greenmind.home.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AssignmentInd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -58,7 +59,7 @@ fun HomeBottomNavigation(
                             BottomNavTab.WASTE_SCAN -> if (selected) Icons.Filled.QrCodeScanner else Icons.Outlined.QrCodeScanner
                             BottomNavTab.TODOS -> if (selected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle
                             BottomNavTab.HOUSEHOLD -> if (selected) Icons.Filled.House else Icons.Outlined.House
-                            BottomNavTab.BLOG -> if (selected) Icons.Filled.Article else Icons.Outlined.Article
+                            BottomNavTab.BLOG -> if (selected) Icons.Filled.Newspaper else Icons.Outlined.Newspaper
                             BottomNavTab.PROFILE -> if (selected) Icons.Filled.Person else Icons.Outlined.Person
                         },
                         contentDescription = tab.label(s),

@@ -1,6 +1,8 @@
 package com.vodang.greenmind.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.outlined.Newspaper
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -14,6 +16,7 @@ enum class AppScreen {
     HOME, WASTE_SCAN, TODOS, HOUSEHOLD, BLOG, PROFILE,
 
     // Detail screens
+    CHAT, CHAT_DETAIL,
     WASTE_SORT, WASTE_REPORT, WASTE_IMPACT, WASTE_ANALYTICS, WASTE_TOTAL_MASS,
     HOUSEHOLD_WASTE,
     MEAL_SCAN, BILL_SCAN,
@@ -35,7 +38,7 @@ object AppNavItems {
         NavItem(AppScreen.WASTE_SCAN, "Scan", Icons.Filled.QrCodeScanner, Icons.Outlined.QrCodeScanner),
         NavItem(AppScreen.TODOS, "Todos", Icons.Filled.CheckCircle, Icons.Outlined.CheckCircle),
         NavItem(AppScreen.HOUSEHOLD, "Household", Icons.Filled.House, Icons.Outlined.House),
-        NavItem(AppScreen.BLOG, "Blog", Icons.Filled.Article, Icons.Outlined.Article),
+        NavItem(AppScreen.BLOG, "Blog", Icons.Filled.Newspaper, Icons.Outlined.Newspaper),
         NavItem(AppScreen.PROFILE, "Profile", Icons.Filled.Person, Icons.Outlined.Person),
     )
 

@@ -20,18 +20,15 @@ import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.households.DetectTrashHistoryDto
 import com.vodang.greenmind.householdwaste.components.GroupedDetectScanCard
 import com.vodang.greenmind.i18n.LocalAppStrings
-import com.vodang.greenmind.wastesort.WasteSortEntry
 import com.vodang.greenmind.wastesort.green600
 import com.vodang.greenmind.wastesort.green800
 
 @Composable
 fun WasteSortList(
-    entries: List<WasteSortEntry>,
     apiHistory: List<DetectTrashHistoryDto> = emptyList(),
     isLoadingHistory: Boolean = false,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
-    onCardClick: (WasteSortEntry) -> Unit,
     onApiScanClick: (List<DetectTrashHistoryDto>) -> Unit = {},
 ) {
     val s = LocalAppStrings.current
@@ -92,35 +89,6 @@ fun WasteSortList(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 24.dp),
         ) {
-            // ── Local scan history header ─────────────────────────────────
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        s.localScans,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1B1B1B),
-                    )
-                    Text(
-                        s.scanCount(entries.size),
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                    )
-                }
-            }
-
-            if (entries.isEmpty()) {
-                item { EmptyScanPlaceholder() }
-            } else {
-                items(entries) { entry ->
-                    ScanCard(entry = entry, onClick = { onCardClick(entry) })
-                }
-            }
-
             // ── Server scan history section ───────────────────────────────
             item {
                 Spacer(Modifier.height(8.dp))

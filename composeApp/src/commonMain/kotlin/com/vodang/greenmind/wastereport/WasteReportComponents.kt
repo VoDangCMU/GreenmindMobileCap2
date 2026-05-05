@@ -1,6 +1,7 @@
 package com.vodang.greenmind.wastereport
 
 import com.vodang.greenmind.fmt
+import com.vodang.greenmind.time.formatDateTimeLocal
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,7 +15,7 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.*
@@ -77,7 +78,7 @@ internal fun WasteReportCard(report: WasteReportDto, onClick: () -> Unit) {
                         color = Color(0xFF1B1B1B),
                     )
                     Text(
-                        formatReportDate(report.createdAt),
+                        formatDateTimeLocal(report.createdAt),
                         fontSize = 11.sp,
                         color = Color.Gray,
                     )
@@ -158,9 +159,9 @@ internal fun WasteReportDetailSheet(report: WasteReportDto, onDismiss: () -> Uni
             // Details
             DetailRow("Type", report.wasteType.replaceFirstChar { it.uppercase() }, Icons.Filled.Delete)
             DetailRow("Ward", report.wardName, Icons.Filled.LocationOn)
-            DetailRow("Reported", formatReportDate(report.createdAt), Icons.Filled.CalendarMonth)
+            DetailRow("Reported", formatDateTimeLocal(report.createdAt), Icons.Filled.CalendarMonth)
             if (!report.resolvedAt.isNullOrBlank()) {
-                DetailRow("Resolved", formatReportDate(report.resolvedAt), Icons.Filled.CheckCircle)
+                DetailRow("Resolved", formatDateTimeLocal(report.resolvedAt), Icons.Filled.CheckCircle)
             }
             if (!report.assignedTo.isNullOrBlank()) {
                 DetailRow("Assigned to", report.assignedTo, Icons.Filled.Build)
@@ -172,7 +173,7 @@ internal fun WasteReportDetailSheet(report: WasteReportDto, onDismiss: () -> Uni
                 DetailRow("Pollution level", report.pollutionLevel.replaceFirstChar { it.uppercase() }, Icons.Filled.Warning)
             }
             if (report.description.isNotBlank()) {
-                DetailRow("Note", report.description, Icons.Filled.Notes)
+                DetailRow("Note", report.description, Icons.AutoMirrored.Filled.Notes)
             }
 
             // Segmented / heatmap images
@@ -280,13 +281,4 @@ internal fun DetailRow(label: String, value: String, icon: ImageVector) {
         }
         Text(value, fontSize = 13.sp, color = Color(0xFF1B1B1B), fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
     }
-}
-
-internal fun formatReportDate(createdAt: String): String = try {
-    val datePart = createdAt.substringBefore('T')
-    val timePart = createdAt.substringAfter('T').take(5)
-    val (y, m, d) = datePart.split('-')
-    "$d/$m $timePart"
-} catch (_: Throwable) {
-    createdAt.take(16)
 }

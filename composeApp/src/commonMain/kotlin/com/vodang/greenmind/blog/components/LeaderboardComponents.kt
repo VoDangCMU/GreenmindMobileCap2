@@ -1,6 +1,7 @@
 package com.vodang.greenmind.blog.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,16 +23,29 @@ import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.blog.LeaderboardEntryDto
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.theme.Green800
+import com.vodang.greenmind.theme.Green50
 import com.vodang.greenmind.theme.Green100
 import com.vodang.greenmind.theme.Gray400
 import com.vodang.greenmind.theme.Gray500
 import com.vodang.greenmind.theme.Gray600
+import com.vodang.greenmind.theme.TextSecondary
 
 private val green800 = Green800
+private val green50 = Green50
 private val green100 = Green100
 private val gray400 = Gray400
 private val gray500 = Gray500
 private val gray600 = Gray600
+
+private val goldColor = Color(0xFFFFD700)
+private val silverColor = Color(0xFFB0BEC5)
+private val bronzeColor = Color(0xFFCD7F32)
+private val goldLight = Color(0xFFFFF8E1)
+private val silverLight = Color(0xFFF5F5F5)
+private val bronzeLight = Color(0xFFF5E6D3)
+
+private val rankColors = mapOf(1 to goldColor, 2 to silverColor, 3 to bronzeColor)
+private val rankBgColors = mapOf(1 to goldLight, 2 to silverLight, 3 to bronzeLight)
 
 private fun authorInitials(name: String, username: String): String =
     name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercaseChar() }.joinToString("")
@@ -40,6 +55,7 @@ private fun authorInitials(name: String, username: String): String =
 fun LeaderboardTab(
     accessToken: String,
     onLoad: suspend () -> List<LeaderboardEntryDto>,
+    currentUserId: String? = null,
 ) {
     val s = LocalAppStrings.current
     var entries by remember { mutableStateOf<List<LeaderboardEntryDto>>(emptyList()) }
@@ -70,7 +86,7 @@ fun LeaderboardTab(
                     imageVector = Icons.Filled.EmojiEvents,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = Color(0xFFFFD700),
+                    tint = goldColor,
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(s.leaderboardTitle, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Gray600)
@@ -102,63 +118,35 @@ fun LeaderboardTab(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val top3 = entries.take(3)
-                if (top3.size == 3) {
-                    item { PodiumRow(top3) }
+                if (entries.size >= 3) {
+                    item { PodiumRow(entries.take(3)) }
                     item { Spacer(Modifier.height(4.dp)) }
                 }
-                val rest = if (entries.size > 3) entries.drop(3) else entries
-                items(rest, key = { it.userId }) { entry -> LeaderboardRow(entry = entry) }
-            }
-        }
-    }
-}
 
-@Composable
-fun PodiumRow(top3: List<LeaderboardEntryDto>) {
-    if (top3.size != 3) return
-    val order = listOf(top3[1], top3[0], top3[2])
-    val medals = listOf("🥈", "🥇", "🥉")
-    val bgColors = listOf(Color(0xFFB0BEC5), Color(0xFFFFD700), Color(0xFFBF8970))
-    val gray500Color = Gray500
+                val showTop5 = entries.size.coerceAtLeast(3).let { if (it > 3) entries.subList(3, minOf(entries.size, 5)) else emptyList() }
+                items(showTop5, key = { it.userId }) { entry ->
+                    LeaderboardRow(entry = entry)
+                }
 
-    Card(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Column(Modifier.padding(top = 16.dp, bottom = 12.dp, start = 12.dp, end = 12.dp)) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                order.forEachIndexed { i, entry ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(medals[i], fontSize = 28.sp)
-                        val initials = authorInitials(entry.fullName, entry.username)
-                        Box(
-                            Modifier.size(44.dp).clip(CircleShape).background(bgColors[i]),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(initials, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                if (entries.size > 5) {
+                    item { LeaderboardDivider() }
+
+                    val userEntry = currentUserId?.let { uid -> entries.find { it.userId == uid && it.rank > 5 } }
+                    if (userEntry != null) {
+                        item(key = "user-${userEntry.userId}") {
+                            CurrentUserRow(entry = userEntry)
                         }
-                        Text(
-                            entry.fullName.split(" ").firstOrNull() ?: entry.username,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF374151),
-                        )
-                        Box(
-                            Modifier.width(80.dp).height(listOf(72.dp, 96.dp, 56.dp)[i])
-                                .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                                .background(bgColors[i].copy(alpha = 0.25f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("#${entry.rank}", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = bgColors[i])
-                                Text("${entry.reportCount} rpts", fontSize = 10.sp, color = gray500Color)
+                    } else {
+                        // Show a short summary
+                        item {
+                            Card(
+                                Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                            ) {
+                                Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                                    Text("+ ${entries.size - 5} more contributors", fontSize = 13.sp, color = gray500)
+                                }
                             }
                         }
                     }
@@ -168,10 +156,176 @@ fun PodiumRow(top3: List<LeaderboardEntryDto>) {
     }
 }
 
+// ── Podium Row ────────────────────────────────────────────────────────────────
+
+@Composable
+fun PodiumRow(top3: List<LeaderboardEntryDto>) {
+    if (top3.size != 3) return
+    val order = listOf(top3[1], top3[0], top3[2])
+    val podiums = listOf(
+        PodiumStyle(silverColor, silverLight, 48.dp, 1, 2),
+        PodiumStyle(goldColor, goldLight, 56.dp, 0, 1),
+        PodiumStyle(bronzeColor, bronzeLight, 44.dp, 2, 3),
+    )
+
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(Modifier.padding(top = 20.dp, bottom = 16.dp)) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                order.forEachIndexed { i, entry ->
+                    val style = podiums[i]
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = if (i == 1) Modifier.offset(y = (-8).dp) else Modifier,
+                    ) {
+                        // Medal icon for 1st
+                        if (i == 1) {
+                            Icon(
+                                Icons.Filled.EmojiEvents,
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = goldColor,
+                            )
+                        }
+
+                        // Rank circle
+                        Box(
+                            modifier = Modifier
+                                .size(style.avatarSize)
+                                .clip(CircleShape)
+                                .background(style.color)
+                                .then(if (i == 1) Modifier.border(3.dp, goldColor, CircleShape) else Modifier),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "${style.rankNumber}",
+                                fontSize = (style.avatarSize.value / 2.5).sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            )
+                        }
+
+                        // Name
+                        Text(
+                            entry.fullName.split(" ").firstOrNull() ?: entry.username,
+                            fontSize = if (i == 1) 13.sp else 11.sp,
+                            fontWeight = if (i == 1) FontWeight.SemiBold else FontWeight.Medium,
+                            color = Color(0xFF1C1B1F),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+
+                        // Report count badge
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = style.color.copy(alpha = 0.2f),
+                        ) {
+                            Text(
+                                "${entry.reportCount} reports",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = style.color,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class PodiumStyle(
+    val color: Color,
+    val bgColor: Color,
+    val avatarSize: androidx.compose.ui.unit.Dp,
+    val rankNumber: Int,
+    val actualRank: Int,
+)
+
+// ── Leaderboard Divider ───────────────────────────────────────────────────────
+
+@Composable
+fun LeaderboardDivider() {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = gray400.copy(alpha = 0.4f))
+        Text(" ··· ", fontSize = 14.sp, color = gray400, fontWeight = FontWeight.Bold)
+        HorizontalDivider(modifier = Modifier.weight(1f), color = gray400.copy(alpha = 0.4f))
+    }
+}
+
+// ── Current User Row ──────────────────────────────────────────────────────────
+
+@Composable
+fun CurrentUserRow(entry: LeaderboardEntryDto) {
+    val s = LocalAppStrings.current
+    val initials = authorInitials(entry.fullName, entry.username)
+
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = green50),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                Modifier.size(36.dp).clip(CircleShape).background(green800),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("#${entry.rank}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+            Box(
+                Modifier.size(36.dp).clip(CircleShape).background(Color.White).border(2.dp, green800, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(initials, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = green800)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(entry.fullName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1C1B1F))
+                Text("@${entry.username}", fontSize = 11.sp, color = gray400)
+            }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Surface(shape = RoundedCornerShape(20.dp), color = green800) {
+                    Text(
+                        s.leaderboardReports(entry.reportCount),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+                Text("You", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = green800)
+            }
+        }
+    }
+}
+
+// ── Leaderboard Row ───────────────────────────────────────────────────────────
+
 @Composable
 fun LeaderboardRow(entry: LeaderboardEntryDto) {
     val s = LocalAppStrings.current
     val initials = authorInitials(entry.fullName, entry.username)
+
+    // Determine rank accent color
+    val rankColor = rankColors[entry.rank]
+    val rankBg = rankBgColors[entry.rank]
 
     Card(
         Modifier.fillMaxWidth(),
@@ -185,10 +339,10 @@ fun LeaderboardRow(entry: LeaderboardEntryDto) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(
-                Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFF3F4F6)),
+                Modifier.size(36.dp).clip(CircleShape).background(rankBg ?: Color(0xFFF3F4F6)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("#${entry.rank}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = gray500)
+                Text("#${entry.rank}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = rankColor ?: gray500)
             }
             Box(
                 Modifier.size(36.dp).clip(CircleShape).background(green100),

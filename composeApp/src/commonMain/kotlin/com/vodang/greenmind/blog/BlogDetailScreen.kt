@@ -33,6 +33,8 @@ import com.vodang.greenmind.home.components.CampaignDetailScreen
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.platform.BackHandler
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.time.formatDateLocal
+import com.vodang.greenmind.time.formatDateTimeLocal
 import kotlinx.coroutines.launch
 
 // -- Material 3 Color Scheme (Green Theme) -------------------------------------
@@ -68,17 +70,6 @@ internal fun stripHtml(html: String): String =
         .replace(Regex("\n{3,}"), "\n\n")
         .trim()
 
-private fun formatDate(iso: String): String = try {
-    val parts = iso.substringBefore('T').split('-')
-    if (parts.size == 3) "${parts[2]}/${parts[1]}/${parts[0]}" else iso
-} catch (_: Throwable) { iso }
-
-private fun formatDateTime(iso: String): String = try {
-    val datePart = iso.substringBefore('T')
-    val timePart = iso.substringAfter('T').take(5)
-    val dp = datePart.split('-')
-    if (dp.size == 3) "${dp[2]}/${dp[1]}/${dp[0]} $timePart" else iso
-} catch (_: Throwable) { iso }
 
 private fun initials(fullName: String, username: String) =
     fullName.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercaseChar() }
@@ -103,9 +94,11 @@ private fun isoNow(): String {
 fun BlogDetailScreen(
     blogId: String,
     accessToken: String,
+    initialPost: BlogDto? = null,
     onBack: () -> Unit,
     onBlogLiked: (String, Boolean, Int) -> Unit = { _, _, _ -> },
     onBlogDeleted: () -> Unit = {},
+    onSelectCampaign: (CampaignDto) -> Unit = {},
     lazyListState: LazyListState = rememberLazyListState(),
 ) {
     BackHandler(onBack = onBack)
@@ -114,11 +107,11 @@ fun BlogDetailScreen(
     val scope = rememberCoroutineScope()
     val currentUser = SettingsStore.getUser()
 
-    var blog      by remember { mutableStateOf<BlogDto?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+    var blog      by remember { mutableStateOf(initialPost) }
+    var isLoading by remember { mutableStateOf(initialPost == null) }
     var error     by remember { mutableStateOf<String?>(null) }
-    var likeCount by remember { mutableStateOf(0) }
-    var isLiked   by remember { mutableStateOf(false) }
+    var likeCount by remember { mutableStateOf(initialPost?.likeCount ?: 0) }
+    var isLiked   by remember { mutableStateOf(initialPost?.isLiked ?: initialPost?.liked ?: false) }
     var isLiking  by remember { mutableStateOf(false) }
     var showMenu  by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -136,12 +129,8 @@ fun BlogDetailScreen(
 
     val selectedCampaign = selectedCampaignId?.let { id -> allCampaigns.find { it.id == id } }
     if (selectedCampaign != null) {
-        CampaignDetailScreen(
-            campaign = selectedCampaign,
-            accessToken = accessToken,
-            onBack = { selectedCampaignId = null },
-        )
-        return
+        onSelectCampaign(selectedCampaign)
+        selectedCampaignId = null
     }
 
     fun loadBlog() {
@@ -159,7 +148,19 @@ fun BlogDetailScreen(
         }
     }
 
-    LaunchedEffect(blogId) { loadBlog() }
+    LaunchedEffect(blogId) {
+        if (initialPost == null) {
+            loadBlog()
+        } else {
+            // Vẫn fetch background để lấy comments + like state mới nhất
+            try {
+                val result = getBlog(blogId, accessToken)
+                blog = result.data
+                likeCount = result.data.likeCount
+                isLiked = result.data.isLiked || result.data.liked
+            } catch (_: Throwable) { }
+        }
+    }
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -387,7 +388,7 @@ private fun PostDetail(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
-                                Text(formatDate(post.createdAt), fontSize = 12.sp, color = OnSurfaceVariantLight)
+                                Text(formatDateLocal(post.createdAt), fontSize = 12.sp, color = OnSurfaceVariantLight)
                                 Text("·", fontSize = 12.sp, color = OnSurfaceVariantLight)
                                 Text("${readMinutes(post.content)} min read", fontSize = 12.sp, color = OnSurfaceVariantLight)
                             }
@@ -536,7 +537,7 @@ private fun PostDetail(
                                             overflow = TextOverflow.Ellipsis,
                                         )
                                         Text(
-                                            s.dateRange(formatDate(linkedCampaign.startDate), formatDate(linkedCampaign.endDate)),
+                                            s.dateRange(formatDateLocal(linkedCampaign.startDate), formatDateLocal(linkedCampaign.endDate)),
                                             fontSize = 12.sp,
                                             color = OnSurfaceVariantLight,
                                         )
@@ -887,7 +888,7 @@ private fun CommentItem(
                         fontWeight = FontWeight.SemiBold,
                         color = OnSurfaceLight,
                     )
-                    Text(formatDateTime(comment.createdAt), fontSize = 11.sp, color = OnSurfaceVariantLight)
+                    Text(formatDateTimeLocal(comment.createdAt), fontSize = 11.sp, color = OnSurfaceVariantLight)
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(

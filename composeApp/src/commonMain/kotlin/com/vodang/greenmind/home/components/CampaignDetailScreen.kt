@@ -1,10 +1,15 @@
 package com.vodang.greenmind.home.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
@@ -49,6 +55,7 @@ fun CampaignDetailScreen(
     accessToken: String,
     onBack: () -> Unit,
     onRegistered: (CampaignParticipant) -> Unit = {},
+    onOpenChat: (String) -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val s = LocalAppStrings.current
@@ -95,179 +102,239 @@ fun CampaignDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
-            .verticalScroll(scrollState)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .background(Color.White),
     ) {
-        // Back button
-        TextButton(onClick = onBack, modifier = Modifier.padding(0.dp)) {
-            Text("\u2190 Back", fontSize = 14.sp, color = green800v)
-        }
-
-        // Header
-        Row(
+        // Custom Header
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            color = Color.White,
+            shadowElevation = 1.dp,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (isActive) green50v else Color(0xFFF5F5F5)),
-                contentAlignment = Alignment.Center,
+            Row(
+                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(if (isActive) s.campaignActive else s.campaignInactive, fontSize = 22.sp)
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(campaign.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF212121))
-                Spacer(Modifier.height(4.dp))
-                Text(s.dateRange(formatDate(campaign.startDate), formatDate(campaign.endDate)),
-                    fontSize = 13.sp, color = Color.Gray)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(green50v)
+                        .clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = green800v,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(Modifier.width(4.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = campaign.name,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF212121),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(if (isActive) green600v else Color(0xFFBDBDBD)),
+                        )
+                        Text(
+                            text = if (isActive) s.campaignActive else s.campaignInactive,
+                            fontSize = 12.sp,
+                            color = if (isActive) green600v else Color(0xFF9E9E9E),
+                        )
+                    }
+                }
+
+                IconButton(onClick = { onOpenChat(campaign.id) }) {
+                    Icon(
+                        imageVector = Icons.Default.Chat,
+                        contentDescription = "Open Chat",
+                        tint = green800v,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
 
-        // Description
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBF9)),
-            shape = RoundedCornerShape(12.dp),
+        HorizontalDivider(color = Color(0xFFEEEEEE))
+
+        // Content
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(scrollState)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Description", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
-                Text(campaign.description, fontSize = 14.sp, color = Color(0xFF616161), lineHeight = 20.sp)
-            }
-        }
-
-        // Location info
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBF9)),
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Location", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
-                Text(s.locationRadius(campaign.lat, campaign.lng, campaign.radius), fontSize = 13.sp, color = Color.Gray)
-            }
-        }
-
-        // Map
-        CampaignMap(
-            campaignLat = campaign.lat,
-            campaignLng = campaign.lng,
-            radius = campaign.radius,
-            height = 240.dp,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        // Error
-        if (error != null) {
-            Text(error!!, fontSize = 12.sp, color = Color(0xFFB71C1C))
-        }
-
-        // Action button
-        if (isBusy || isLoading) {
-            Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = green800v, modifier = Modifier.size(24.dp))
-            }
-        } else {
-            when (status) {
-                null -> ActionButton(s.volunteerJoinButton, green800v, Modifier.fillMaxWidth()) {
-                    scope.launch {
-                        isBusy = true; error = null
-                        try {
-                            val result = registerCampaign(access, campaign.id)
-                            val converted = result.toCampaignParticipant(
-                                CampaignParticipantUser(
-                                    id = currentUser?.id ?: "",
-                                    fullName = currentUser?.fullName ?: "",
-                                    email = currentUser?.email ?: "",
-                                    phoneNumber = null,
-                                )
-                            )
-                            participant = converted
-                            onRegistered(converted)
-                        } catch (e: Throwable) {
-                            error = e.message
-                        }
-                        isBusy = false
-                    }
-                }
-                "REGISTERED" -> {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatusBadge(s.registeredStatus(s.volunteerRegistered), green600v, green50v)
-                        ActionButton(s.volunteerCheckIn, teal600v, Modifier.weight(1f)) {
-                            scope.launch {
-                                val p = participant ?: return@launch
-                                isBusy = true; error = null
-                                try {
-                                    val loc = Geo.service.locationUpdates.firstOrNull()
-                                    val lat = loc?.latitude ?: 0.0
-                                    val lng = loc?.longitude ?: 0.0
-                                    val result = checkInCampaign(access, campaign.id, lat, lng)
-                                    val converted = result.toCampaignParticipant(p.user)
-                                    participant = converted
-                                    onRegistered(converted)
-                                } catch (e: Throwable) {
-                                    error = e.message
-                                }
-                                isBusy = false
-                            }
-                        }
-                    }
-                }
-                "CHECKED_IN" -> {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatusBadge(s.checkedInStatus(s.volunteerCheckedIn), teal600v, teal50v)
-                        ActionButton(s.volunteerCheckOut, orange600v, Modifier.weight(1f)) {
-                            scope.launch {
-                                val p = participant ?: return@launch
-                                isBusy = true; error = null
-                                try {
-                                    val loc = Geo.service.locationUpdates.firstOrNull()
-                                    val lat = loc?.latitude ?: 0.0
-                                    val lng = loc?.longitude ?: 0.0
-                                    val result = checkOutCampaign(access, campaign.id, lat, lng)
-                                    val converted = result.toCampaignParticipant(p.user)
-                                    participant = converted
-                                    onRegistered(converted)
-                                } catch (e: Throwable) {
-                                    error = e.message
-                                }
-                                isBusy = false
-                            }
-                        }
-                    }
-                }
-                "CHECKED_OUT", "COMPLETED" -> {
-                    StatusBadge(s.completedStatus(s.volunteerCheckedOut), blue600v, blue50v)
-                }
-                else -> {
-                    StatusBadge(status, Color.Gray, Color(0xFFF5F5F5))
-                }
-            }
-        }
-
-        // Reports / Evidence images
-        if (campaign.reports.isNotEmpty()) {
+            // Date range
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBF9)),
                 shape = RoundedCornerShape(12.dp),
             ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Th\u1eddi gian", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                    Text(s.dateRange(formatDate(campaign.startDate), formatDate(campaign.endDate)),
+                        fontSize = 14.sp, color = Color(0xFF616161))
+                }
+            }
+
+            // Description
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBF9)),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("M\u00f4 t\u1ea3", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                    Text(campaign.description, fontSize = 14.sp, color = Color(0xFF616161), lineHeight = 20.sp)
+                }
+            }
+
+            // Location info
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBF9)),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("\u0110\u1ecba \u0111i\u1ec3m", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                    Text(s.locationRadius(campaign.lat, campaign.lng, campaign.radius), fontSize = 13.sp, color = Color.Gray)
+                }
+            }
+
+            // Map
+            CampaignMap(
+                campaignLat = campaign.lat,
+                campaignLng = campaign.lng,
+                radius = campaign.radius,
+                height = 240.dp,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // Error
+            if (error != null) {
+                Text(error!!, fontSize = 12.sp, color = Color(0xFFB71C1C))
+            }
+
+            // Action button
+            if (isBusy || isLoading) {
+                Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = green800v, modifier = Modifier.size(24.dp))
+                }
+            } else {
+                when (status) {
+                    null -> ActionButton(s.volunteerJoinButton, green800v, Modifier.fillMaxWidth()) {
+                        scope.launch {
+                            isBusy = true; error = null
+                            try {
+                                val result = registerCampaign(access, campaign.id)
+                                val converted = result.toCampaignParticipant(
+                                    CampaignParticipantUser(
+                                        id = currentUser?.id ?: "",
+                                        fullName = currentUser?.fullName ?: "",
+                                        email = currentUser?.email ?: "",
+                                        phoneNumber = null,
+                                    )
+                                )
+                                participant = converted
+                                onRegistered(converted)
+                            } catch (e: Throwable) {
+                                error = e.message
+                            }
+                            isBusy = false
+                        }
+                    }
+                    "REGISTERED" -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            StatusBadge(s.registeredStatus(s.volunteerRegistered), green600v, green50v)
+                            ActionButton(s.volunteerCheckIn, teal600v, Modifier.weight(1f)) {
+                                scope.launch {
+                                    val p = participant ?: return@launch
+                                    isBusy = true; error = null
+                                    try {
+                                        val loc = Geo.service.locationUpdates.firstOrNull()
+                                        val lat = loc?.latitude ?: 0.0
+                                        val lng = loc?.longitude ?: 0.0
+                                        val result = checkInCampaign(access, campaign.id, lat, lng)
+                                        val converted = result.toCampaignParticipant(p.user)
+                                        participant = converted
+                                        onRegistered(converted)
+                                    } catch (e: Throwable) {
+                                        error = e.message
+                                    }
+                                    isBusy = false
+                                }
+                            }
+                        }
+                    }
+                    "CHECKED_IN" -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            StatusBadge(s.checkedInStatus(s.volunteerCheckedIn), teal600v, teal50v)
+                            ActionButton(s.volunteerCheckOut, orange600v, Modifier.weight(1f)) {
+                                scope.launch {
+                                    val p = participant ?: return@launch
+                                    isBusy = true; error = null
+                                    try {
+                                        val loc = Geo.service.locationUpdates.firstOrNull()
+                                        val lat = loc?.latitude ?: 0.0
+                                        val lng = loc?.longitude ?: 0.0
+                                        val result = checkOutCampaign(access, campaign.id, lat, lng)
+                                        val converted = result.toCampaignParticipant(p.user)
+                                        participant = converted
+                                        onRegistered(converted)
+                                    } catch (e: Throwable) {
+                                        error = e.message
+                                    }
+                                    isBusy = false
+                                }
+                            }
+                        }
+                    }
+                    "CHECKED_OUT", "COMPLETED" -> {
+                        StatusBadge(s.completedStatus(s.volunteerCheckedOut), blue600v, blue50v)
+                    }
+                    else -> {
+                        StatusBadge(status, Color.Gray, Color(0xFFF5F5F5))
+                    }
+                }
+            }
+
+            // Reports / Evidence images
+            if (campaign.reports.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBF9)),
+                    shape = RoundedCornerShape(12.dp),
                 ) {
-                    Text(
-                        "Evidence (${campaign.reports.size})",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF424242),
-                    )
-                    campaign.reports.forEach { report ->
-                        ReportEvidenceItem(report)
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            "B\u00e1o c\u00e1o (${campaign.reports.size})",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF424242),
+                        )
+                        campaign.reports.forEach { report ->
+                            ReportEvidenceItem(report)
+                        }
                     }
                 }
             }

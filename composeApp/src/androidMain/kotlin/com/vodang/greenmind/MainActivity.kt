@@ -28,6 +28,8 @@ class MainActivity : ComponentActivity() {
         com.vodang.greenmind.location.Geo.service.initialize(this)
         // ── Accounts repository
         com.vodang.greenmind.accounts.AccountsRepository.initialize(this)
+        // ── Notification context
+        com.vodang.greenmind.store.AndroidNotificationContext.context = this
 
         val locationLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
             val granted = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
@@ -56,6 +58,20 @@ class MainActivity : ComponentActivity() {
             PermissionGroup.CAMERA,
             ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
         )
+
+        // ── Notification ──────────────────────────────────────────────
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val notifLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                PermissionRequester.updateGranted(PermissionGroup.NOTIFICATION, granted)
+            }
+            PermissionRequester.registerLauncher(PermissionGroup.NOTIFICATION) {
+                notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            PermissionRequester.updateGranted(
+                PermissionGroup.NOTIFICATION,
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            )
+        }
 
         setContent {
             Box(Modifier.fillMaxSize().imePadding()) {

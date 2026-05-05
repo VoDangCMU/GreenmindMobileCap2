@@ -5,6 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -61,14 +65,21 @@ internal fun EcoScoreRow(entry: GreenScoreEntryDto?) {
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        when {
-                            entry == null              -> "🌱"
-                            entry.finalScore >= 70     -> "🌟"
-                            entry.finalScore >= 40     -> "🌿"
-                            else                       -> "⚠️"
+                    Icon(
+                        imageVector = when {
+                            entry == null          -> Icons.Filled.Eco
+                            entry.finalScore >= 70 -> Icons.Filled.EmojiEvents
+                            entry.finalScore >= 40 -> Icons.Filled.Eco
+                            else                   -> Icons.Filled.Warning
                         },
-                        fontSize = 18.sp,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                        tint = when {
+                            entry == null          -> gray400c
+                            entry.finalScore >= 70 -> green700
+                            entry.finalScore >= 40 -> green700
+                            else                   -> red600
+                        }
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -81,35 +92,12 @@ internal fun EcoScoreRow(entry: GreenScoreEntryDto?) {
                     )
                 }
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (entry != null) {
-                    val deltaColor  = if (entry.delta >= 0) green700 else red600
-                    val deltaBg     = if (entry.delta >= 0) green50 else red50
-                    val deltaPrefix = if (entry.delta >= 0) "+" else ""
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(deltaBg)
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                    ) {
-                        Text(
-                            "$deltaPrefix${entry.delta}",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = deltaColor,
-                        )
-                    }
-                }
-                if (hasDetail) {
-                    Text(
-                        if (expanded) "▲" else "▼",
-                        fontSize = 10.sp,
-                        color = gray400c,
-                    )
-                }
+            if (hasDetail) {
+                Text(
+                    if (expanded) "▲" else "▼",
+                    fontSize = 10.sp,
+                    color = gray400c,
+                )
             }
         }
 
