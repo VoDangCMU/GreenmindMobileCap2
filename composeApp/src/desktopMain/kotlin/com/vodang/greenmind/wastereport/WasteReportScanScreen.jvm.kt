@@ -12,6 +12,9 @@ import androidx.compose.ui.unit.sp
 actual fun WasteReportScanScreen(
     onStartSubmit: (WasteReportFormData) -> Unit,
     onBack: () -> Unit,
+    launchCamera: Boolean,
+    onSubmitDone: () -> Unit,
+    isSubmitting: Boolean,
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(

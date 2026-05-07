@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
+import com.vodang.greenmind.fmt
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.scandetail.ScanImpact
 import com.vodang.greenmind.scandetail.getImpactColor
@@ -61,7 +62,7 @@ fun ImpactMeterSection(
                     val normalizedMax = (maxImpact * 100).coerceIn(0.0, 100.0)
                     val maxColor = getImpactColor(normalizedMax)
                     Text(
-                        String.format("%.0f%%", normalizedMax),
+                        "%.0f%%".fmt(normalizedMax),
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = maxColor,
@@ -130,7 +131,7 @@ private fun ImpactBar(label: String, icon: String, value: Double) {
                 Text(label, fontSize = 12.sp, color = neutralGray700)
             }
             Text(
-                String.format("%.1f%%", normalizedValue),
+                "%.1f%%".fmt(normalizedValue),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = barColor,
@@ -240,7 +241,7 @@ fun PollutantBreakdownSection(
                     ) {
                         Text(label, fontSize = 12.sp, color = neutralGray700, modifier = Modifier.weight(1f))
                         Text(
-                            String.format("%.2f", value),
+                            "%.2f".fmt(value),
                             fontSize = 12.sp,
                             color = getImpactColor(value * 100),
                             fontWeight = FontWeight.Medium,

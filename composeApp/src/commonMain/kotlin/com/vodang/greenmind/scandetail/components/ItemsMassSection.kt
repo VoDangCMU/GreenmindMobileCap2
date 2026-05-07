@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.fmt
 import com.vodang.greenmind.scandetail.ScanItem
 import com.vodang.greenmind.scandetail.neutralGray400
 import com.vodang.greenmind.scandetail.neutralGray700
@@ -101,7 +102,7 @@ fun ItemsSection(
                             Text(item.name, fontSize = 12.sp, color = neutralGray700)
                         }
                         Text(
-                            item.massKg?.let { String.format("%.2f kg", it) } ?: "×${item.quantity}",
+                            item.massKg?.let { "%.2f kg".fmt(it) } ?: "×${item.quantity}",
                             fontSize = 12.sp,
                             color = neutralGray400,
                             fontWeight = FontWeight.Medium,
@@ -148,7 +149,7 @@ fun MassSection(
                     Text("No mass data", fontSize = 11.sp, color = neutralGray400)
                 } else {
                     Text(
-                        String.format("%.2f kg", totalMassKg),
+                        "%.2f kg".fmt(totalMassKg),
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = massBlue,
@@ -182,7 +183,7 @@ fun MassSection(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text("Total Mass", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = neutralGray700)
-                        Text(String.format("%.2f kg", totalMassKg), fontSize = 12.sp, color = massBlue, fontWeight = FontWeight.Bold)
+                        Text("%.2f kg".fmt(totalMassKg), fontSize = 12.sp, color = massBlue, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -198,7 +199,7 @@ fun MassSection(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text("• ${item.name}", fontSize = 12.sp, color = neutralGray700, modifier = Modifier.weight(1f))
-                            Text(String.format("%.3f kg", item.massKg), fontSize = 12.sp, color = neutralGray400, fontWeight = FontWeight.Medium)
+                            Text("%.3f kg".fmt(item.massKg), fontSize = 12.sp, color = neutralGray400, fontWeight = FontWeight.Medium)
                         }
                     }
                 }

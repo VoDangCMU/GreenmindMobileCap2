@@ -81,9 +81,12 @@ private fun createWastePhotoUri(context: android.content.Context): Uri {
 actual fun WasteReportScanScreen(
     onStartSubmit: (WasteReportFormData) -> Unit,
     onBack: () -> Unit,
+    launchCamera: Boolean,
+    onSubmitDone: () -> Unit,
+    isSubmitting: Boolean,
 ) {
     CameraPermissionGate(onDenied = onBack) {
-    WasteReportScanContent(onStartSubmit = onStartSubmit, onBack = onBack)
+        WasteReportScanContent(onStartSubmit = onStartSubmit, onBack = onBack, launchCamera = launchCamera, onSubmitDone = onSubmitDone, isSubmitting = isSubmitting)
     }
 }
 
@@ -91,6 +94,9 @@ actual fun WasteReportScanScreen(
 private fun WasteReportScanContent(
     onStartSubmit: (WasteReportFormData) -> Unit,
     onBack: () -> Unit,
+    launchCamera: Boolean,
+    onSubmitDone: () -> Unit,
+    isSubmitting: Boolean,
 ) {
     val s       = LocalAppStrings.current
     val context = LocalContext.current
@@ -179,9 +185,11 @@ private fun WasteReportScanContent(
     }
 
     when (phase) {
-        // ── IDLE: auto-open camera on first entry ─────────────────────────────
+        // ── IDLE: auto-open camera or gallery on first entry ───────────────────
         WasteReportScanPhase.IDLE -> {
-            LaunchedEffect(Unit) { launchCamera() }
+            LaunchedEffect(Unit) {
+                if (launchCamera) launchCamera() else galleryLauncher.launch("image/*")
+            }
             Box(modifier = Modifier.fillMaxSize().background(green50))
         }
 
@@ -437,6 +445,7 @@ private fun WasteReportScanContent(
                     Button(
                         onClick = {
                             val last = photos.lastOrNull() ?: return@Button
+                            error = null
                             onStartSubmit(
                                 WasteReportFormData(
                                     imageKey  = last.key ?: "",
@@ -453,17 +462,27 @@ private fun WasteReportScanContent(
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = canSubmit,
+                        enabled = canSubmit && !isSubmitting,
                         colors = ButtonDefaults.buttonColors(containerColor = green800),
                         shape = RoundedCornerShape(12.dp),
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            s.wasteReportSubmit,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
-                        )
+                        if (isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("Đang gửi...", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        } else {
+                            Icon(Icons.Filled.Check, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                s.wasteReportSubmit,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                            )
+                        }
                     }
                 }
             }

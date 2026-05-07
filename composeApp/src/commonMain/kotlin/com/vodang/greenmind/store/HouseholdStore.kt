@@ -9,14 +9,13 @@ import com.vodang.greenmind.api.households.getGreenScoreByHousehold
 import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 object HouseholdStore {
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(Dispatchers.Default)
 
     private val _household = MutableStateFlow<HouseholdDto?>(null)
     val household: StateFlow<HouseholdDto?> = _household.asStateFlow()

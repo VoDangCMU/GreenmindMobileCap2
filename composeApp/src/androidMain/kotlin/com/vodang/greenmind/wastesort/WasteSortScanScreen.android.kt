@@ -21,10 +21,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.vodang.greenmind.permission.CameraPermissionGate
 import com.vodang.greenmind.api.envimpact.logEnvironmentalImpact
-import com.vodang.greenmind.api.households.DetectImageUrlRequest
-import com.vodang.greenmind.api.households.detectTrashOnly
-import com.vodang.greenmind.api.households.predictPollutant
-import com.vodang.greenmind.api.households.detectTotalMass
+import com.vodang.greenmind.api.households.AnalyzeImageRequest
+import com.vodang.greenmind.api.households.analyzeImage
 import com.vodang.greenmind.api.households.submitGreenScoreByDetectId
 import com.vodang.greenmind.api.households.getGreenScoreHistory
 import com.vodang.greenmind.store.HouseholdStore
@@ -33,9 +31,6 @@ import com.vodang.greenmind.api.wastedetect.WasteDetectImpact
 import com.vodang.greenmind.api.wastedetect.WasteDetectItem
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.api.wastesort.DetectTrashResponse
-import com.vodang.greenmind.api.wastesort.detectTrash
-import com.vodang.greenmind.api.wastesort.predictTrashSeg
-import kotlinx.coroutines.async
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WasteSortStore
 import com.vodang.greenmind.util.AppLogger
@@ -50,7 +45,7 @@ private enum class WasteSortScanPhase { IDLE, ANALYZING, ERROR }
 
 private fun createScanPhotoUri(context: android.content.Context): Uri {
     val dir  = File(context.cacheDir, "camera_photos").also { it.mkdirs() }
-    val file = File(dir, "waste_sort_${System.currentTimeMillis()}.jpg")
+    val file = File(dir, "waste_scan_${System.currentTimeMillis()}.jpg")
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }
 
@@ -91,160 +86,101 @@ private fun WasteSortScanContent(
             try {
                 val filename = "waste_scan_${System.currentTimeMillis()}.jpg"
 
-                // 1. Three parallel calls — each catches internally so a failure in one
-                //    never cancels siblings (regular Job parent would propagate unhandled
-                //    async-child exceptions and cancel the whole launch block).
-                //
-                //  • /detect-trash-ver2  → authoritative recyclable/residual categories + annotated image
-                //  • /predict_trash_seg  → per-object segment crop images per category
-                //  • upload              → hosted URL for the backend history endpoints
-                val ver2Deferred = async {
-                    try {
-                        detectTrash(imageBytes = bytes, filename = filename)
-                    } catch (e: Throwable) {
-                        AppLogger.e("HouseholdScan", "detectTrash ver2 failed: ${e.message}")
-                        null
-                    }
-                }
-                val segDeferred = async {
-                    try {
-                        predictTrashSeg(imageBytes = bytes, filename = filename)
-                    } catch (e: Throwable) {
-                        AppLogger.e("HouseholdScan", "predictTrashSeg failed: ${e.message}")
-                        null
-                    }
-                }
-                val uploadDeferred = async {
-                    requestAndUpload(
-                        accessToken = token,
-                        filename    = filename,
-                        fileBytes   = bytes,
-                        contentType = "image/jpeg",
-                    )
-                }
+                // 1. Upload image to get hosted URL
+                val upload = requestAndUpload(
+                    accessToken = token,
+                    filename    = filename,
+                    fileBytes   = bytes,
+                    contentType = "image/jpeg",
+                )
 
-                val ver2Result = ver2Deferred.await()
-                val segResult  = segDeferred.await()
-                val upload     = uploadDeferred.await()
+                val imageUrl = upload.imageUrl
+                val request  = AnalyzeImageRequest(imageUrl = imageUrl)
 
-                val request = DetectImageUrlRequest(imageUrl = upload.imageUrl)
+                // 2. Call unified analyzeImage API
+                val result = analyzeImage(token, request)
+                val data   = result.data
 
-                // 2. Backend detect-trash for metadata / history entry
-                val detectResult = detectTrashOnly(token, request)
-                val dto          = detectResult.data
-
-                // Prefer ver2 annotated image, then seg image, then backend URLs
-                val displayUrl = ver2Result?.imageUrl
-                    ?: segResult?.imageUrl
-                    ?: dto.annotatedImageUrl
-                    ?: dto.aiAnalysis
-                    ?: dto.imageUrl
-
-                // Build grouped:
-                //  - ver2 defines the category keys (recyclable / residual)
-                //  - within each category use predictTrashSeg crop images when available,
-                //    otherwise fall back to ver2's own image list
-                //  - if ver2 also failed, fall back to predictTrashSeg alone or item names
-                val grouped: Map<String, List<String>> = when {
-                    ver2Result != null && ver2Result.grouped.isNotEmpty() -> {
-                        ver2Result.grouped.mapValues { (cat, ver2Urls) ->
-                            segResult?.grouped?.get(cat)?.takeIf { it.isNotEmpty() } ?: ver2Urls
-                        }
-                    }
-                    segResult != null && segResult.grouped.isNotEmpty() -> segResult.grouped
-                    else -> dto.items
-                        ?.groupBy { it.name }
-                        ?.mapValues { listOf(displayUrl) }
-                        ?: emptyMap()
-                }
-
+                // 3. Build entry from response
                 val response = DetectTrashResponse(
-                    totalObjects = ver2Result?.totalObjects ?: segResult?.totalObjects ?: dto.totalObjects ?: 0,
-                    imageUrl     = displayUrl,
-                    grouped      = grouped,
-                    backendId    = dto.id,
+                    totalObjects = data.totalObjects ?: 0,
+                    imageUrl     = data.annotatedImageUrl ?: data.aiAnalysis ?: imageUrl,
+                    grouped      = emptyMap(),
+                    backendId    = data.id,
                 )
                 onResult(response)
 
-                val entryId = displayUrl.substringAfterLast("/").substringBeforeLast(".")
+                val entryId = imageUrl.substringAfterLast("/").substringBeforeLast(".")
 
-                // 3. predict-pollutant + total-mass in background
+                // 4. Update store with pollutant result (background)
                 WasteSortStore.storeScope.launch {
                     try {
-                        val result    = predictPollutant(token, request)
-                        val pollDto   = result.data
-                        val pollution = pollDto.pollution
-                        val impact    = pollDto.impact
-                        if (pollution != null && impact != null) {
+                        if (data.pollution != null && data.impact != null) {
                             val pollutionMap = buildMap<String, Double> {
-                                pollution.cd?.let               { put("Cd", it) }
-                                pollution.hg?.let               { put("Hg", it) }
-                                pollution.pb?.let               { put("Pb", it) }
-                                pollution.ch4?.let              { put("CH4", it) }
-                                pollution.co2?.let              { put("CO2", it) }
-                                pollution.nox?.let              { put("NOx", it) }
-                                pollution.so2?.let              { put("SO2", it) }
-                                pollution.pm25?.let             { put("PM2.5", it) }
-                                pollution.dioxin?.let           { put("dioxin", it) }
-                                pollution.nitrate?.let          { put("nitrate", it) }
-                                pollution.styrene?.let          { put("styrene", it) }
-                                pollution.microplastic?.let     { put("microplastic", it) }
-                                pollution.toxicChemicals?.let   { put("toxic_chemicals", it) }
-                                pollution.chemicalResidue?.let  { put("chemical_residue", it) }
-                                pollution.nonBiodegradable?.let { put("non_biodegradable", it) }
+                                data.pollution.cd?.let               { put("Cd", it) }
+                                data.pollution.hg?.let               { put("Hg", it) }
+                                data.pollution.pb?.let               { put("Pb", it) }
+                                data.pollution.ch4?.let              { put("CH4", it) }
+                                data.pollution.co2?.let              { put("CO2", it) }
+                                data.pollution.nox?.let              { put("NOx", it) }
+                                data.pollution.so2?.let              { put("SO2", it) }
+                                data.pollution.pm25?.let             { put("PM2.5", it) }
+                                data.pollution.dioxin?.let           { put("dioxin", it) }
+                                data.pollution.nitrate?.let          { put("nitrate", it) }
+                                data.pollution.styrene?.let          { put("styrene", it) }
+                                data.pollution.microplastic?.let     { put("microplastic", it) }
+                                data.pollution.toxicChemicals?.let   { put("toxic_chemicals", it) }
+                                data.pollution.chemicalResidue?.let  { put("chemical_residue", it) }
+                                data.pollution.nonBiodegradable?.let { put("non_biodegradable", it) }
                             }
                             WasteSortStore.updatePollutant(
                                 entryId,
                                 WasteDetectResponse(
-                                    items        = pollDto.items?.map { WasteDetectItem(it.name, it.quantity, it.area) } ?: emptyList(),
-                                    totalObjects = pollDto.totalObjects ?: 0,
-                                    imageUrl     = pollDto.aiAnalysis ?: pollDto.imageUrl,
+                                    items        = data.items?.map {
+                                        WasteDetectItem(it.name, it.quantity, it.area)
+                                    } ?: emptyList(),
+                                    totalObjects = data.totalObjects ?: 0,
+                                    imageUrl     = data.aiAnalysis ?: imageUrl,
                                     pollution    = pollutionMap,
                                     impact       = WasteDetectImpact(
-                                        airPollution   = impact.airPollution ?: 0.0,
-                                        waterPollution = impact.waterPollution ?: 0.0,
-                                        soilPollution  = impact.soilPollution ?: 0.0,
+                                        airPollution   = data.impact.airPollution ?: 0.0,
+                                        waterPollution = data.impact.waterPollution ?: 0.0,
+                                        soilPollution  = data.impact.soilPollution ?: 0.0,
                                     ),
                                 )
                             )
                             logEnvironmentalImpact(
                                 accessToken = token,
                                 pollution   = pollutionMap,
-                                airImpact   = impact.airPollution ?: 0.0,
-                                waterImpact = impact.waterPollution ?: 0.0,
-                                soilImpact  = impact.soilPollution ?: 0.0,
+                                airImpact   = data.impact.airPollution ?: 0.0,
+                                waterImpact = data.impact.waterPollution ?: 0.0,
+                                soilImpact  = data.impact.soilPollution ?: 0.0,
                             )
                         }
-                        AppLogger.i("HouseholdScan", "predictPollutant ok id=${pollDto.id}")
-                    } catch (e: Throwable) {
-                        AppLogger.e("HouseholdScan", "predictPollutant failed: ${e.message}")
-                    }
 
-                    try {
-                        val massResult = detectTotalMass(token, request)
-                        AppLogger.i("HouseholdScan", "detectTotalMass ok id=${massResult.data.id} mass=${massResult.data.totalMassKg}")
-                    } catch (e: Throwable) {
-                        AppLogger.e("HouseholdScan", "detectTotalMass failed: ${e.message}")
-                    }
-
-                    // Submit green score by detectId, then fall back to history
-                    try {
-                        val greenScoreResp = submitGreenScoreByDetectId(token, dto.id)
-                        WasteSortStore.updateGreenScore(entryId, greenScoreResp.data)
-                        AppLogger.i("HouseholdScan", "submitGreenScoreByDetectId ok id=${greenScoreResp.data.id}")
-                    } catch (e: Throwable) {
-                        AppLogger.e("HouseholdScan", "submitGreenScoreByDetectId failed: ${e.message}")
-                        // Fallback: get from history
+                        // 5. Submit green score using the analyze-image id
                         try {
-                            val historyResp = getGreenScoreHistory(token)
-                            val latest = historyResp.data.lastOrNull()
-                            if (latest != null) {
-                                WasteSortStore.updateGreenScore(entryId, latest)
-                                AppLogger.i("HouseholdScan", "getGreenScoreHistory fallback ok")
+                            val greenScoreResp = submitGreenScoreByDetectId(token, data.id)
+                            WasteSortStore.updateGreenScore(entryId, greenScoreResp.data)
+                            AppLogger.i("HouseholdScan", "submitGreenScoreByDetectId ok id=${greenScoreResp.data.id}")
+                        } catch (e: Throwable) {
+                            AppLogger.e("HouseholdScan", "submitGreenScoreByDetectId failed: ${e.message}")
+                            // fallback
+                            try {
+                                val historyResp = getGreenScoreHistory(token)
+                                val latest = historyResp.data.lastOrNull()
+                                if (latest != null) {
+                                    WasteSortStore.updateGreenScore(entryId, latest)
+                                    AppLogger.i("HouseholdScan", "getGreenScoreHistory fallback ok")
+                                }
+                            } catch (e2: Throwable) {
+                                AppLogger.e("HouseholdScan", "getGreenScoreHistory fallback failed: ${e2.message}")
                             }
-                        } catch (e2: Throwable) {
-                            AppLogger.e("HouseholdScan", "getGreenScoreHistory fallback failed: ${e2.message}")
                         }
+
+                        AppLogger.i("HouseholdScan", "analyzeImage ok id=${data.id} mass=${data.totalMassKg}")
+                    } catch (e: Throwable) {
+                        AppLogger.e("HouseholdScan", "analyzeImage failed: ${e.message}")
                     }
                 }
             } catch (e: Throwable) {

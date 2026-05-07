@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,12 +43,18 @@ import kotlinx.coroutines.launch
 private val green800 = Color(0xFF2E7D32)
 private val green600 = Color(0xFF388E3C)
 
+private enum class SubmitStep {
+    SENDING_DATA,
+    COMPLETING,
+}
+
 @Composable
 fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListState? = null) {
     val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
 
     var showScan by remember { mutableStateOf(false) }
+    var scanFromGallery by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedReport by remember { mutableStateOf<WasteReportDto?>(null) }
@@ -59,6 +66,7 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
     var allLoaded by remember { mutableStateOf(false) }
 
     var isSubmitting by remember { mutableStateOf(false) }
+    var submitStep by remember { mutableStateOf(SubmitStep.SENDING_DATA) }
     var submitError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
@@ -102,6 +110,7 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
         WasteReportScanScreen(
             onStartSubmit = { form ->
                 isSubmitting = true
+                submitStep = SubmitStep.SENDING_DATA
                 submitError = null
                 scope.launch {
                     val token = SettingsStore.getAccessToken() ?: run {
@@ -110,6 +119,7 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                         return@launch
                     }
                     try {
+                        submitStep = SubmitStep.SENDING_DATA
                         val created = createWasteReport(
                             token,
                             CreateWasteReportRequest(
@@ -122,8 +132,10 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                                 imageUrl    = form.imageUrl,
                             )
                         )
+                        submitStep = SubmitStep.COMPLETING
                         myReports = listOf(created) + myReports
                         if (allLoaded) allReports = listOf(created) + allReports
+                        kotlinx.coroutines.delay(500)
                         showScan = false
                     } catch (e: Throwable) {
                         AppLogger.e("WasteReport", "Create failed: ${e.message}")
@@ -132,7 +144,9 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                     isSubmitting = false
                 }
             },
-            onBack = { showScan = false }
+            onBack = { showScan = false },
+            launchCamera = !scanFromGallery,
+            isSubmitting = isSubmitting,
         )
         return
     }
@@ -225,10 +239,47 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
                     CircularProgressIndicator(color = Color.White)
-                    Text("Đang gửi báo cáo…", color = Color.White, fontSize = 15.sp)
+
+                    if (submitStep == SubmitStep.COMPLETING) {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Text("Hoàn thành!", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Đang gửi báo cáo…", color = Color.White, fontSize = 15.sp)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text("Đã upload ảnh", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                            }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp,
+                                )
+                                Text("Đang gửi thông tin…", color = Color.White, fontSize = 13.sp)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -273,12 +324,12 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                     MiniFabRow(
                         icon = Icons.Filled.Image,
                         label = s.uploadImage,
-                        onClick = { fabExpanded = false; showScan = true }
+                        onClick = { fabExpanded = false; scanFromGallery = true; showScan = true }
                     )
                     MiniFabRow(
                         icon = Icons.Filled.Add,
                         label = s.takePhoto,
-                        onClick = { fabExpanded = false; showScan = true }
+                        onClick = { fabExpanded = false; scanFromGallery = false; showScan = true }
                     )
                 }
             }

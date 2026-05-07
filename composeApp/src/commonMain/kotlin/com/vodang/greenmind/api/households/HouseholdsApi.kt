@@ -249,6 +249,47 @@ data class DetectTrashResultResponse(
     val data: DetectTrashHistoryDto
 )
 
+// ── Analyze Image (Unified) ───────────────────────────────────────────────────
+
+@Serializable
+data class AnalyzeImageRequest(
+    val imageUrl: String
+)
+
+@Serializable
+data class AnalyzeImageItemDto(
+    val name: String,
+    val quantity: Int,
+    val area: Int,
+    @SerialName("mass_kg") val massKg: Double? = null
+)
+
+@Serializable
+data class AnalyzeImageResponse(
+    val message: String? = null,
+    val data: AnalyzeImageDataDto
+)
+
+@Serializable
+data class AnalyzeImageDataDto(
+    val id: String,
+    val imageUrl: String? = null,
+    val items: List<AnalyzeImageItemDto>? = null,
+    val pollution: DetectPollutionDto? = null,
+    val impact: DetectImpactDto? = null,
+    val totalObjects: Int? = null,
+    @SerialName("totalMassKg") val totalMassKg: Double? = null,
+    @SerialName("annotatedImageUrl") val annotatedImageUrl: String? = null,
+    @SerialName("depthMapUrl") val depthMapUrl: String? = null,
+    @SerialName("aiAnalysis") val aiAnalysis: String? = null,
+    val household: HouseholdDto? = null,
+    @SerialName("detectedBy") val detectedBy: HouseholdMemberDto? = null,
+    val status: String? = null,
+    @SerialName("detectType") val detectType: String? = null,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
+)
+
 // ── API calls ─────────────────────────────────────────────────────────────────
 
 /**
@@ -481,6 +522,39 @@ suspend fun getGreenScoreHistory(accessToken: String): GreenScoreHistoryResponse
         }
     }
 }
+
+/**
+ * POST /households/analyze-image — unified endpoint for image analysis.
+ */
+suspend fun analyzeImage(accessToken: String, request: AnalyzeImageRequest): AnalyzeImageResponse {
+    AppLogger.i("HouseholdsApi", "analyzeImage")
+    return executeRequest<AnalyzeImageResponse> {
+        httpClient.post("$BASE_URL/households/analyze-image") {
+            header("Authorization", "Bearer $accessToken")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+    }
+}
+
+/**
+ * GET /households/admin/detects/monthly — monthly detections for admin dashboard.
+ */
+suspend fun getMonthlyDetects(accessToken: String): MonthlyDetectsResponse {
+    AppLogger.i("HouseholdsApi", "getMonthlyDetects")
+    return executeRequest<MonthlyDetectsResponse> {
+        httpClient.get("$BASE_URL/households/admin/detects/monthly") {
+            header("Authorization", "Bearer $accessToken")
+        }
+    }
+}
+
+@Serializable
+data class MonthlyDetectsResponse(
+    val message: String? = null,
+    val count: Int = 0,
+    val data: List<DetectTrashHistoryDto>
+)
 
 // ── Generic Request Execution ───────────────────────────────────────────────────
 

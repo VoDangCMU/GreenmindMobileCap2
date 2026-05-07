@@ -17,4 +17,7 @@ data class WasteReportFormData(
 expect fun WasteReportScanScreen(
     onStartSubmit: (WasteReportFormData) -> Unit,
     onBack: () -> Unit,
+    launchCamera: Boolean = true,
+    onSubmitDone: () -> Unit = {},
+    isSubmitting: Boolean = false,
 )

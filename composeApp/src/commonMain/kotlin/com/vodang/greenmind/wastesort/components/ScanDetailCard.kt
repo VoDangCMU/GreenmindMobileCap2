@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import com.vodang.greenmind.api.households.GreenScoreEntryDto
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.api.households.bringOutDetectTrash
+import com.vodang.greenmind.fmt
 import com.vodang.greenmind.api.households.getGreenScoreHistory
 import com.vodang.greenmind.api.households.submitGreenScoreByDetectId
 import com.vodang.greenmind.store.HouseholdStore
@@ -388,7 +389,7 @@ private fun PollutantCard(pollutant: WasteDetectResponse?) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(label, fontSize = 12.sp, color = gray700)
-                            Text(String.format("%.1f%%", normalizedValue), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = impactColor)
+                            Text("%.1f%%".fmt(normalizedValue), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = impactColor)
                         }
                         Box(
                             modifier = Modifier
@@ -425,7 +426,7 @@ private fun PollutantCard(pollutant: WasteDetectResponse?) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(name, fontSize = 12.sp, color = gray700)
-                            Text(String.format("%.2f", value), fontSize = 12.sp, color = Color(0xFFD32F2F), fontWeight = FontWeight.Medium)
+                            Text("%.2f".fmt(value), fontSize = 12.sp, color = Color(0xFFD32F2F), fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -466,7 +467,7 @@ private fun MassItemsCard(entry: WasteSortEntry) {
                     Text(s.noDataYet, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = gray400)
                     Text(s.noMassData, fontSize = 11.sp, color = gray400)
                 } else {
-                    val massStr = entry.totalMassKg?.let { String.format("%.2f kg", it) } ?: "—"
+                    val massStr = entry.totalMassKg?.let { "%.2f kg".fmt(it) } ?: "—"
                     Text(massStr, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1565C0))
                     val itemCount = entry.pollutantResult?.items?.sumOf { it.quantity } ?: 0
                     Text(s.massItemsDetected(itemCount), fontSize = 11.sp, color = gray400)
@@ -498,7 +499,7 @@ private fun MassItemsCard(entry: WasteSortEntry) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(s.totalMass, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = gray700)
-                        Text(String.format("%.2f kg", entry.totalMassKg), fontSize = 12.sp, color = Color(0xFF1565C0), fontWeight = FontWeight.Bold)
+                        Text("%.2f kg".fmt(entry.totalMassKg ?: 0.0), fontSize = 12.sp, color = Color(0xFF1565C0), fontWeight = FontWeight.Bold)
                     }
                 }
 

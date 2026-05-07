@@ -6,6 +6,7 @@ import com.vodang.greenmind.api.location.createLocation
 import com.vodang.greenmind.api.location.getLatestLocation
 import com.vodang.greenmind.api.nominatim.ReverseOptions
 import com.vodang.greenmind.api.nominatim.nominatimReverse
+import com.vodang.greenmind.fmt
 import com.vodang.greenmind.location.Geo
 import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -196,7 +197,5 @@ fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Dou
 }
 
 fun Double.toRad() = this * PI / 180.0
-
-fun Double.fmt(decimals: Int = 2): String = "%.${decimals}f".format(this)
 
 typealias Location = com.vodang.greenmind.location.Location

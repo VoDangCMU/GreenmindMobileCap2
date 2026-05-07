@@ -28,14 +28,14 @@ import com.vodang.greenmind.api.households.DetectTrashHistoryDto
 import com.vodang.greenmind.api.households.getDetectTrashByType
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.platform.BackHandler
+import com.vodang.greenmind.fmt
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.wastereport.NetworkImage
 import com.vodang.greenmind.wastereport.ZoomableImagePreview
 import com.vodang.greenmind.util.AppLogger
 import com.vodang.greenmind.time.formatDateTimeLocal
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
-import java.util.Locale
+import kotlin.math.roundToLong
 
 private val green800m = Color(0xFF2E7D32)
 private val green50m  = Color(0xFFE8F5E9)
@@ -50,6 +50,26 @@ private fun formatDateShort(iso: String): String = try {
     val parts = iso.substringBefore('T').split('-')
     if (parts.size == 3) "${parts[2]}/${parts[1]}/${parts[0]}" else iso
 } catch (_: Throwable) { iso }
+
+/** Vietnamese currency formatting: "10.000 ₫" (uses '.' as thousand separator). */
+private fun formatVndCurrency(amount: Double): String {
+    val n = amount.roundToLong()
+    val abs = if (n < 0) -n else n
+    val s = abs.toString()
+    val sb = StringBuilder()
+    var count = 0
+    for (i in s.length - 1 downTo 0) {
+        sb.append(s[i])
+        count++
+        if (count == 3 && i != 0) {
+            sb.append('.')
+            count = 0
+        }
+    }
+    val grouped = sb.reverse().toString()
+    val sign = if (n < 0) "-" else ""
+    return "$sign$grouped ₫"
+}
 
 @Composable
 fun WasteTotalMassScreen(onBack: () -> Unit) {
@@ -81,7 +101,6 @@ fun WasteTotalMassScreen(onBack: () -> Unit) {
 
     val totalKg       = history.mapNotNull { it.totalMassKg }.sum()
     val estimatedMoney = totalKg * 500  // VND mock
-    val currencyFmt   = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN")) }
 
     // ── Detail overlay ───────────────────────────────────────────────────────
     selectedItem?.let { item ->
@@ -147,7 +166,7 @@ fun WasteTotalMassScreen(onBack: () -> Unit) {
                                 ) {
                                     Text(Icons.Filled.Inventory2.name, fontSize = 28.sp)
                                     Text(s.wasteTotalMassTotalKg, fontSize = 12.sp, color = Color.Gray)
-                                    Text("%.2f kg".format(totalKg), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = green800m)
+                                    Text("%.2f kg".fmt(totalKg), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = green800m)
                                 }
                             }
                             Card(
@@ -162,7 +181,7 @@ fun WasteTotalMassScreen(onBack: () -> Unit) {
                                 ) {
                                     Text(Icons.Filled.AttachMoney.name, fontSize = 28.sp)
                                     Text(s.wasteTotalMassEstimated, fontSize = 12.sp, color = Color.Gray)
-                                    Text(currencyFmt.format(estimatedMoney), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = orange600m)
+                                    Text(formatVndCurrency(estimatedMoney), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = orange600m)
                                 }
                             }
                         }
@@ -274,7 +293,7 @@ private fun MassHistoryRow(
 
             // Mass
             Column(horizontalAlignment = Alignment.End) {
-                Text("%.2f kg".format(mass), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = green800m)
+                Text("%.2f kg".fmt(mass), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = green800m)
                 Spacer(Modifier.height(2.dp))
                 val statusColor = when (item.status) {
                     "brought_out" -> orange600m
@@ -299,7 +318,6 @@ private fun MassDetailScreen(item: DetectTrashHistoryDto, onBack: () -> Unit) {
     val s = LocalAppStrings.current
     val scrollState = rememberScrollState()
     val imageUrl = item.annotatedImageUrl ?: item.imageUrl
-    val currencyFmt = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN")) }
 
     BackHandler(onBack = onBack)
 
@@ -361,7 +379,7 @@ private fun MassDetailScreen(item: DetectTrashHistoryDto, onBack: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(Icons.Filled.Inventory2.name, fontSize = 24.sp)
-                        Text("%.2f kg".format(item.totalMassKg ?: 0.0), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = green800m)
+                        Text("%.2f kg".fmt(item.totalMassKg ?: 0.0), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = green800m)
                         Text(s.wasteTotalMassTotalKg, fontSize = 11.sp, color = Color.Gray)
                     }
                 }
@@ -375,7 +393,7 @@ private fun MassDetailScreen(item: DetectTrashHistoryDto, onBack: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(Icons.Filled.AttachMoney.name, fontSize = 24.sp)
-                        Text(currencyFmt.format((item.totalMassKg ?: 0.0) * 500), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = orange600m)
+                        Text(formatVndCurrency((item.totalMassKg ?: 0.0) * 500), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = orange600m)
                         Text(s.wasteTotalMassEstimated, fontSize = 11.sp, color = Color.Gray)
                     }
                 }
@@ -492,7 +510,7 @@ private fun MassItemRow(itemMass: DetectItemMassDto) {
             modifier = Modifier.weight(1f),
         )
         Text(
-            "%.3f kg".format(itemMass.massKg),
+            "%.3f kg".fmt(itemMass.massKg),
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = itemColor,

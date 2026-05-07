@@ -16,7 +16,7 @@ private const val POLL_INTERVAL_MS = 15_000L
 
 object WalkDistanceStore {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var pollingJob: Job? = null
 
     private val _distanceMeters = MutableStateFlow(0)
