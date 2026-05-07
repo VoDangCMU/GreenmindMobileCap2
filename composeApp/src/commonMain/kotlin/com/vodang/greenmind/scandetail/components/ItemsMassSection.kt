@@ -4,6 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,7 +67,12 @@ fun ItemsSection(
                     .background(if (hasItems) Color(0xFFE8F5E9) else Color(0xFFF5F5F5)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(if (hasItems) "📋" else "?", fontSize = 24.sp)
+                Icon(
+                    imageVector = if (hasItems) Icons.Filled.Inbox else Icons.Filled.Help,
+                    contentDescription = null,
+                    tint = if (hasItems) scanGreen else neutralGray400,
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
 
@@ -164,7 +173,12 @@ fun MassSection(
                     .background(if (totalMassKg != null) massBlueBg else Color(0xFFF5F5F5)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("⚖️", fontSize = 24.sp)
+                Icon(
+                    imageVector = Icons.Filled.Category,
+                    contentDescription = null,
+                    tint = if (totalMassKg != null) massBlue else neutralGray400,
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
 

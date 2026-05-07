@@ -656,6 +656,7 @@ class AppStrings(val langCode: String) {
     // ── Scan Detail ──────────────────────────────────────────────────────────────
     var ecoScore: String = ""
     var noScoreYet: String = ""
+    var calculatingScore: String = ""
     var deltaPrefix: (Int) -> String = { _ -> "" }
     var markAsSorted: String = ""
     var markAsBroughtOut: String = ""

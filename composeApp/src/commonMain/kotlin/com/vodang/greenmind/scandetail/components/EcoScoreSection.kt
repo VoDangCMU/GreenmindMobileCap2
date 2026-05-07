@@ -4,7 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.households.GreenScoreEntryDto
@@ -28,6 +32,7 @@ import com.vodang.greenmind.scandetail.neutralGray700
 @Composable
 fun EcoScoreSection(
     greenScore: GreenScoreEntryDto?,
+    isLoading: Boolean = false,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
 ) {
@@ -61,17 +66,24 @@ fun EcoScoreSection(
                         Text(if (expanded) "▲" else "▼", fontSize = 9.sp, color = neutralGray400)
                     }
                 }
-                if (greenScore == null) {
-                    Text(s.noScoreYet, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = neutralGray400)
-                    Text(s.noScoreYet, fontSize = 11.sp, color = neutralGray400)
-                } else {
-                    Text(
-                        "${greenScore.finalScore}",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = ecoGreen700,
-                    )
-                    Text("${greenScore.finalScore} pts", fontSize = 11.sp, color = ecoGreen700.copy(alpha = 0.7f))
+                when {
+                    isLoading -> {
+                        Text("...", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = neutralGray400)
+                        Text(s.calculatingScore, fontSize = 11.sp, color = neutralGray400)
+                    }
+                    greenScore == null -> {
+                        Text(s.noScoreYet, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = neutralGray400)
+                        Text(s.noScoreYet, fontSize = 11.sp, color = neutralGray400)
+                    }
+                    else -> {
+                        Text(
+                            "${greenScore.finalScore}",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = ecoGreen700,
+                        )
+                        Text("${greenScore.finalScore} pts", fontSize = 11.sp, color = ecoGreen700.copy(alpha = 0.7f))
+                    }
                 }
             }
             Box(
@@ -80,6 +92,7 @@ fun EcoScoreSection(
                     .clip(CircleShape)
                     .background(
                         when {
+                            isLoading -> Color(0xFFFFF3E0)
                             greenScore == null -> Color(0xFFF5F5F5)
                             greenScore.finalScore >= 50 -> ecoGreen50
                             else -> Color(0xFFFEF2F2)
@@ -87,15 +100,31 @@ fun EcoScoreSection(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    when {
-                        greenScore == null -> "🌱"
-                        greenScore.finalScore >= 70 -> "🌟"
-                        greenScore.finalScore >= 40 -> "🌿"
-                        else -> "⚠️"
-                    },
-                    fontSize = 24.sp,
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                        color = Color(0xFFE65100),
+                    )
+                } else {
+                    val icon = when {
+                        greenScore == null -> Icons.Filled.Eco
+                        greenScore.finalScore >= 70 -> Icons.Filled.Star
+                        greenScore.finalScore >= 40 -> Icons.Filled.Favorite
+                        else -> Icons.Filled.Warning
+                    }
+                    val tint = when {
+                        greenScore == null -> neutralGray400
+                        greenScore.finalScore >= 50 -> ecoGreen700
+                        else -> Color(0xFFD32F2F)
+                    }
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = tint,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
         }
 

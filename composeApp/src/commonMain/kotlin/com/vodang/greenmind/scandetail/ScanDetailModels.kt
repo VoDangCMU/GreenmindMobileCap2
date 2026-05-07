@@ -37,6 +37,7 @@ data class ScanDetailData(
     val depthMapUrl: String? = null,
     // green score
     val greenScore: GreenScoreEntryDto? = null,
+    val isGreenScoreLoading: Boolean = false,
     // local store only (category grouping)
     val grouped: Map<String, List<String>> = emptyMap(),
     // backend id for API calls
@@ -145,6 +146,32 @@ fun DetectTrashHistoryDto.toScanDetailData(): ScanDetailData {
 /** Adapt List<DetectTrashHistoryDto> (grouped by imageUrl) to ScanDetailData */
 fun List<DetectTrashHistoryDto>.toScanDetailData(): ScanDetailData {
     val primary = minByOrNull { it.createdAt ?: "" } ?: first()
+
+    // Check if it's "analyze_all" type (all data in one record)
+    val analyzeAll = find { it.detectType == "analyze_all" }
+    if (analyzeAll != null) {
+        val pollutionData = analyzeAll.pollution?.toFlatMap()
+        val impactData = analyzeAll.impact?.toScanImpact()
+        return ScanDetailData(
+            id = analyzeAll.id,
+            imageUrl = analyzeAll.imageUrl,
+            createdAt = analyzeAll.createdAt?.take(10) ?: "",
+            scannedBy = analyzeAll.detectedBy?.fullName ?: analyzeAll.detectedBy?.username ?: "",
+            status = parseWasteSortStatus(analyzeAll.status),
+            totalObjects = analyzeAll.totalObjects ?: 0,
+            items = analyzeAll.items?.map { it.toScanItem() },
+            annotatedImageUrl = analyzeAll.annotatedImageUrl,
+            aiAnalysisUrl = analyzeAll.aiAnalysis,
+            pollution = pollutionData,
+            impact = impactData,
+            totalMassKg = analyzeAll.totalMassKg,
+            itemsMass = analyzeAll.itemsMass?.map { it.toScanItemMass() },
+            depthMapUrl = analyzeAll.depthMapUrl,
+            backendId = analyzeAll.id,
+        )
+    }
+
+    // Fallback: original logic for separate records
     val detectTrash = find { it.detectType == "detect_trash" }
     val pollutant = find { it.detectType == "predict_pollutant_impact" }
     val totalMass = find { it.detectType == "total_mass" }
@@ -157,7 +184,6 @@ fun List<DetectTrashHistoryDto>.toScanDetailData(): ScanDetailData {
         imageUrl = primary.imageUrl,
         createdAt = primary.createdAt?.take(10) ?: "",
         scannedBy = primary.detectedBy?.fullName ?: primary.detectedBy?.username ?: "",
-        // Use most advanced status from any record in the group
         status = groupStatus(this),
         totalObjects = detectTrash?.totalObjects ?: primary.totalObjects,
         items = detectTrash?.items?.map { it.toScanItem() },

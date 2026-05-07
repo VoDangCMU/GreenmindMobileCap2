@@ -549,6 +549,18 @@ suspend fun getMonthlyDetects(accessToken: String): MonthlyDetectsResponse {
     }
 }
 
+/**
+ * GET /households/detects/monthly — monthly detections for mobile.
+ */
+suspend fun getDetectsMonthly(accessToken: String): MonthlyDetectsResponse {
+    AppLogger.i("HouseholdsApi", "getDetectsMonthly")
+    return executeRequest<MonthlyDetectsResponse> {
+        httpClient.get("$BASE_URL/households/detects/monthly") {
+            header("Authorization", "Bearer $accessToken")
+        }
+    }
+}
+
 @Serializable
 data class MonthlyDetectsResponse(
     val message: String? = null,

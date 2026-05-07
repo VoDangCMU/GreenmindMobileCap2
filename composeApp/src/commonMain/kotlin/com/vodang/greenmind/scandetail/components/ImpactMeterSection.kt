@@ -5,6 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -84,14 +89,23 @@ fun ImpactMeterSection(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    when {
-                        impact == null -> "?"
-                        maxOf(impact.air, impact.water, impact.soil) < 0.2 -> "✓"
-                        maxOf(impact.air, impact.water, impact.soil) < 0.5 -> "⚠"
-                        else -> "✗"
-                    },
-                    fontSize = 24.sp,
+                val icon = when {
+                    impact == null -> Icons.Filled.Help
+                    maxOf(impact.air, impact.water, impact.soil) < 0.2 -> Icons.Filled.Check
+                    maxOf(impact.air, impact.water, impact.soil) < 0.5 -> Icons.Filled.Warning
+                    else -> Icons.Filled.Close
+                }
+                val tint = when {
+                    impact == null -> neutralGray400
+                    maxOf(impact.air, impact.water, impact.soil) < 0.2 -> pollutantGreen
+                    maxOf(impact.air, impact.water, impact.soil) < 0.5 -> pollutantOrange
+                    else -> pollutantRed
+                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
@@ -207,14 +221,23 @@ fun PollutantBreakdownSection(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    when {
-                        pollution == null -> "?"
-                        pollution.isEmpty() -> "✓"
-                        pollution.size <= 2 -> "⚠"
-                        else -> "✗"
-                    },
-                    fontSize = 24.sp,
+                val icon = when {
+                    pollution == null -> Icons.Filled.Help
+                    pollution.isEmpty() -> Icons.Filled.Check
+                    pollution.size <= 2 -> Icons.Filled.Warning
+                    else -> Icons.Filled.Close
+                }
+                val tint = when {
+                    pollution == null -> neutralGray400
+                    pollution.isEmpty() -> pollutantGreen
+                    pollution.size <= 2 -> pollutantOrange
+                    else -> pollutantRed
+                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }

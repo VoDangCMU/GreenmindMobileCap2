@@ -7,11 +7,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.api.wastesort.DetectTrashResponse
 
 @Composable
 actual fun WasteSortScanScreen(
-    onResult: (DetectTrashResponse) -> Unit,
+    onResult: (WasteSortEntry) -> Unit,
     onBack: () -> Unit,
     useGallery: Boolean,
 ) {

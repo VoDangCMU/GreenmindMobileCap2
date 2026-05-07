@@ -373,8 +373,33 @@ internal fun DetectActionButton(
             .padding(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // Status badge
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Status", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = gray700c)
+            StatusChip(status = status)
+        }
+
+        HorizontalDivider(color = Color(0xFFE0E0E0))
+
         when (status) {
-            WasteSortStatus.SCANNED, WasteSortStatus.SORTED -> {
+            WasteSortStatus.SCANNED -> {
+                Button(
+                    onClick = { onStatusChange("sorted") },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = stepDone),
+                ) {
+                    Text("Mark as Sorted", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            WasteSortStatus.SORTED -> {
                 Button(
                     onClick = {
                         isBusy = true
@@ -393,26 +418,26 @@ internal fun DetectActionButton(
                         }
                     },
                     enabled = !isBusy,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
                 ) {
                     if (isBusy) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
-                        Text("Updating…", fontWeight = FontWeight.Bold)
+                        Text("Updating…", color = Color.White, fontWeight = FontWeight.Bold)
                     } else {
-                        Text("Mark as Brought Out", fontWeight = FontWeight.Bold)
+                        Text("Mark as Brought Out", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
                 errorMsg?.let {
-                    Text(it, color = Color(0xFFD32F2F), fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    Text(it, color = Color(0xFFD32F2F), fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
                 }
             }
 
             WasteSortStatus.BRINGOUTED -> {
                 Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFF5F5F5)).padding(vertical = 14.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF5F5F5)).padding(vertical = 14.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -424,7 +449,7 @@ internal fun DetectActionButton(
 
             WasteSortStatus.COLLECTED -> {
                 Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFE8F5E9)).padding(vertical = 14.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFE8F5E9)).padding(vertical = 14.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -434,5 +459,30 @@ internal fun DetectActionButton(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StatusChip(status: WasteSortStatus) {
+    val (bgColor, textColor, label) = when (status) {
+        WasteSortStatus.SCANNED -> Triple(Color(0xFFFFF3E0), Color(0xFFE65100), "Scanned")
+        WasteSortStatus.SORTED -> Triple(Color(0xFFE3F2FD), Color(0xFF1565C0), "Sorted")
+        WasteSortStatus.BRINGOUTED -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "Brought Out")
+        WasteSortStatus.COLLECTED -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "Collected")
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(bgColor)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = textColor,
+        )
     }
 }

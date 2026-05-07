@@ -263,7 +263,11 @@ fun HouseholdWasteScreen(
         WasteReportDetailSheet(report = report, onDismiss = { selectedReport = null })
     }
     selectedScanGroup?.let { group ->
-        BottomSheetScanDetail(data = group.toScanDetailData(), onDismiss = { selectedScanGroup = null })
+        BottomSheetScanDetail(
+            data = group.toScanDetailData(),
+            onDismiss = { selectedScanGroup = null },
+            onStatusChange = { /* Status changed */ }
+        )
     }
     selectedScore?.let { score ->
         GreenScoreDetailSheet(entry = score, onDismiss = { selectedScore = null })

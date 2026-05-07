@@ -9,8 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -142,7 +142,7 @@ fun WasteTotalMassScreen(onBack: () -> Unit) {
                 }
                 history.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(Icons.Filled.Inventory2.name, fontSize = 48.sp)
+                        Icon(Icons.Filled.Inventory, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.Gray)
                         Text(s.wasteTotalMassEmpty, fontSize = 14.sp, color = Color.Gray)
                     }
                 }
@@ -164,7 +164,7 @@ fun WasteTotalMassScreen(onBack: () -> Unit) {
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
-                                    Text(Icons.Filled.Inventory2.name, fontSize = 28.sp)
+                                    Icon(Icons.Filled.Inventory, contentDescription = null, modifier = Modifier.size(28.dp), tint = green800m)
                                     Text(s.wasteTotalMassTotalKg, fontSize = 12.sp, color = Color.Gray)
                                     Text("%.2f kg".fmt(totalKg), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = green800m)
                                 }
@@ -179,7 +179,7 @@ fun WasteTotalMassScreen(onBack: () -> Unit) {
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
-                                    Text(Icons.Filled.AttachMoney.name, fontSize = 28.sp)
+                                    Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(28.dp), tint = orange600m)
                                     Text(s.wasteTotalMassEstimated, fontSize = 12.sp, color = Color.Gray)
                                     Text(formatVndCurrency(estimatedMoney), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = orange600m)
                                 }
@@ -269,7 +269,7 @@ private fun MassHistoryRow(
                         contentScale = ContentScale.Crop,
                     )
                 } else {
-                    Text(Icons.Filled.Inventory2.name, fontSize = 28.sp)
+                    Icon(Icons.Filled.Inventory, contentDescription = null, modifier = Modifier.size(28.dp), tint = green800m)
                 }
             }
 
@@ -378,7 +378,7 @@ private fun MassDetailScreen(item: DetectTrashHistoryDto, onBack: () -> Unit) {
                         modifier = Modifier.padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(Icons.Filled.Inventory2.name, fontSize = 24.sp)
+                        Icon(Icons.Filled.Inventory, contentDescription = null, modifier = Modifier.size(24.dp), tint = green800m)
                         Text("%.2f kg".fmt(item.totalMassKg ?: 0.0), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = green800m)
                         Text(s.wasteTotalMassTotalKg, fontSize = 11.sp, color = Color.Gray)
                     }
@@ -392,7 +392,7 @@ private fun MassDetailScreen(item: DetectTrashHistoryDto, onBack: () -> Unit) {
                         modifier = Modifier.padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(Icons.Filled.AttachMoney.name, fontSize = 24.sp)
+                        Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(24.dp), tint = orange600m)
                         Text(formatVndCurrency((item.totalMassKg ?: 0.0) * 500), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = orange600m)
                         Text(s.wasteTotalMassEstimated, fontSize = 11.sp, color = Color.Gray)
                     }
@@ -493,7 +493,6 @@ private fun InfoRow(label: String, value: String, color: Color = Color(0xFF42424
 @Composable
 private fun MassItemRow(itemMass: DetectItemMassDto) {
     val itemColor = Color(0xFF616161)
-    val emoji = Icons.Filled.Inventory2.name
 
     Row(
         modifier = Modifier
@@ -502,7 +501,7 @@ private fun MassItemRow(itemMass: DetectItemMassDto) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(emoji, fontSize = 18.sp)
+        Icon(Icons.Filled.Inventory, contentDescription = null, modifier = Modifier.size(18.dp), tint = itemColor)
         Text(
             itemMass.name,
             fontSize = 13.sp,

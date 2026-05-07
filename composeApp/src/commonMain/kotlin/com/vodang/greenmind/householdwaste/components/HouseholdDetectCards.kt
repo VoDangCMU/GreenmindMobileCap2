@@ -34,6 +34,7 @@ import com.vodang.greenmind.wastesort.WasteSortStatus
 import com.vodang.greenmind.wastesort.label
 import com.vodang.greenmind.wastesort.components.LifecycleProgressBar
 import com.vodang.greenmind.householdwaste.parseWasteSortStatus
+import com.vodang.greenmind.householdwaste.components.DetectActionButton
 import kotlinx.coroutines.launch
 
 private val green700  = Color(0xFF2E7D32)
@@ -132,7 +133,7 @@ internal fun DetectScanCard(record: DetectTrashHistoryDto, onClick: () -> Unit) 
                 }
                 record.totalMassKg?.let {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Filled.Scale, contentDescription = null, modifier = Modifier.size(14.dp), tint = green700)
+                        Icon(Icons.Filled.Category, contentDescription = null, modifier = Modifier.size(14.dp), tint = green700)
                         Text("${"%.2f".fmt(it)} kg", fontSize = 11.sp, color = green700)
                     }
                 }
@@ -215,7 +216,7 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
                     DetectStatChip("$it objects", green50c, green700, icon = Icons.Filled.Search)
                 }
                 scan.totalMassKg?.let {
-                    DetectStatChip("${"%.2f".fmt(it)} kg", Color(0xFFEFF6FF), Color(0xFF1D4ED8), icon = Icons.Filled.Scale)
+                    DetectStatChip("${"%.2f".fmt(it)} kg", Color(0xFFEFF6FF), Color(0xFF1D4ED8), icon = Icons.Filled.Category)
                 }
             }
 

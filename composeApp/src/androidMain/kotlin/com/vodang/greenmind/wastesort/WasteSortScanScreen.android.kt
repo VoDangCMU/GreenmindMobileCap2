@@ -20,19 +20,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.vodang.greenmind.permission.CameraPermissionGate
-import com.vodang.greenmind.api.envimpact.logEnvironmentalImpact
 import com.vodang.greenmind.api.households.AnalyzeImageRequest
 import com.vodang.greenmind.api.households.analyzeImage
 import com.vodang.greenmind.api.households.submitGreenScoreByDetectId
 import com.vodang.greenmind.api.households.getGreenScoreHistory
-import com.vodang.greenmind.store.HouseholdStore
-import com.vodang.greenmind.api.upload.requestAndUpload
 import com.vodang.greenmind.api.wastedetect.WasteDetectImpact
 import com.vodang.greenmind.api.wastedetect.WasteDetectItem
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
-import com.vodang.greenmind.api.wastesort.DetectTrashResponse
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WasteSortStore
+import com.vodang.greenmind.api.upload.requestAndUpload
+import com.vodang.greenmind.time.nowIso8601
 import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.launch
 import java.io.File
@@ -51,7 +49,7 @@ private fun createScanPhotoUri(context: android.content.Context): Uri {
 
 @Composable
 actual fun WasteSortScanScreen(
-    onResult: (DetectTrashResponse) -> Unit,
+    onResult: (WasteSortEntry) -> Unit,
     onBack: () -> Unit,
     useGallery: Boolean,
 ) {
@@ -62,7 +60,7 @@ actual fun WasteSortScanScreen(
 
 @Composable
 private fun WasteSortScanContent(
-    onResult: (DetectTrashResponse) -> Unit,
+    onResult: (WasteSortEntry) -> Unit,
     onBack: () -> Unit,
     useGallery: Boolean,
 ) {
@@ -85,6 +83,9 @@ private fun WasteSortScanContent(
             }
             try {
                 val filename = "waste_scan_${System.currentTimeMillis()}.jpg"
+                val userName = SettingsStore.user.value?.fullName
+                    ?: SettingsStore.user.value?.username
+                    ?: "Me"
 
                 // 1. Upload image to get hosted URL
                 val upload = requestAndUpload(
@@ -93,97 +94,86 @@ private fun WasteSortScanContent(
                     fileBytes   = bytes,
                     contentType = "image/jpeg",
                 )
-
                 val imageUrl = upload.imageUrl
-                val request  = AnalyzeImageRequest(imageUrl = imageUrl)
 
                 // 2. Call unified analyzeImage API
-                val result = analyzeImage(token, request)
-                val data   = result.data
+                val data = analyzeImage(token, AnalyzeImageRequest(imageUrl = imageUrl)).data
 
-                // 3. Build entry from response
-                val response = DetectTrashResponse(
-                    totalObjects = data.totalObjects ?: 0,
-                    imageUrl     = data.annotatedImageUrl ?: data.aiAnalysis ?: imageUrl,
-                    grouped      = emptyMap(),
-                    backendId    = data.id,
+                // 3. Build pollution map if available
+                val pollutionMap = data.pollution?.let { p ->
+                    buildMap<String, Double> {
+                        p.cd?.let               { put("Cd", it) }
+                        p.hg?.let               { put("Hg", it) }
+                        p.pb?.let               { put("Pb", it) }
+                        p.ch4?.let              { put("CH4", it) }
+                        p.co2?.let              { put("CO2", it) }
+                        p.nox?.let              { put("NOx", it) }
+                        p.so2?.let              { put("SO2", it) }
+                        p.pm25?.let             { put("PM2.5", it) }
+                        p.dioxin?.let           { put("dioxin", it) }
+                        p.nitrate?.let          { put("nitrate", it) }
+                        p.styrene?.let          { put("styrene", it) }
+                        p.microplastic?.let     { put("microplastic", it) }
+                        p.toxicChemicals?.let   { put("toxic_chemicals", it) }
+                        p.chemicalResidue?.let  { put("chemical_residue", it) }
+                        p.nonBiodegradable?.let { put("non_biodegradable", it) }
+                    }
+                }
+
+                // 4. Build complete entry
+                val entry = WasteSortEntry(
+                    id              = imageUrl.substringAfterLast("/").substringBeforeLast("."),
+                    backendId       = data.id,
+                    imageUrl        = data.annotatedImageUrl ?: data.aiAnalysis ?: imageUrl,
+                    totalObjects    = data.totalObjects ?: 0,
+                    grouped         = emptyMap(),
+                    createdAt       = nowIso8601().take(10),
+                    scannedBy       = userName,
+                    status          = WasteSortStatus.SCANNED,
+                    pollutantResult = if (data.pollution != null && data.impact != null) {
+                        WasteDetectResponse(
+                            items        = data.items?.map {
+                                WasteDetectItem(it.name, it.quantity, it.area)
+                            } ?: emptyList(),
+                            totalObjects = data.totalObjects ?: 0,
+                            imageUrl     = data.aiAnalysis ?: imageUrl,
+                            pollution    = pollutionMap ?: emptyMap(),
+                            impact       = WasteDetectImpact(
+                                airPollution   = data.impact.airPollution ?: 0.0,
+                                waterPollution = data.impact.waterPollution ?: 0.0,
+                                soilPollution  = data.impact.soilPollution ?: 0.0,
+                            ),
+                        )
+                    } else null,
+                    totalMassKg     = data.totalMassKg,
                 )
-                onResult(response)
 
-                val entryId = imageUrl.substringAfterLast("/").substringBeforeLast(".")
+                AppLogger.i("HouseholdScan", "analyzeImage ok id=${data.id} mass=${data.totalMassKg}")
+                onResult(entry)
 
-                // 4. Update store with pollutant result (background)
+                // 5. Fetch green score in background
                 WasteSortStore.storeScope.launch {
                     try {
-                        if (data.pollution != null && data.impact != null) {
-                            val pollutionMap = buildMap<String, Double> {
-                                data.pollution.cd?.let               { put("Cd", it) }
-                                data.pollution.hg?.let               { put("Hg", it) }
-                                data.pollution.pb?.let               { put("Pb", it) }
-                                data.pollution.ch4?.let              { put("CH4", it) }
-                                data.pollution.co2?.let              { put("CO2", it) }
-                                data.pollution.nox?.let              { put("NOx", it) }
-                                data.pollution.so2?.let              { put("SO2", it) }
-                                data.pollution.pm25?.let             { put("PM2.5", it) }
-                                data.pollution.dioxin?.let           { put("dioxin", it) }
-                                data.pollution.nitrate?.let          { put("nitrate", it) }
-                                data.pollution.styrene?.let          { put("styrene", it) }
-                                data.pollution.microplastic?.let     { put("microplastic", it) }
-                                data.pollution.toxicChemicals?.let   { put("toxic_chemicals", it) }
-                                data.pollution.chemicalResidue?.let  { put("chemical_residue", it) }
-                                data.pollution.nonBiodegradable?.let { put("non_biodegradable", it) }
-                            }
-                            WasteSortStore.updatePollutant(
-                                entryId,
-                                WasteDetectResponse(
-                                    items        = data.items?.map {
-                                        WasteDetectItem(it.name, it.quantity, it.area)
-                                    } ?: emptyList(),
-                                    totalObjects = data.totalObjects ?: 0,
-                                    imageUrl     = data.aiAnalysis ?: imageUrl,
-                                    pollution    = pollutionMap,
-                                    impact       = WasteDetectImpact(
-                                        airPollution   = data.impact.airPollution ?: 0.0,
-                                        waterPollution = data.impact.waterPollution ?: 0.0,
-                                        soilPollution  = data.impact.soilPollution ?: 0.0,
-                                    ),
-                                )
-                            )
-                            logEnvironmentalImpact(
-                                accessToken = token,
-                                pollution   = pollutionMap,
-                                airImpact   = data.impact.airPollution ?: 0.0,
-                                waterImpact = data.impact.waterPollution ?: 0.0,
-                                soilImpact  = data.impact.soilPollution ?: 0.0,
-                            )
-                        }
-
-                        // 5. Submit green score using the analyze-image id
-                        try {
-                            val greenScoreResp = submitGreenScoreByDetectId(token, data.id)
-                            WasteSortStore.updateGreenScore(entryId, greenScoreResp.data)
-                            AppLogger.i("HouseholdScan", "submitGreenScoreByDetectId ok id=${greenScoreResp.data.id}")
-                        } catch (e: Throwable) {
-                            AppLogger.e("HouseholdScan", "submitGreenScoreByDetectId failed: ${e.message}")
-                            // fallback
-                            try {
-                                val historyResp = getGreenScoreHistory(token)
-                                val latest = historyResp.data.lastOrNull()
-                                if (latest != null) {
-                                    WasteSortStore.updateGreenScore(entryId, latest)
-                                    AppLogger.i("HouseholdScan", "getGreenScoreHistory fallback ok")
-                                }
-                            } catch (e2: Throwable) {
-                                AppLogger.e("HouseholdScan", "getGreenScoreHistory fallback failed: ${e2.message}")
-                            }
-                        }
-
-                        AppLogger.i("HouseholdScan", "analyzeImage ok id=${data.id} mass=${data.totalMassKg}")
+                        val greenScoreResp = submitGreenScoreByDetectId(token, data.id)
+                        WasteSortStore.updateGreenScore(entry.id, greenScoreResp.data)
+                        AppLogger.i("HouseholdScan", "submitGreenScoreByDetectId ok id=${greenScoreResp.data.id}")
                     } catch (e: Throwable) {
-                        AppLogger.e("HouseholdScan", "analyzeImage failed: ${e.message}")
+                        AppLogger.e("HouseholdScan", "submitGreenScoreByDetectId failed: ${e.message}")
+                        // Fallback: try history
+                        try {
+                            val historyResp = getGreenScoreHistory(token)
+                            val latest = historyResp.data.lastOrNull()
+                            if (latest != null) {
+                                WasteSortStore.updateGreenScore(entry.id, latest)
+                                AppLogger.i("HouseholdScan", "getGreenScoreHistory fallback ok")
+                            }
+                        } catch (e2: Throwable) {
+                            AppLogger.e("HouseholdScan", "getGreenScoreHistory fallback failed: ${e2.message}")
+                        }
                     }
                 }
             } catch (e: Throwable) {
+                AppLogger.e("HouseholdScan", "analyzeImage failed: ${e.message}")
                 errorMsg = e.message ?: "Detection failed"
                 phase = WasteSortScanPhase.ERROR
             }

@@ -696,6 +696,7 @@ val EnStrings = AppStrings("en").apply {
     // ── Scan Detail ─────────────────────────────────────────────────────────────
     ecoScore = "Eco Score"
     noScoreYet = "No score yet"
+    calculatingScore = "Calculating..."
     deltaPrefix = { d -> "+$d from last scan" }
     markAsSorted = "Mark as Sorted"
     markAsBroughtOut = "Mark as Brought Out"

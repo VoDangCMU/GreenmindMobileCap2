@@ -11,9 +11,7 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Warning
 import com.vodang.greenmind.api.households.DetectTrashHistoryDto
 import com.vodang.greenmind.api.households.GreenScoreEntryDto
-import com.vodang.greenmind.api.households.getDetectTrashByType
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
-import com.vodang.greenmind.api.wastesort.DetectTrashResponse
 import com.vodang.greenmind.platform.BackHandler
 import com.vodang.greenmind.scandetail.DisplayMode
 import com.vodang.greenmind.scandetail.ScanDetailData
@@ -23,9 +21,7 @@ import com.vodang.greenmind.scandetail.components.BottomSheetScanDetail
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WasteSortStore
-import com.vodang.greenmind.time.nowIso8601
 import com.vodang.greenmind.wastesort.components.WasteSortList
-import com.vodang.greenmind.util.AppLogger
 import com.vodang.greenmind.i18n.AppStrings
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -97,22 +93,6 @@ fun categoryEmoji(cat: String): ImageVector = when (cat.lowercase()) {
 
 fun categoryLabel(cat: String) = cat.replaceFirstChar { it.uppercase() }
 
-
-fun DetectTrashResponse.toEntry(scannedBy: String, massKg: Double? = null): WasteSortEntry {
-    val date = nowIso8601().take(10) // "YYYY-MM-DD"
-    return WasteSortEntry(
-        id           = imageUrl.substringAfterLast("/").substringBeforeLast("."),
-        backendId    = backendId,
-        imageUrl     = imageUrl,
-        totalObjects = totalObjects,
-        grouped      = grouped,
-        createdAt    = date,
-        scannedBy    = scannedBy,
-        status       = WasteSortStatus.SCANNED,
-        totalMassKg  = massKg,
-    )
-}
-
 // ── Screen root ───────────────────────────────────────────────────────────────
 
 @Composable
@@ -124,13 +104,14 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
     var useGallery      by remember { mutableStateOf(false) }
     var isLoadingHistory by remember { mutableStateOf(false) }
 
-    val user by SettingsStore.user.collectAsState()
     val refreshTrigger by WasteSortStore.refreshTrigger.collectAsState()
 
     var selectedEntryId by remember { mutableStateOf<String?>(null) }
     var detailData by remember { mutableStateOf<ScanDetailData?>(null) }
 
-    LaunchedEffect(selectedEntryId, refreshTrigger) {
+    val greenScoreTrigger by WasteSortStore.greenScoreTrigger.collectAsState()
+
+    LaunchedEffect(selectedEntryId, refreshTrigger, greenScoreTrigger) {
         selectedEntryId?.let { id ->
             entries.find { it.id == id }?.let { entry ->
                 detailData = entry.toScanDetailData()
@@ -155,12 +136,14 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
     when {
         showScan -> {
             WasteSortScanScreen(
-                onResult = { response ->
-                    val entry = response.toEntry(user?.fullName ?: user?.username ?: "Me")
+                onResult = { entry ->
                     WasteSortStore.add(entry)
                     WasteSortStore.triggerRefresh()
                     selectedEntryId = entry.id
-                    detailData = entry.toScanDetailData()
+                    // Set loading state if green score hasn't been fetched yet
+                    detailData = entry.toScanDetailData().copy(
+                        isGreenScoreLoading = entry.backendId != null && entry.greenScoreResult == null
+                    )
                     showScan = false
                 },
                 onBack = { showScan = false },

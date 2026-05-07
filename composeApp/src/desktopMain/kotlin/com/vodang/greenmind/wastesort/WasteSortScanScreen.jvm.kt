@@ -18,6 +18,7 @@ import com.vodang.greenmind.api.upload.requestAndUpload
 import com.vodang.greenmind.api.wastesort.detectTrash
 import com.vodang.greenmind.api.wastesort.predictTrashSeg
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.time.nowIso8601
 import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -32,7 +33,7 @@ private enum class Phase { IDLE, ANALYZING, ERROR }
 
 @Composable
 actual fun WasteSortScanScreen(
-    onResult: (DetectTrashResponse) -> Unit,
+    onResult: (WasteSortEntry) -> Unit,
     onBack: () -> Unit,
     useGallery: Boolean,
 ) {
@@ -47,6 +48,9 @@ actual fun WasteSortScanScreen(
             if (token == null) { errorMsg = "Sign in required"; phase = Phase.ERROR; return@launch }
             try {
                 val filename = "waste_scan_${System.currentTimeMillis()}.jpg"
+                val userName = SettingsStore.user.value?.fullName
+                    ?: SettingsStore.user.value?.username
+                    ?: "Me"
                 val ver2Deferred   = async { runCatching { detectTrash(bytes, filename) }.getOrNull() }
                 val segDeferred    = async { runCatching { predictTrashSeg(bytes, filename) }.getOrNull() }
                 val uploadDeferred = async { requestAndUpload(token, filename, bytes, "image/jpeg") }
@@ -59,8 +63,8 @@ actual fun WasteSortScanScreen(
                 val detectResult = detectTrashOnly(token, request)
                 val dto          = detectResult.data
 
-                val displayUrl = ver2Result?.imageUrl ?: segResult?.imageUrl
-                    ?: dto.annotatedImageUrl ?: dto.aiAnalysis ?: dto.imageUrl
+                val imageUrl = upload.imageUrl
+                val entryId = imageUrl.substringAfterLast("/").substringBeforeLast(".")
 
                 val grouped: Map<String, List<String>> = when {
                     ver2Result != null && ver2Result.grouped.isNotEmpty() ->
@@ -68,15 +72,22 @@ actual fun WasteSortScanScreen(
                             segResult?.grouped?.get(cat)?.takeIf { it.isNotEmpty() } ?: ver2Urls
                         }
                     segResult != null && segResult.grouped.isNotEmpty() -> segResult.grouped
-                    else -> dto.items?.groupBy { it.name }?.mapValues { listOf(displayUrl) } ?: emptyMap()
+                    else -> dto.items?.groupBy { it.name }?.mapValues { listOf(imageUrl) } ?: emptyMap()
                 }
 
-                onResult(DetectTrashResponse(
-                    totalObjects = ver2Result?.totalObjects ?: segResult?.totalObjects ?: dto.totalObjects ?: 0,
-                    imageUrl     = displayUrl,
-                    grouped      = grouped,
+                val entry = WasteSortEntry(
+                    id           = entryId,
                     backendId    = dto.id,
-                ))
+                    imageUrl     = ver2Result?.imageUrl ?: segResult?.imageUrl
+                        ?: dto.annotatedImageUrl ?: dto.aiAnalysis ?: dto.imageUrl,
+                    totalObjects = ver2Result?.totalObjects ?: segResult?.totalObjects ?: dto.totalObjects ?: 0,
+                    grouped      = grouped,
+                    createdAt    = nowIso8601().take(10),
+                    scannedBy    = userName,
+                    status       = WasteSortStatus.SCANNED,
+                    totalMassKg  = dto.totalMassKg,
+                )
+                onResult(entry)
             } catch (e: Throwable) {
                 AppLogger.e("DesktopScan", "analyze failed: ${e.message}")
                 errorMsg = e.message ?: "Detection failed"

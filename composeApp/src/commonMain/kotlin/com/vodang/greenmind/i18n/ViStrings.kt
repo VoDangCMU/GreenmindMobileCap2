@@ -696,6 +696,7 @@ val ViStrings = AppStrings("vi").apply {
     // ── Scan Detail ─────────────────────────────────────────────────────────────
     ecoScore = "Điểm sinh thái"
     noScoreYet = "Chưa có điểm"
+    calculatingScore = "Đang tính..."
     deltaPrefix = { d -> "+$d so với lần quét trước" }
     markAsSorted = "Đánh dấu đã phân loại"
     markAsBroughtOut = "Đánh dấu đã đưa ra"

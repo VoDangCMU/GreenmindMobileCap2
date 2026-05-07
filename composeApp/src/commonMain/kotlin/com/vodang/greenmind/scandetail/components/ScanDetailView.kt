@@ -306,7 +306,7 @@ fun ScanDetailView(
     }
 
     Box(modifier = contentModifier.background(Color(0xFFF5F5F5))) {
-        Column(modifier = if (displayMode == DisplayMode.BOTTOM_SHEET) Modifier.fillMaxWidth() else Modifier.fillMaxSize()) {
+        Column(modifier = if (displayMode == DisplayMode.BOTTOM_SHEET) Modifier.fillMaxWidth().heightIn(max = 450.dp) else Modifier.fillMaxSize()) {
             if (displayMode == DisplayMode.BOTTOM_SHEET) {
                 // Bottom sheet: use verticalScroll instead of LazyColumn
                 Column(
@@ -316,7 +316,7 @@ fun ScanDetailView(
                         .padding(bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    EcoScoreSection(greenScore = data.greenScore)
+                    EcoScoreSection(greenScore = data.greenScore, isLoading = data.isGreenScoreLoading)
                     HorizontalDivider(color = Color(0xFFE0E0E0))
 
                     ImagesSection(
@@ -366,7 +366,7 @@ fun ScanDetailView(
                     contentPadding = PaddingValues(bottom = 8.dp),
                 ) {
                     item {
-                        EcoScoreSection(greenScore = data.greenScore)
+                        EcoScoreSection(greenScore = data.greenScore, isLoading = data.isGreenScoreLoading)
                         HorizontalDivider(color = Color(0xFFE0E0E0))
                     }
 
