@@ -38,6 +38,11 @@ import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.wastereport.NetworkImage
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.vodang.greenmind.home.components.RouteMap
+import com.vodang.greenmind.home.components.RouteMapPoint
+import com.vodang.greenmind.location.Location
 
 private val green800v = Color(0xFF2E7D32)
 private val green600v = Color(0xFF388E3C)
@@ -218,6 +223,13 @@ fun CampaignDetailScreen(
                 }
             }
 
+            var showRouteFullScreen by remember { mutableStateOf(false) }
+            var userLocation by remember { mutableStateOf<Location?>(null) }
+            
+            LaunchedEffect(Unit) {
+                Geo.service.locationUpdates.collect { userLocation = it }
+            }
+
             // Map
             CampaignMap(
                 campaignLat = campaign.lat,
@@ -225,7 +237,45 @@ fun CampaignDetailScreen(
                 radius = campaign.radius,
                 height = 240.dp,
                 modifier = Modifier.fillMaxWidth(),
+                onRouteClick = { showRouteFullScreen = true }
             )
+
+            if (showRouteFullScreen) {
+                Dialog(
+                    onDismissRequest = { showRouteFullScreen = false },
+                    properties = DialogProperties(usePlatformDefaultWidth = false)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+                        val uLoc = userLocation
+                        if (uLoc == null) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = green800v)
+                            }
+                        } else {
+                            RouteMap(
+                                points = listOf(
+                                    RouteMapPoint(uLoc.latitude, uLoc.longitude),
+                                    RouteMapPoint(campaign.lat, campaign.lng)
+                                ),
+                                modifier = Modifier.fillMaxSize(),
+                                height = 0.dp,
+                            )
+                        }
+                        
+                        IconButton(
+                            onClick = { showRouteFullScreen = false },
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(16.dp)
+                                .statusBarsPadding()
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.8f))
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Close", tint = Color.Black)
+                        }
+                    }
+                }
+            }
 
             // Error
             if (error != null) {

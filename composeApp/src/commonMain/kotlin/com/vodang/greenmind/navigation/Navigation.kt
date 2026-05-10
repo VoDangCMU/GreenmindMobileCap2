@@ -23,6 +23,7 @@ enum class AppScreen {
     ENERGY, WALK_DISTANCE, ENVIRONMENTAL_IMPACT,
     CAMPAIGNS,
     PROFILE_DETAIL, SETTINGS, CATALOGUE, PRE_APP_SURVEY, SURVEY,
+    HOUSEHOLD_SETTINGS,
 }
 
 data class NavItem(
@@ -60,6 +61,7 @@ object Navigation {
         return when (current) {
             AppScreen.WASTE_SCAN, AppScreen.WASTE_SORT, AppScreen.MEAL_SCAN, AppScreen.BILL_SCAN,
             AppScreen.ENVIRONMENTAL_IMPACT -> AppScreen.WASTE_SCAN
+            AppScreen.HOUSEHOLD, AppScreen.HOUSEHOLD_WASTE, AppScreen.HOUSEHOLD_SETTINGS -> AppScreen.HOUSEHOLD
             else -> current
         }
     }

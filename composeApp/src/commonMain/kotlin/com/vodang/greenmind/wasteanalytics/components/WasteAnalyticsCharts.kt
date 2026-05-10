@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +20,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -106,7 +109,7 @@ internal fun WasteVolumeCard(data: PeriodData) {
                         .clip(RoundedCornerShape(10.dp))
                         .background(blue50),
                     contentAlignment = Alignment.Center
-                ) { Text("\uD83D\uDDD0\uFE0F", fontSize = 18.sp) }
+                ) { Icon(Icons.Filled.Delete, contentDescription = null, tint = blue700, modifier = Modifier.size(20.dp)) }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(s.wasteVolume, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
                     Text(s.kilograms, fontSize = 11.sp, color = Color.Gray)
@@ -215,7 +218,7 @@ internal fun WasteVolumeCard(data: PeriodData) {
 fun MultiSeriesCard(
     title: String,
     subtitle: String,
-    icon: String,
+    icon: ImageVector,
     seriesList: List<SeriesData>,
     xLabels: List<String>,
 ) {
@@ -245,7 +248,7 @@ fun MultiSeriesCard(
                         .clip(RoundedCornerShape(10.dp))
                         .background(seriesList.first().color.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
-                ) { Text(icon, fontSize = 18.sp) }
+                ) { Icon(icon, contentDescription = null, tint = seriesList.first().color, modifier = Modifier.size(20.dp)) }
                 Column {
                     Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
                     Text(subtitle, fontSize = 11.sp, color = Color.Gray)

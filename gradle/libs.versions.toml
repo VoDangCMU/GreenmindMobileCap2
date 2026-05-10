@@ -19,7 +19,6 @@ material-icons-extended = "1.6.11"
 multiplatformSettings = "1.1.1"
 koalaplot = "0.11.0"
 socketio-client = "2.1.0"
-
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }

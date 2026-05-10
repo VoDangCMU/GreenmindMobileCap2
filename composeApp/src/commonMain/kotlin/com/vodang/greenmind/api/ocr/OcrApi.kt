@@ -58,6 +58,7 @@ data class OcrItem(
     @SerialName("raw_name")              val rawName: String? = null,
     val brand: String? = null,
     val category: String? = null,
+    @SerialName("class_name")            val className: String? = null,
     @SerialName("plant_based")           val plantBased: Boolean? = null,
     val quantity: Int? = null,
     @SerialName("unit_price")            val unitPrice: Double? = null,
@@ -100,7 +101,20 @@ data class InvoiceDto(
     val totals: InvoiceTotals? = null,
     val createdAt: String? = null,
     val updatedAt: String? = null,
+    val pollution: Map<String, Double>? = null,
+    val impact: Map<String, Double>? = null,
 ) {
+    /** Calculate an eco score using the impact data, or fallback to greenRatio */
+    fun ecoScore(): Int {
+        if (impact != null) {
+            val air = impact["air"] ?: 0.0
+            val water = impact["water"] ?: 0.0
+            val soil = impact["soil"] ?: 0.0
+            val avg = (air + water + soil) / 3.0
+            return ((1.0 - avg) * 100).toInt().coerceIn(0, 100)
+        }
+        return greenRatio()
+    }
     /** Plant-based line totals / grand total × 100, clamped 0-100. */
     fun greenRatio(): Int {
         val grand = totals?.grandTotalDouble() ?: 0.0

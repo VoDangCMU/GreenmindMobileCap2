@@ -732,35 +732,22 @@ fun ScanDetailCard(
                     }
                 }
 
-                // Pollutant impact card
+                // Category tabs + segment grid (right under annotated image)
                 item {
-                    PollutantCard(pollutant = liveEntry.pollutantResult)
-                    HorizontalDivider(color = Color(0xFFE0E0E0))
-                }
-
-                // Mass & items card
-                item {
-                    MassItemsCard(entry = liveEntry)
-                    HorizontalDivider(color = Color(0xFFE0E0E0))
-                }
-
-                // Category tabs + segment grid
-                if (liveEntry.grouped.isNotEmpty()) {
-                    item {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color.White)
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Text(
-                                s.byCategory,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1B1B1B),
-                            )
-
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White)
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            s.byCategory,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1B1B1B),
+                        )
+                        if (liveEntry.grouped.isNotEmpty()) {
                             // Category tab pills — scrollable on small screens
                             Row(
                                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -802,8 +789,22 @@ fun ScanDetailCard(
                             // Segment image grid
                             val imageUrls = liveEntry.grouped[selectedCategory] ?: emptyList()
                             SegmentGrid(imageUrls = imageUrls, category = selectedCategory)
+                        } else {
+                            Text("N/A", fontSize = 13.sp, color = Color.Gray)
                         }
                     }
+                }
+
+                // Pollutant impact card
+                item {
+                    PollutantCard(pollutant = liveEntry.pollutantResult)
+                    HorizontalDivider(color = Color(0xFFE0E0E0))
+                }
+
+                // Mass & items card
+                item {
+                    MassItemsCard(entry = liveEntry)
+                    HorizontalDivider(color = Color(0xFFE0E0E0))
                 }
             }
 

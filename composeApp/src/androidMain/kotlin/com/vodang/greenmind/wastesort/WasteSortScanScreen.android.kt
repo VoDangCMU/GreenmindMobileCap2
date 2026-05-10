@@ -97,7 +97,7 @@ private fun WasteSortScanContent(
                 val imageUrl = upload.imageUrl
 
                 // 2. Call unified analyzeImage API
-                val data = analyzeImage(token, AnalyzeImageRequest(imageUrl = imageUrl)).data
+                val data = analyzeImage(token, AnalyzeImageRequest(imageUrl = imageUrl, type = "DETECT_TRASH")).data
 
                 // 3. Build pollution map if available
                 val pollutionMap = data.pollution?.let { p ->
@@ -126,7 +126,12 @@ private fun WasteSortScanContent(
                     backendId       = data.id,
                     imageUrl        = data.annotatedImageUrl ?: data.aiAnalysis ?: imageUrl,
                     totalObjects    = data.totalObjects ?: 0,
-                    grouped         = emptyMap(),
+                    grouped         = data.segments?.let { seg ->
+                        buildMap {
+                            if (seg.recyclable.isNotEmpty()) put("recyclable", seg.recyclable)
+                            if (seg.residual.isNotEmpty()) put("residual", seg.residual)
+                        }
+                    } ?: emptyMap(),
                     createdAt       = nowIso8601().take(10),
                     scannedBy       = userName,
                     status          = WasteSortStatus.SCANNED,
@@ -146,6 +151,7 @@ private fun WasteSortScanContent(
                         )
                     } else null,
                     totalMassKg     = data.totalMassKg,
+                    detectType      = data.detectType,
                 )
 
                 AppLogger.i("HouseholdScan", "analyzeImage ok id=${data.id} mass=${data.totalMassKg}")

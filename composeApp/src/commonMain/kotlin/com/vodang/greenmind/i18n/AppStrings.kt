@@ -481,6 +481,16 @@ class AppStrings(val langCode: String) {
     var noMembersYet: String = ""
     var failedToRemoveMember: String = ""
     var removeMember: String = ""
+    var confirmRemoveMember: String = ""
+    var editAddress: String = ""
+    var addressLabel: String = ""
+    var saveAddress: String = ""
+    var addressUpdated: String = ""
+    var failedToUpdateAddress: String = ""
+    var deleteHousehold: String = ""
+    var confirmDeleteHousehold: String = ""
+    var failedToDeleteHousehold: String = ""
+    var householdDeleted: String = ""
 
     // ── Catalogue ─────────────────────────────────────────────────────────────────
     var environmentalImpact: String = ""
@@ -703,6 +713,9 @@ class AppStrings(val langCode: String) {
     var habitProfile: String = ""
     var profileMealsIcon: String = ""
     var profileBillsIcon: String = ""
+    var myQrCode: String = ""
+    var qrCodeHint: String = ""
+    var userIdLabel: String = ""
 
     // ── Bottom Navigation ───────────────────────────────────────────────────────
     var community: String = ""

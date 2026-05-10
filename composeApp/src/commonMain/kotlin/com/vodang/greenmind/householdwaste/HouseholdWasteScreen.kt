@@ -31,8 +31,9 @@ import com.vodang.greenmind.api.wastereport.WasteReportDto
 import com.vodang.greenmind.api.wastereport.getMyWasteReports
 import com.vodang.greenmind.householdwaste.components.*
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.scandetail.DisplayMode
 import com.vodang.greenmind.scandetail.toScanDetailData
-import com.vodang.greenmind.scandetail.components.BottomSheetScanDetail
+import com.vodang.greenmind.scandetail.components.ScanDetailView
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WasteSortStore
@@ -46,6 +47,9 @@ import com.vodang.greenmind.theme.Green700
 import com.vodang.greenmind.theme.SurfaceGray
 import com.vodang.greenmind.theme.TextPrimary
 import com.vodang.greenmind.theme.TextSecondary
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 private val Red600     = Color(0xFFDC2626)
 private val Red50      = Color(0xFFFEE2E2)
@@ -60,6 +64,7 @@ private val Purple700  = Color(0xFF7B1FA2)
 fun HouseholdWasteScreen(
     onBack: () -> Unit = {},
     onNavigateToWasteImpact: () -> Unit = {},
+    onNavigateToWasteStat: () -> Unit = {},
     scrollState: ScrollState? = null,
     onSettingsClick: () -> Unit = {}
 ) {
@@ -75,7 +80,10 @@ fun HouseholdWasteScreen(
     var selectedReport    by remember { mutableStateOf<WasteReportDto?>(null) }
     var selectedScanGroup by remember { mutableStateOf<List<DetectTrashHistoryDto>?>(null) }
     var selectedScore     by remember { mutableStateOf<GreenScoreEntryDto?>(null) }
-    var isLoadingData     by remember { mutableStateOf(false) }
+    var isLoadingHouseholdScans by remember { mutableStateOf(false) }
+    var isLoadingUserScans      by remember { mutableStateOf(false) }
+    var isLoadingScore          by remember { mutableStateOf(false) }
+    var isLoadingReports        by remember { mutableStateOf(false) }
     var viewAllMode       by remember { mutableStateOf(ViewAllMode.NONE) }
     val refreshTrigger    by com.vodang.greenmind.store.WasteSortStore.refreshTrigger.collectAsState()
 
@@ -84,21 +92,38 @@ fun HouseholdWasteScreen(
     LaunchedEffect(household, refreshTrigger) {
         val h = household ?: return@LaunchedEffect
         val token = SettingsStore.getAccessToken() ?: return@LaunchedEffect
-        isLoadingData = true
-        try {
-            val allHouseholdScans = mutableListOf<DetectTrashHistoryDto>()
-            try { allHouseholdScans.addAll(getHistoryByHouseholdByType(token, "detect_trash").data) } catch (e: Throwable) { }
-            try { allHouseholdScans.addAll(getHistoryByHouseholdByType(token, "total_mass").data) } catch (e: Throwable) { }
-            try { allHouseholdScans.addAll(getHistoryByHouseholdByType(token, "predict_pollutant_impact").data) } catch (e: Throwable) { }
-            householdHistory = allHouseholdScans
-            WasteSortStore.fetchUserScans(token)
+        launch {
+            isLoadingHouseholdScans = true
+            try {
+                val allHouseholdScans = mutableListOf<DetectTrashHistoryDto>()
+                try { allHouseholdScans.addAll(getHistoryByHouseholdByType(token, "analyze_all").data) } catch (e: Throwable) { }
+                try { allHouseholdScans.addAll(getHistoryByHouseholdByType(token, "total_mass").data) } catch (e: Throwable) { }
+                householdHistory = allHouseholdScans
+            } finally { isLoadingHouseholdScans = false }
+        }
 
-            val scoreResp   = runCatching { getGreenScoreByHousehold(token, h.id) }
-            val reportsResp = runCatching { getMyWasteReports(token) }
-            scoreResp.getOrNull()?.data?.greenScores?.let { greenScoreEntries = it }
-            reportsResp.getOrNull()?.data?.let { wasteReports      = it }
-        } finally {
-            isLoadingData = false
+        launch {
+            isLoadingUserScans = true
+            try { WasteSortStore.fetchUserScans(token) } catch (e: Throwable) { }
+            finally { isLoadingUserScans = false }
+        }
+
+        launch {
+            isLoadingScore = true
+            try {
+                val scoreResp = getGreenScoreByHousehold(token, h.id)
+                greenScoreEntries = scoreResp.data.greenScores
+            } catch (e: Throwable) { }
+            finally { isLoadingScore = false }
+        }
+
+        launch {
+            isLoadingReports = true
+            try {
+                val reportsResp = getMyWasteReports(token)
+                wasteReports = reportsResp.data
+            } catch (e: Throwable) { }
+            finally { isLoadingReports = false }
         }
     }
 
@@ -136,8 +161,10 @@ fun HouseholdWasteScreen(
     }
 
     val localScrollState = scrollState ?: rememberScrollState()
-    val totalHouseholdScans = householdHistory.groupBy { it.imageUrl }.filter { (_, records) -> records.any { it.detectType != "detect_trash" } }.size
-    val totalUserScans = userHistory.groupBy { it.imageUrl }.size
+    val householdGroups = householdHistory.groupBy { it.imageUrl }
+    val totalHouseholdScans = householdGroups.size
+    val userGroups = userHistory.groupBy { it.imageUrl }
+    val totalUserScans = userGroups.size
 
     Column(
         modifier = Modifier
@@ -157,29 +184,30 @@ fun HouseholdWasteScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        if (isLoadingData) {
-            Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Green600)
-            }
+        StatsGrid(
+            greenScore = currentScore,
+            memberCount = h.members?.size ?: 0,
+            scanCount = totalHouseholdScans,
+            reportCount = wasteReports.size
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Text(s.viewWasteImpactAnalysis, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
+        Spacer(Modifier.height(10.dp))
+        ActionCards(
+            onNavigateToWasteImpact = onNavigateToWasteImpact,
+            onNavigateToWasteStat = onNavigateToWasteStat
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        // ── Green Score ────────────────────────────────────────────────────
+        SectionHeader(title = s.greenScoreSection, count = greenScoreEntries.size)
+        Spacer(Modifier.height(8.dp))
+        if (isLoadingScore) {
+            Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Green600) }
         } else {
-            StatsGrid(
-                greenScore = currentScore,
-                memberCount = h.members?.size ?: 0,
-                scanCount = totalHouseholdScans,
-                reportCount = wasteReports.size
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            Text(s.viewWasteImpactAnalysis, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary, modifier = Modifier.padding(horizontal = 16.dp))
-            Spacer(Modifier.height(10.dp))
-            ActionCards(onNavigateToWasteImpact = onNavigateToWasteImpact)
-
-            Spacer(Modifier.height(20.dp))
-
-            // ── Green Score ────────────────────────────────────────────────────
-            SectionHeader(title = s.greenScoreSection, count = greenScoreEntries.size)
-            Spacer(Modifier.height(8.dp))
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
@@ -195,18 +223,21 @@ fun HouseholdWasteScreen(
                     ViewAllButton(text = s.viewAllHistory, onClick = { viewAllMode = ViewAllMode.GREEN_SCORES })
                 }
             }
+        }
 
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
-            // ── Household Scans ────────────────────────────────────────────────
-            SectionHeader(title = s.householdScansSection, count = totalHouseholdScans)
-            Spacer(Modifier.height(8.dp))
+        // ── Household Scans ────────────────────────────────────────────────
+        SectionHeader(title = s.householdScansSection, count = totalHouseholdScans)
+        Spacer(Modifier.height(8.dp))
+        if (isLoadingHouseholdScans) {
+            Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Green600) }
+        } else {
             if (totalHouseholdScans == 0) {
                 Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     EmptyStateMessage(icon = Icons.Outlined.CameraAlt, message = s.noHouseholdScans)
                 }
             } else {
-                val householdGroups = householdHistory.groupBy { it.imageUrl }.filter { (_, records) -> records.any { it.detectType != "detect_trash" } }
                 householdGroups.values.take(2).forEach { records ->
                     GroupedDetectScanCard(records = records, onClick = { selectedScanGroup = records })
                     Spacer(Modifier.height(8.dp))
@@ -215,18 +246,21 @@ fun HouseholdWasteScreen(
                     ViewAllButton(text = s.viewAllItems, onClick = { viewAllMode = ViewAllMode.HOUSEHOLD_SCANS })
                 }
             }
+        }
 
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
-            // ── My Scan Reports ────────────────────────────────────────────────
-            SectionHeader(title = s.myScanReports, count = totalUserScans)
-            Spacer(Modifier.height(8.dp))
+        // ── My Scan Reports ────────────────────────────────────────────────
+        SectionHeader(title = s.myScanReports, count = totalUserScans)
+        Spacer(Modifier.height(8.dp))
+        if (isLoadingUserScans) {
+            Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Green600) }
+        } else {
             if (totalUserScans == 0) {
                 Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     EmptyStateMessage(icon = Icons.Outlined.Person, message = s.myScanReports)
                 }
             } else {
-                val userGroups = userHistory.groupBy { it.imageUrl }
                 userGroups.values.take(2).forEach { records ->
                     GroupedDetectScanCard(records = records, onClick = { selectedScanGroup = records })
                     Spacer(Modifier.height(8.dp))
@@ -235,12 +269,16 @@ fun HouseholdWasteScreen(
                     ViewAllButton(text = s.viewAllItems, onClick = { viewAllMode = ViewAllMode.USER_SCANS })
                 }
             }
+        }
 
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
-            // ── Waste Reports ──────────────────────────────────────────────────
-            SectionHeader(title = s.myWasteReports, count = wasteReports.size)
-            Spacer(Modifier.height(8.dp))
+        // ── Waste Reports ──────────────────────────────────────────────────
+        SectionHeader(title = s.myWasteReports, count = wasteReports.size)
+        Spacer(Modifier.height(8.dp))
+        if (isLoadingReports) {
+            Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Green600) }
+        } else {
             if (wasteReports.isEmpty()) {
                 Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     EmptyStateMessage(icon = Icons.Outlined.Warning, message = s.noWasteReports)
@@ -254,20 +292,40 @@ fun HouseholdWasteScreen(
                     ViewAllButton(text = s.viewAllItems, onClick = { viewAllMode = ViewAllMode.WASTE_REPORTS })
                 }
             }
-
-            Spacer(Modifier.height(24.dp))
         }
+
+        Spacer(Modifier.height(24.dp))
     }
 
     selectedReport?.let { report ->
         WasteReportDetailSheet(report = report, onDismiss = { selectedReport = null })
     }
     selectedScanGroup?.let { group ->
-        BottomSheetScanDetail(
-            data = group.toScanDetailData(),
-            onDismiss = { selectedScanGroup = null },
-            onStatusChange = { /* Status changed */ }
-        )
+        BackHandler(enabled = true) { selectedScanGroup = null }
+        var scanData by remember(group) { mutableStateOf(group.toScanDetailData()) }
+        Box(Modifier.fillMaxSize()) {
+            ScanDetailView(
+                data = scanData,
+                onBack = { selectedScanGroup = null },
+                onStatusChange = { newStatus ->
+                    scanData = scanData.copy(status = newStatus)
+                    WasteSortStore.triggerRefresh()
+                },
+                displayMode = DisplayMode.FULL_SCREEN,
+            )
+            Box(
+                modifier = Modifier
+                    .padding(10.dp)
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .clickable { selectedScanGroup = null }
+                    .align(Alignment.TopStart),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(s.backArrow, fontSize = 18.sp, color = Color.White)
+            }
+        }
     }
     selectedScore?.let { score ->
         GreenScoreDetailSheet(entry = score, onDismiss = { selectedScore = null })
@@ -401,7 +459,10 @@ private fun StatCard(
 // ── Action Cards ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun ActionCards(onNavigateToWasteImpact: () -> Unit) {
+private fun ActionCards(
+    onNavigateToWasteImpact: () -> Unit,
+    onNavigateToWasteStat: () -> Unit
+) {
     val s = LocalAppStrings.current
     Row(
         modifier = Modifier
@@ -426,7 +487,7 @@ private fun ActionCards(onNavigateToWasteImpact: () -> Unit) {
             }
         }
         Card(
-            modifier = Modifier.weight(1f).clickable(onClick = { }),
+            modifier = Modifier.weight(1f).clickable(onClick = onNavigateToWasteStat),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Blue50),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)

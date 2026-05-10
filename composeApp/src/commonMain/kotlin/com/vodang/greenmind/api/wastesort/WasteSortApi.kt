@@ -48,9 +48,9 @@ private data class DetectTrashResponseDto(
 
 private val detectHttpClient = buildHttpClient(
     tag              = "DetectTrash",
-    requestTimeoutMs = 120_000,
-    connectTimeoutMs = 30_000,
-    socketTimeoutMs  = 120_000,
+    requestTimeoutMs = 300_000L,
+    connectTimeoutMs = 30_000L,
+    socketTimeoutMs  = 300_000L,
 )
 
 /**
@@ -69,6 +69,10 @@ suspend fun predictTrashSeg(
     AppLogger.i("DetectTrash", "predictTrashSeg filename=$filename bytes=${imageBytes.size}")
     try {
         val response = detectHttpClient.post("$AI_BASE_URL/predict_trash_seg") {
+            timeout {
+                requestTimeoutMillis = 300_000L
+                socketTimeoutMillis = 300_000L
+            }
             setBody(MultiPartFormDataContent(formData {
                 append("file", imageBytes, Headers.build {
                     append(HttpHeaders.ContentType, "image/jpeg")
@@ -106,6 +110,10 @@ suspend fun detectTrash(
     AppLogger.i("DetectTrash", "detectTrash filename=$filename bytes=${imageBytes.size}")
     try {
         val response = detectHttpClient.post("$AI_BASE_URL/detect-trash-ver2") {
+            timeout {
+                requestTimeoutMillis = 300_000L
+                socketTimeoutMillis = 300_000L
+            }
             setBody(MultiPartFormDataContent(formData {
                 append("file", imageBytes, Headers.build {
                     append(HttpHeaders.ContentType, "image/jpeg")

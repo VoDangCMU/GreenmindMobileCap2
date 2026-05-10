@@ -35,6 +35,11 @@ import com.vodang.greenmind.wastesort.WasteSortStatus
 import com.vodang.greenmind.wastesort.label
 import com.vodang.greenmind.wastesort.components.LifecycleProgressBar
 import com.vodang.greenmind.householdwaste.parseWasteSortStatus
+import com.vodang.greenmind.wastesort.categoryBg
+import com.vodang.greenmind.wastesort.categoryColor
+import com.vodang.greenmind.wastesort.categoryEmoji
+import com.vodang.greenmind.wastesort.categoryLabel
+import com.vodang.greenmind.wastesort.components.SegmentGrid
 import kotlinx.coroutines.launch
 
 private val green700  = Color(0xFF2E7D32)
@@ -198,6 +203,60 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
                     .clip(RoundedCornerShape(12.dp))
                     .clickable { previewUrl = primary.imageUrl },
             )
+
+            // Segments
+            val primarySegments = records.firstNotNullOfOrNull { it.segments }
+            if (primarySegments != null && (primarySegments.recyclable.isNotEmpty() || primarySegments.residual.isNotEmpty())) {
+                HorizontalDivider(color = Color(0xFFEEEEEE))
+                Text("Segments", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                val segCategories = buildList {
+                    if (primarySegments.recyclable.isNotEmpty()) add("recyclable")
+                    if (primarySegments.residual.isNotEmpty()) add("residual")
+                }
+                var segSelected by remember { mutableStateOf(segCategories.firstOrNull() ?: "") }
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    segCategories.forEach { cat ->
+                        val sel = cat == segSelected
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(if (sel) categoryColor(cat) else categoryBg(cat))
+                                .clickable { segSelected = cat }
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(
+                                    categoryEmoji(cat), contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (sel) Color.White else categoryColor(cat)
+                                )
+                                Text(
+                                    categoryLabel(cat),
+                                    fontSize = 13.sp,
+                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (sel) Color.White else categoryColor(cat),
+                                )
+                            }
+                        }
+                    }
+                }
+                val segUrls = when (segSelected) {
+                    "recyclable" -> primarySegments.recyclable
+                    "residual" -> primarySegments.residual
+                    else -> emptyList()
+                }
+                SegmentGrid(imageUrls = segUrls, category = segSelected)
+            } else {
+                HorizontalDivider(color = Color(0xFFEEEEEE))
+                Text("Segments", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text("N/A", fontSize = 12.sp, color = gray400c)
+            }
 
             // Summary chips — scroll horizontally on small screens
             Row(

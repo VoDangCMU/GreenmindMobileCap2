@@ -31,7 +31,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.ocr.InvoiceDto
+import com.vodang.greenmind.api.ocr.OcrItem
+import com.vodang.greenmind.api.ocr.OcrVendor
 import com.vodang.greenmind.api.ocr.getInvoices
+import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
+import com.vodang.greenmind.api.wastedetect.WasteDetectImpact
+import com.vodang.greenmind.home.components.EnvImpactCard
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.util.AppLogger
@@ -73,7 +78,34 @@ fun BillListScreen(onScanClick: () -> Unit) {
         val token = SettingsStore.getAccessToken()
         if (token == null) { isLoading = false; return@LaunchedEffect }
         try {
-            invoices = getInvoices(token)
+            val serverInvoices = getInvoices(token)
+            val mockInvoice = InvoiceDto(
+                id = "mock-123",
+                vendor = OcrVendor(name = "Scan Demo"),
+                createdAt = "2026-05-11T12:00:00Z",
+                items = listOf(
+                    OcrItem(rawName = "coca", quantity = 2, className = "Clear plastic bottle"),
+                    OcrItem(rawName = "sprite", quantity = 1, className = "Clear plastic bottle"),
+                    OcrItem(rawName = "tonic", quantity = 1, className = "Clear plastic bottle"),
+                    OcrItem(rawName = "soda", quantity = 1, className = "Drink can")
+                ),
+                pollution = mapOf(
+                    "CO2" to 0.22944161271869984,
+                    "dioxin" to 0.1624365399778406,
+                    "microplastic" to 0.20304567497230075,
+                    "toxic_chemicals" to 0.1624365399778406,
+                    "non_biodegradable" to 0.20304567497230075,
+                    "NOx" to 0.019796953309799324,
+                    "SO2" to 0.019796953309799324,
+                    "CH4" to 0.0, "PM2.5" to 0.0, "Pb" to 0.0, "Hg" to 0.0, "Cd" to 0.0, "nitrate" to 0.0, "chemical_residue" to 0.0, "styrene" to 0.0
+                ),
+                impact = mapOf(
+                    "air" to 0.0896785064460995,
+                    "water" to 0.20304567497230075,
+                    "soil" to 0.18274110747507066
+                )
+            )
+            invoices = listOf(mockInvoice) + serverInvoices
         } catch (e: Throwable) {
             AppLogger.e("BillList", "Failed to load invoices: ${e.message}")
             errorMsg = "Could not load history. Pull down to retry."
@@ -165,7 +197,7 @@ fun BillListScreen(onScanClick: () -> Unit) {
 
 @Composable
 private fun InvoiceCard(invoice: InvoiceDto, onClick: () -> Unit) {
-    val ratio  = invoice.greenRatio()
+    val ratio  = invoice.ecoScore()
     val color  = ratioColor(ratio)
     val symbol = currencySymbol(invoice.doc?.currency)
     val grand  = invoice.totals?.grandTotalDouble() ?: 0.0
@@ -211,13 +243,22 @@ private fun InvoiceCard(invoice: InvoiceDto, onClick: () -> Unit) {
                 Text("$itemCount item${if (itemCount != 1) "s" else ""}", fontSize = 11.sp, color = Color(0xFF9E9E9E))
             }
 
-            // Right — grand total
+            // Right — grand total or impact
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(formatAmount(grand, symbol), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF424242))
-                val plant = invoice.items?.filter { it.plantBased == true }?.sumOf { it.lineTotal ?: 0.0 } ?: 0.0
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Filled.Eco, contentDescription = null, modifier = Modifier.size(14.dp), tint = green600)
-                    Text("${formatAmount(plant, symbol)}", fontSize = 11.sp, color = green600)
+                if (invoice.totals != null) {
+                    Text(formatAmount(grand, symbol), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF424242))
+                    val plant = invoice.items?.filter { it.plantBased == true }?.sumOf { it.lineTotal ?: 0.0 } ?: 0.0
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Filled.Eco, contentDescription = null, modifier = Modifier.size(14.dp), tint = green600)
+                        Text("${formatAmount(plant, symbol)}", fontSize = 11.sp, color = green600)
+                    }
+                } else if (invoice.pollution != null) {
+                    Text("${invoice.items?.sumOf { it.quantity ?: 1 } ?: 0} items", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF424242))
+                    val co2 = invoice.pollution["CO2"] ?: 0.0
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Filled.Eco, contentDescription = null, modifier = Modifier.size(14.dp), tint = green600)
+                        Text("${co2.fmt(2)} kg CO₂", fontSize = 11.sp, color = green600)
+                    }
                 }
             }
         }
@@ -298,7 +339,14 @@ private fun InvoiceDetailSheet(invoice: InvoiceDto, onDismiss: () -> Unit) {
                                         fontWeight = FontWeight.Medium,
                                     )
                                 }
-                                if (!item.brand.isNullOrBlank()) {
+                                if (!item.className.isNullOrBlank()) {
+                                    Text(
+                                        item.className,
+                                        fontSize = 11.sp,
+                                        color = Color.Gray,
+                                        modifier = Modifier.padding(start = 18.dp),
+                                    )
+                                } else if (!item.brand.isNullOrBlank()) {
                                     Text(
                                         item.brand,
                                         fontSize = 11.sp,
@@ -332,6 +380,20 @@ private fun InvoiceDetailSheet(invoice: InvoiceDto, onDismiss: () -> Unit) {
                     HorizontalDivider(color = Color(0xFFF0F0F0))
                     TotalsRow("Grand Total", formatAmount(totals.grandTotalDouble(), symbol), green800, bold = true)
                 }
+            } else if (invoice.pollution != null && invoice.impact != null) {
+                Spacer(Modifier.height(8.dp))
+                val wasteDetect = WasteDetectResponse(
+                    items = emptyList(), // Items already displayed above
+                    totalObjects = invoice.items?.sumOf { it.quantity ?: 1 } ?: 0,
+                    imageUrl = "",
+                    pollution = invoice.pollution,
+                    impact = WasteDetectImpact(
+                        airPollution = invoice.impact["air"] ?: 0.0,
+                        waterPollution = invoice.impact["water"] ?: 0.0,
+                        soilPollution = invoice.impact["soil"] ?: 0.0
+                    )
+                )
+                EnvImpactCard(result = wasteDetect)
             }
         }
     }

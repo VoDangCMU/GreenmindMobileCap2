@@ -31,10 +31,13 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.vodang.greenmind.api.bill.BillAnalysisResult
 import com.vodang.greenmind.api.bill.BillItem
+import com.vodang.greenmind.api.bill.toBillAnalysisResult
 import com.vodang.greenmind.api.envimpact.logEnvironmentalImpact
 import com.vodang.greenmind.api.invoicepollution.InvoicePollutionResponse
 import com.vodang.greenmind.api.invoicepollution.scanInvoicePollution
 import com.vodang.greenmind.api.invoicepollution.toWasteDetectResponse
+import com.vodang.greenmind.api.ocr.OcrResponse
+import com.vodang.greenmind.api.ocr.ocrBill
 import com.vodang.greenmind.api.upload.requestAndUpload
 import com.vodang.greenmind.home.components.EnvImpactCard
 import com.vodang.greenmind.i18n.LocalAppStrings
@@ -212,24 +215,24 @@ private fun BillScanContent(
                                     val token = SettingsStore.getAccessToken()
                                     coroutineScope {
                                         val detectDeferred = async {
-                                            scanInvoicePollution(imageBytes = b, filename = filename)
+                                            runCatching { scanInvoicePollution(imageBytes = b, filename = filename) }
+                                                .onFailure { AppLogger.e("BillScan", "scanInvoicePollution failed: ${it.message}") }
+                                                .getOrNull()
                                         }
                                         val uploadDeferred = if (token != null) async {
-                                            try {
+                                            runCatching {
                                                 requestAndUpload(
                                                     accessToken = token,
                                                     filename    = filename,
                                                     fileBytes   = b,
                                                     contentType = "image/jpeg",
                                                 ).imageUrl
-                                            } catch (_: Throwable) { null }
+                                            }.getOrNull()
                                         } else null
                                         detectResult = detectDeferred.await()
                                         uploadedImageUrl = uploadDeferred?.await()
                                     }
-                                    // Log env impact — fire-and-forget child coroutine, never blocks or crashes parent
                                     val res = detectResult
-                                    AppLogger.i("EnvImpact", "Bill: token=${if (token != null) "present" else "null"} res=${if (res != null) "present" else "null"}")
                                     if (token != null && res != null) {
                                         launch {
                                             runCatching {
@@ -245,7 +248,12 @@ private fun BillScanContent(
                                             }
                                         }
                                     }
-                                    phase = BillScanPhase.RESULT
+                                    if (detectResult == null) {
+                                        error = s.billError
+                                        phase = BillScanPhase.IDLE
+                                    } else {
+                                        phase = BillScanPhase.RESULT
+                                    }
                                 } catch (e: Throwable) {
                                     error = s.billError
                                     phase = BillScanPhase.IDLE
@@ -279,8 +287,11 @@ private fun BillScanContent(
 
         // ── Step 4: Show result ───────────────────────────────────────────────
         BillScanPhase.RESULT -> {
-            val res = detectResult ?: run { phase = BillScanPhase.IDLE; return }
-            var label by remember(res) { mutableStateOf("") }
+            val det = detectResult
+            if (det == null) {
+                error = s.billError; phase = BillScanPhase.IDLE; return
+            }
+            var label by remember(det) { mutableStateOf(det.items.firstOrNull()?.rawName ?: "") }
 
             Column(
                 modifier = Modifier
@@ -314,8 +325,42 @@ private fun BillScanContent(
                     )
                 }
 
+                // ── Receipt summary ───────────────────────────────────────
+                val analysis = remember(det) { det.toBillAnalysisResult() }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(s.billItems, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        analysis.items.forEach { item ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(item.name, fontSize = 13.sp)
+                                if (item.amount > 0) Text(item.amount.toString(), fontSize = 13.sp)
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(s.billTotal, fontWeight = FontWeight.SemiBold)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(s.billGreenSpend, fontSize = 14.sp, color = green800)
+                            Text(s.billGreenRatio(analysis.greenRatio), fontSize = 14.sp, color = green800)
+                        }
+                    }
+                }
+
                 // ── Environmental impact card ─────────────────────────────────
-                EnvImpactCard(result = res.toWasteDetectResponse())
+                if (det != null) {
+                    EnvImpactCard(result = det.toWasteDetectResponse())
+                }
 
                 // ── Action buttons ────────────────────────────────────────────
                 Row(
@@ -339,8 +384,8 @@ private fun BillScanContent(
                         modifier = Modifier.weight(1f),
                         onClick = {
                             onScanComplete(
-                                res.toBillAnalysisResult(),
-                                label.ifBlank { res.items.firstOrNull()?.rawName ?: "Bill scan" },
+                                det.toBillAnalysisResult(),
+                                label.ifBlank { det.items.firstOrNull()?.rawName ?: "Bill scan" },
                                 uploadedImageUrl,
                             )
                         },

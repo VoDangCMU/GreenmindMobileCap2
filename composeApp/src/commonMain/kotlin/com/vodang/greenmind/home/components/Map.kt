@@ -57,7 +57,7 @@ fun RouteMap(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(height)
+            .then(if (height > 0.dp) Modifier.height(height) else Modifier)
             .nestedScroll(scrollConsumer)
     ) {
         RouteMapView(
@@ -123,6 +123,7 @@ fun CampaignMap(
     radius: Int,
     modifier: Modifier = Modifier,
     height: Dp = 280.dp,
+    onRouteClick: (() -> Unit)? = null,
 ) {
     var center by remember { mutableStateOf<Location?>(null) }
     var currentLocation by remember { mutableStateOf<Location?>(null) }
@@ -149,7 +150,7 @@ fun CampaignMap(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(height)
+            .then(if (height > 0.dp) Modifier.height(height) else Modifier)
             .nestedScroll(scrollConsumer)
     ) {
         CampaignMapView(
@@ -173,6 +174,12 @@ fun CampaignMap(
                 .width(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            if (onRouteClick != null) {
+                MapControlButton(label = "↱", color = Color(0xFFE65100)) {
+                    onRouteClick()
+                }
+                MapControlDivider()
+            }
             MapControlButton(label = "⌖", color = Color(0xFF1565C0)) {
                 currentLocation?.let { center = it }
             }

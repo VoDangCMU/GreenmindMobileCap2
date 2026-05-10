@@ -45,6 +45,7 @@ import com.vodang.greenmind.wastesort.WasteSortScreen
 import com.vodang.greenmind.wastesort.WasteTotalMassScreen
 import com.vodang.greenmind.wastereport.WasteReportScreen
 import com.vodang.greenmind.wasteimpact.WasteImpactScreen
+import com.vodang.greenmind.householdwaste.HouseholdSettingsScreen
 import com.vodang.greenmind.householdwaste.HouseholdWasteScreen
 import com.vodang.greenmind.wasteanalytics.WasteAnalyticsScreen
 import com.vodang.greenmind.meal.MealScreen
@@ -126,7 +127,6 @@ fun HomeScreen(
 
     val activeLazyListState: androidx.compose.foundation.lazy.LazyListState? = when (navState.currentScreen) {
         AppScreen.BLOG -> blogLazyListState
-        AppScreen.WASTE_REPORT -> wasteReportLazyListState
         else -> null
     }
 
@@ -254,6 +254,10 @@ fun HomeScreen(
         }
         AppScreen.SETTINGS -> {
             title = s.settings
+            subtitle = null
+        }
+        AppScreen.HOUSEHOLD_SETTINGS -> {
+            title = s.householdSettings
             subtitle = null
         }
         AppScreen.CATALOGUE -> {
@@ -401,8 +405,9 @@ fun HomeScreen(
                 AppScreen.HOUSEHOLD -> HouseholdWasteScreen(
                     onBack = { Navigation.navigate(AppScreen.HOME) },
                     onNavigateToWasteImpact = { Navigation.navigate(AppScreen.WASTE_IMPACT) },
+                    onNavigateToWasteStat = { Navigation.navigate(AppScreen.WASTE_ANALYTICS) },
                     scrollState = householdScrollState,
-                    onSettingsClick = { Navigation.navigate(AppScreen.SETTINGS) },
+                    onSettingsClick = { Navigation.navigate(AppScreen.HOUSEHOLD_SETTINGS) },
                 )
                 AppScreen.BLOG -> BlogScreen(
                     selectedTab = blogTab,
@@ -415,12 +420,16 @@ fun HomeScreen(
                 AppScreen.WASTE_SORT -> WasteSortScreen(onScanClick = { Navigation.goBack() })
                 AppScreen.WASTE_REPORT -> WasteReportScreen(lazyListState = wasteReportLazyListState)
                 AppScreen.WASTE_IMPACT, AppScreen.ENVIRONMENTAL_IMPACT -> WasteImpactScreen()
-                AppScreen.WASTE_ANALYTICS -> WasteAnalyticsScreen()
+                AppScreen.WASTE_ANALYTICS -> WasteAnalyticsScreen(onBack = { Navigation.goBack() })
                 AppScreen.WASTE_TOTAL_MASS -> WasteTotalMassScreen(onBack = { Navigation.goBack() })
                 AppScreen.HOUSEHOLD_WASTE -> HouseholdWasteScreen(
                     onBack = { Navigation.goBack() },
                     onNavigateToWasteImpact = { Navigation.navigate(AppScreen.WASTE_IMPACT) },
-                    onSettingsClick = { Navigation.navigate(AppScreen.SETTINGS) },
+                    onNavigateToWasteStat = { Navigation.navigate(AppScreen.WASTE_ANALYTICS) },
+                    onSettingsClick = { Navigation.navigate(AppScreen.HOUSEHOLD_SETTINGS) },
+                )
+                AppScreen.HOUSEHOLD_SETTINGS -> HouseholdSettingsScreen(
+                    onBack = { Navigation.goBack() },
                 )
                 AppScreen.MEAL_SCAN -> MealScreen()
                 AppScreen.BILL_SCAN -> BillScreen()
@@ -731,7 +740,11 @@ fun HomeScreen(
     if (showPicker) {
         UserTypePickerModal(
             current = userType,
-            onSelect = { userType = it; showPicker = false },
+            onSelect = { 
+                userType = it
+                showPicker = false
+                Navigation.navigate(AppScreen.HOME)
+            },
             onDismiss = { showPicker = false }
         )
     }

@@ -17,7 +17,6 @@ import com.vodang.greenmind.scandetail.DisplayMode
 import com.vodang.greenmind.scandetail.ScanDetailData
 import com.vodang.greenmind.scandetail.toScanDetailData
 import com.vodang.greenmind.scandetail.components.ScanDetailView
-import com.vodang.greenmind.scandetail.components.BottomSheetScanDetail
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WasteSortStore
@@ -63,6 +62,7 @@ data class WasteSortEntry(
     val pollutantResult: WasteDetectResponse? = null,
     val greenScoreResult: GreenScoreEntryDto? = null,
     val totalMassKg: Double? = null,
+    val detectType: String? = null,
 )
 
 // ── Category helpers ──────────────────────────────────────────────────────────
@@ -132,6 +132,7 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
 
     BackHandler(enabled = selectedEntryId != null) { selectedEntryId = null }
     BackHandler(enabled = showScan) { showScan = false }
+    BackHandler(enabled = selectedApiGroup != null) { selectedApiGroup = null }
 
     when {
         showScan -> {
@@ -148,6 +149,19 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
                 },
                 onBack = { showScan = false },
                 useGallery = useGallery,
+            )
+        }
+        selectedApiGroup != null -> {
+            val group = selectedApiGroup!!
+            var scanData by remember(group) { mutableStateOf(group.toScanDetailData()) }
+            ScanDetailView(
+                data = scanData,
+                onBack = { selectedApiGroup = null },
+                onStatusChange = { newStatus ->
+                    scanData = scanData.copy(status = newStatus)
+                    WasteSortStore.triggerRefresh()
+                },
+                displayMode = DisplayMode.FULL_SCREEN,
             )
         }
         detailData != null -> {
@@ -178,13 +192,5 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
                 onApiScanClick = { selectedApiGroup = it },
             )
         }
-    }
-
-    selectedApiGroup?.let { group ->
-        // Use unified ScanDetailView for grouped records (bottom sheet mode)
-        BottomSheetScanDetail(
-            data = group.toScanDetailData(),
-            onDismiss = { selectedApiGroup = null },
-        )
     }
 }

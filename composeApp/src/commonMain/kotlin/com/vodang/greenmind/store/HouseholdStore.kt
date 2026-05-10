@@ -5,6 +5,8 @@ import com.vodang.greenmind.api.households.HouseholdDto
 import com.vodang.greenmind.api.households.getCurrentUserHousehold
 import com.vodang.greenmind.api.households.createHousehold
 import com.vodang.greenmind.api.households.CreateHouseholdRequest
+import com.vodang.greenmind.api.households.UpdateHouseholdRequest
+import com.vodang.greenmind.api.households.updateHousehold
 import com.vodang.greenmind.api.households.getGreenScoreByHousehold
 import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.CoroutineScope
@@ -101,6 +103,20 @@ object HouseholdStore {
             true
         } catch (e: Exception) {
             AppLogger.e("HouseholdStore", "Failed to create household: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun updateHouseholdAddress(address: String, lat: Double, lng: Double): Boolean {
+        val token = SettingsStore.getAccessToken() ?: return false
+        val h = _household.value ?: return false
+        return try {
+            updateHousehold(token, UpdateHouseholdRequest(address, lat, lng, ""))
+            _household.value = h.copy(address = address, lat = lat.toString(), lng = lng.toString())
+            AppLogger.i("HouseholdStore", "Household address updated")
+            true
+        } catch (e: Exception) {
+            AppLogger.e("HouseholdStore", "Failed to update household: ${e.message}")
             false
         }
     }

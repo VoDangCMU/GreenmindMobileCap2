@@ -113,11 +113,11 @@ suspend fun createWasteReport(
     }
 }
 
-/** GET /waste-reports/ — all reports (admin) */
+/** GET /waste-monitoring — all reports (public/monitoring) */
 suspend fun getAllWasteReports(accessToken: String): WasteReportPageResponse {
     AppLogger.i("WasteReport", "getAllWasteReports")
     try {
-        val resp = httpClient.get("$BASE_URL/waste-reports/") {
+        val resp = httpClient.get("$BASE_URL/waste-monitoring") {
             header("Authorization", "Bearer $accessToken")
         }
         AppLogger.d("WasteReport", "getAllWasteReports → HTTP ${resp.status.value}")

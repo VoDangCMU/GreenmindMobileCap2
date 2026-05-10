@@ -106,56 +106,55 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
         }
     }
 
-    if (showScan) {
-        WasteReportScanScreen(
-            onStartSubmit = { form ->
-                isSubmitting = true
-                submitStep = SubmitStep.SENDING_DATA
-                submitError = null
-                scope.launch {
-                    val token = SettingsStore.getAccessToken() ?: run {
-                        isSubmitting = false
-                        submitError = "No access token"
-                        return@launch
-                    }
-                    try {
-                        submitStep = SubmitStep.SENDING_DATA
-                        val created = createWasteReport(
-                            token,
-                            CreateWasteReportRequest(
-                                wasteType   = form.wasteType,
-                                wardName    = form.wardName,
-                                lat         = form.lat,
-                                lng         = form.lng,
-                                description = form.description,
-                                imageKey    = form.imageKey,
-                                imageUrl    = form.imageUrl,
-                            )
-                        )
-                        submitStep = SubmitStep.COMPLETING
-                        myReports = listOf(created) + myReports
-                        if (allLoaded) allReports = listOf(created) + allReports
-                        kotlinx.coroutines.delay(500)
-                        showScan = false
-                    } catch (e: Throwable) {
-                        AppLogger.e("WasteReport", "Create failed: ${e.message}")
-                        submitError = e.message ?: "Failed to submit report"
-                    }
-                    isSubmitting = false
-                }
-            },
-            onBack = { showScan = false },
-            launchCamera = !scanFromGallery,
-            isSubmitting = isSubmitting,
-        )
-        return
-    }
-
     val myListState  = lazyListState ?: rememberLazyListState()
     val allListState = rememberLazyListState()
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (showScan) {
+            WasteReportScanScreen(
+                onStartSubmit = { form ->
+                    isSubmitting = true
+                    submitStep = SubmitStep.SENDING_DATA
+                    submitError = null
+                    scope.launch {
+                        val token = SettingsStore.getAccessToken() ?: run {
+                            isSubmitting = false
+                            submitError = "No access token"
+                            return@launch
+                        }
+                        try {
+                            submitStep = SubmitStep.SENDING_DATA
+                            val created = createWasteReport(
+                                token,
+                                CreateWasteReportRequest(
+                                    wasteType   = form.wasteType,
+                                    wardName    = form.wardName,
+                                    lat         = form.lat,
+                                    lng         = form.lng,
+                                    description = form.description,
+                                    imageKey    = form.imageKey,
+                                    imageUrl    = form.imageUrl,
+                                )
+                            )
+                            submitStep = SubmitStep.COMPLETING
+                            myReports = listOf(created) + myReports
+                            if (allLoaded) allReports = listOf(created) + allReports
+                            kotlinx.coroutines.delay(500)
+                            showScan = false
+                        } catch (e: Throwable) {
+                            AppLogger.e("WasteReport", "Create failed: ${e.message}")
+                            submitError = e.message ?: "Failed to submit report"
+                        }
+                        isSubmitting = false
+                    }
+                },
+                onBack = { showScan = false },
+                launchCamera = !scanFromGallery,
+                isSubmitting = isSubmitting,
+            )
+        } else {
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
+                Column(modifier = Modifier.fillMaxSize()) {
             PrimaryTabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.White,
@@ -190,7 +189,7 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
             val listState = if (selectedTab == 0) myListState else allListState
 
             when {
-                isLoading -> Box(
+                isLoading && items.isEmpty() -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -205,7 +204,12 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(Icons.Filled.Refresh.name, fontSize = 48.sp)
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(48.dp)
+                        )
                         Text(
                             s.wasteReportEmpty,
                             fontSize = 14.sp,
@@ -215,19 +219,33 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                     }
                 }
 
-                else -> LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(items, key = { it.id }) { report ->
-                        WasteReportCard(report, onClick = { selectedReport = report })
+                else -> Box(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(items, key = { it.id }) { report ->
+                            WasteReportCard(report, onClick = { selectedReport = report })
+                        }
+                        item { Spacer(Modifier.height(72.dp)) } // FAB clearance
                     }
-                    item { Spacer(Modifier.height(72.dp)) } // FAB clearance
+                    
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            color = green800,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(16.dp)
+                                .size(24.dp)
+                        )
+                    }
                 }
             }
         }
+        }
+    }
 
         // Submit loading overlay
         if (isSubmitting) {
@@ -241,8 +259,6 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
-                    CircularProgressIndicator(color = Color.White)
-
                     if (submitStep == SubmitStep.COMPLETING) {
                         Icon(
                             imageVector = Icons.Filled.Check,
@@ -304,7 +320,8 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
         }
 
         // FAB with expandable menu
-        Column(
+        if (!showScan) {
+            Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
@@ -351,6 +368,7 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
 
     selectedReport?.let { report ->
         WasteReportDetailSheet(report = report, onDismiss = { selectedReport = null })
+    }
     }
 }
 

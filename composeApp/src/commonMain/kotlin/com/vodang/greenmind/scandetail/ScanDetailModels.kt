@@ -42,6 +42,8 @@ data class ScanDetailData(
     val grouped: Map<String, List<String>> = emptyMap(),
     // backend id for API calls
     val backendId: String? = null,
+    // detect type
+    val detectType: String? = null,
 )
 
 data class ScanImpact(
@@ -82,6 +84,7 @@ fun WasteSortEntry.toScanDetailData(): ScanDetailData {
         greenScore = greenScoreResult,
         grouped = grouped,
         backendId = backendId,
+        detectType = detectType,
     )
 }
 
@@ -139,7 +142,14 @@ fun DetectTrashHistoryDto.toScanDetailData(): ScanDetailData {
         totalMassKg = totalMassKg,
         itemsMass = itemsMass?.map { it.toScanItemMass() },
         depthMapUrl = depthMapUrl,
+        grouped = segments?.let { seg ->
+            buildMap {
+                if (seg.recyclable.isNotEmpty()) put("recyclable", seg.recyclable)
+                if (seg.residual.isNotEmpty()) put("residual", seg.residual)
+            }
+        } ?: emptyMap(),
         backendId = id,
+        detectType = detectType,
     )
 }
 
@@ -167,7 +177,14 @@ fun List<DetectTrashHistoryDto>.toScanDetailData(): ScanDetailData {
             totalMassKg = analyzeAll.totalMassKg,
             itemsMass = analyzeAll.itemsMass?.map { it.toScanItemMass() },
             depthMapUrl = analyzeAll.depthMapUrl,
+            grouped = analyzeAll.segments?.let { seg ->
+                buildMap {
+                    if (seg.recyclable.isNotEmpty()) put("recyclable", seg.recyclable)
+                    if (seg.residual.isNotEmpty()) put("residual", seg.residual)
+                }
+            } ?: emptyMap(),
             backendId = analyzeAll.id,
+            detectType = analyzeAll.detectType,
         )
     }
 
@@ -179,6 +196,7 @@ fun List<DetectTrashHistoryDto>.toScanDetailData(): ScanDetailData {
     val pollutionData = pollutant?.pollution?.toFlatMap()
     val impactData = pollutant?.impact?.toScanImpact()
 
+    val primarySegments = firstNotNullOfOrNull { it.segments }
     return ScanDetailData(
         id = primary.id,
         imageUrl = primary.imageUrl,
@@ -194,7 +212,14 @@ fun List<DetectTrashHistoryDto>.toScanDetailData(): ScanDetailData {
         totalMassKg = totalMass?.totalMassKg,
         itemsMass = totalMass?.itemsMass?.map { it.toScanItemMass() },
         depthMapUrl = totalMass?.depthMapUrl,
+        grouped = primarySegments?.let { seg ->
+            buildMap {
+                if (seg.recyclable.isNotEmpty()) put("recyclable", seg.recyclable)
+                if (seg.residual.isNotEmpty()) put("residual", seg.residual)
+            }
+        } ?: emptyMap(),
         backendId = primary.id,
+        detectType = firstNotNullOfOrNull { it.detectType },
     )
 }
 

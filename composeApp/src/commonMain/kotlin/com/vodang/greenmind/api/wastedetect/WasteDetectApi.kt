@@ -68,9 +68,9 @@ data class WasteDetectResponse(
 
 private val wasteDetectClient = buildHttpClient(
     tag              = "WasteDetect",
-    requestTimeoutMs = 120_000,
-    connectTimeoutMs = 30_000,
-    socketTimeoutMs  = 120_000,
+    requestTimeoutMs = 300_000L,
+    connectTimeoutMs = 30_000L,
+    socketTimeoutMs  = 300_000L,
 )
 
 // ── API call ──────────────────────────────────────────────────────────────────
@@ -89,6 +89,10 @@ suspend fun detectWaste(
     AppLogger.i("WasteDetect", "detectWaste filename=$filename bytes=${imageBytes.size}")
     try {
         val response = wasteDetectClient.post("$AI_BASE_URL/predict-pollutant-impact") {
+            timeout {
+                requestTimeoutMillis = 300_000L
+                socketTimeoutMillis = 300_000L
+            }
             setBody(MultiPartFormDataContent(formData {
                 append("file", imageBytes, Headers.build {
                     append(HttpHeaders.ContentType, "image/jpeg")

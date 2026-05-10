@@ -40,6 +40,7 @@ import com.vodang.greenmind.theme.TextPrimary
 import com.vodang.greenmind.theme.TextSecondary
 import com.vodang.greenmind.fmt
 import com.vodang.greenmind.time.currentTimeMillis
+import com.vodang.greenmind.wastereport.NetworkImage
 
 private fun isToday(millis: Long) = (currentTimeMillis() - millis) < 86_400_000L
 
@@ -169,6 +170,11 @@ fun ProfileScreen(scrollState: ScrollState? = null) {
             }
         }
 
+        // ── My QR Code ──────────────────────────────────────────────────────
+        user?.id?.let { uid ->
+            QrCodeCard(userId = uid, s = s)
+        }
+
         // ── Eco Activity Today ───────────────────────────────────────────────
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -209,6 +215,42 @@ private fun StatItem(icon: androidx.compose.ui.graphics.vector.ImageVector, valu
         Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = Green700)
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Green800)
         Text(label, fontSize = 10.sp, color = TextSecondary)
+    }
+}
+
+// ── QR Code Card ──────────────────────────────────────────────────────────────
+
+@Composable
+private fun QrCodeCard(userId: String, s: com.vodang.greenmind.i18n.AppStrings) {
+    val qrUrl = remember(userId) {
+        "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=$userId"
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(s.myQrCode, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            NetworkImage(
+                url = qrUrl,
+                modifier = Modifier.size(200.dp),
+            )
+            Text(s.qrCodeHint, fontSize = 11.sp, color = Color.Gray)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(s.userIdLabel, fontSize = 11.sp, color = Color.Gray)
+                Text(userId, fontSize = 11.sp, color = Green700, fontWeight = FontWeight.Medium)
+            }
+        }
     }
 }
 

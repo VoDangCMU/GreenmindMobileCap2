@@ -123,10 +123,16 @@ private fun DetectTrashHistoryDto.toWasteSortEntry(): WasteSortEntry {
         id           = id,
         imageUrl     = aiAnalysis ?: annotatedImageUrl ?: imageUrl,
         totalObjects = totalObjects ?: 0,
-        grouped      = emptyMap(),
+        grouped      = segments?.let { seg ->
+            buildMap {
+                if (seg.recyclable.isNotEmpty()) put("recyclable", seg.recyclable)
+                if (seg.residual.isNotEmpty()) put("residual", seg.residual)
+            }
+        } ?: emptyMap(),
         createdAt    = createdAt?.take(10) ?: "",
         scannedBy    = detectedBy?.fullName ?: detectedBy?.username ?: "",
         pollutantResult = pollutantResult,
+        detectType      = detectType,
     )
 }
 

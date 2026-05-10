@@ -521,6 +521,16 @@ val EnStrings = AppStrings("en").apply {
     noMembersYet = "No members yet"
     failedToRemoveMember = "Failed to remove member"
     removeMember = "✕"
+    confirmRemoveMember = "Are you sure you want to remove this member?"
+    editAddress = "Edit Address"
+    addressLabel = "Address"
+    saveAddress = "Save Address"
+    addressUpdated = "Address updated successfully"
+    failedToUpdateAddress = "Failed to update address"
+    deleteHousehold = "Delete Household"
+    confirmDeleteHousehold = "Are you sure you want to delete this household? This action cannot be undone."
+    failedToDeleteHousehold = "Failed to delete household"
+    householdDeleted = "Household deleted"
 
     // ── Catalogue ──────────────────────────────────────────────────────────────
     environmentalImpact = "Environmental Impact"
@@ -743,6 +753,9 @@ val EnStrings = AppStrings("en").apply {
     habitProfile = "Habit Profile"
     profileMealsIcon = "🍽️"
     profileBillsIcon = "🧾"
+    myQrCode = "My QR Code"
+    qrCodeHint = "Share this QR code with your household admin to add you"
+    userIdLabel = "User ID"
 
     // ── Bottom Navigation ─────────────────────────────────────────────────────────
     community = "Community"

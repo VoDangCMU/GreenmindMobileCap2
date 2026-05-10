@@ -521,6 +521,16 @@ val ViStrings = AppStrings("vi").apply {
     noMembersYet = "Chưa có thành viên nào"
     failedToRemoveMember = "Xóa thành viên thất bại"
     removeMember = "✕"
+    confirmRemoveMember = "Bạn có chắc muốn xóa thành viên này?"
+    editAddress = "Sửa địa chỉ"
+    addressLabel = "Địa chỉ"
+    saveAddress = "Lưu địa chỉ"
+    addressUpdated = "Cập nhật địa chỉ thành công"
+    failedToUpdateAddress = "Cập nhật địa chỉ thất bại"
+    deleteHousehold = "Xóa hộ gia đình"
+    confirmDeleteHousehold = "Bạn có chắc muốn xóa hộ gia đình này? Hành động này không thể hoàn tác."
+    failedToDeleteHousehold = "Xóa hộ gia đình thất bại"
+    householdDeleted = "Đã xóa hộ gia đình"
 
     // ── Catalogue ──────────────────────────────────────────────────────────────
     environmentalImpact = "Tác động môi trường"
@@ -743,6 +753,9 @@ val ViStrings = AppStrings("vi").apply {
     habitProfile = "Hồ sơ thói quen"
     profileMealsIcon = "🍽️"
     profileBillsIcon = "🧾"
+    myQrCode = "Mã QR của tôi"
+    qrCodeHint = "Chia sẻ mã QR này với quản lý hộ gia đình để thêm bạn"
+    userIdLabel = "ID người dùng"
 
     // ── Bottom Navigation ─────────────────────────────────────────────────────────
     community = "Cộng đồng"

@@ -38,7 +38,13 @@ import com.vodang.greenmind.scandetail.scanGreenBg
 import com.vodang.greenmind.scandetail.scanGray
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.util.AppLogger
+import com.vodang.greenmind.fmt
 import com.vodang.greenmind.wastesort.WasteSortStatus
+import com.vodang.greenmind.wastesort.categoryBg
+import com.vodang.greenmind.wastesort.categoryColor
+import com.vodang.greenmind.wastesort.categoryEmoji
+import com.vodang.greenmind.wastesort.categoryLabel
+import com.vodang.greenmind.wastesort.components.SegmentGrid
 import kotlinx.coroutines.launch
 
 private val stepDone    = Color(0xFF2E7D32)
@@ -307,6 +313,7 @@ fun ScanDetailView(
 
     Box(modifier = contentModifier.background(Color(0xFFF5F5F5))) {
         Column(modifier = if (displayMode == DisplayMode.BOTTOM_SHEET) Modifier.fillMaxWidth().heightIn(max = 450.dp) else Modifier.fillMaxSize()) {
+            val isTotalMassOnly = data.detectType == "total_mass"
             if (displayMode == DisplayMode.BOTTOM_SHEET) {
                 // Bottom sheet: use verticalScroll instead of LazyColumn
                 Column(
@@ -316,8 +323,10 @@ fun ScanDetailView(
                         .padding(bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    EcoScoreSection(greenScore = data.greenScore, isLoading = data.isGreenScoreLoading)
-                    HorizontalDivider(color = Color(0xFFE0E0E0))
+                    if (!isTotalMassOnly) {
+                        EcoScoreSection(greenScore = data.greenScore, isLoading = data.isGreenScoreLoading)
+                        HorizontalDivider(color = Color(0xFFE0E0E0))
+                    }
 
                     ImagesSection(
                         imageUrl = data.imageUrl,
@@ -327,17 +336,25 @@ fun ScanDetailView(
                     )
                     HorizontalDivider(color = Color(0xFFE0E0E0))
 
-                    ImpactMeterSection(impact = data.impact)
-                    HorizontalDivider(color = Color(0xFFE0E0E0))
+                    if (isTotalMassOnly) {
+                        TotalMassResultCard(totalMassKg = data.totalMassKg)
+                        HorizontalDivider(color = Color(0xFFE0E0E0))
+                    } else {
+                        SegmentsSection(grouped = data.grouped)
+                        HorizontalDivider(color = Color(0xFFE0E0E0))
 
-                    PollutantBreakdownSection(pollution = data.pollution)
-                    HorizontalDivider(color = Color(0xFFE0E0E0))
+                        ImpactMeterSection(impact = data.impact)
+                        HorizontalDivider(color = Color(0xFFE0E0E0))
 
-                    ItemsSection(items = data.items)
-                    HorizontalDivider(color = Color(0xFFE0E0E0))
+                        PollutantBreakdownSection(pollution = data.pollution)
+                        HorizontalDivider(color = Color(0xFFE0E0E0))
 
-                    MassSection(totalMassKg = data.totalMassKg, itemsMass = data.itemsMass)
-                    HorizontalDivider(color = Color(0xFFE0E0E0))
+                        ItemsSection(items = data.items)
+                        HorizontalDivider(color = Color(0xFFE0E0E0))
+
+                        MassSection(totalMassKg = data.totalMassKg, itemsMass = data.itemsMass)
+                        HorizontalDivider(color = Color(0xFFE0E0E0))
+                    }
 
                     Row(
                         modifier = Modifier
@@ -365,9 +382,11 @@ fun ScanDetailView(
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                     contentPadding = PaddingValues(bottom = 8.dp),
                 ) {
-                    item {
-                        EcoScoreSection(greenScore = data.greenScore, isLoading = data.isGreenScoreLoading)
-                        HorizontalDivider(color = Color(0xFFE0E0E0))
+                    if (!isTotalMassOnly) {
+                        item {
+                            EcoScoreSection(greenScore = data.greenScore, isLoading = data.isGreenScoreLoading)
+                            HorizontalDivider(color = Color(0xFFE0E0E0))
+                        }
                     }
 
                     item {
@@ -380,24 +399,36 @@ fun ScanDetailView(
                         HorizontalDivider(color = Color(0xFFE0E0E0))
                     }
 
-                    item {
-                        ImpactMeterSection(impact = data.impact)
-                        HorizontalDivider(color = Color(0xFFE0E0E0))
-                    }
+                    if (isTotalMassOnly) {
+                        item {
+                            TotalMassResultCard(totalMassKg = data.totalMassKg)
+                            HorizontalDivider(color = Color(0xFFE0E0E0))
+                        }
+                    } else {
+                        item {
+                            SegmentsSection(grouped = data.grouped)
+                            HorizontalDivider(color = Color(0xFFE0E0E0))
+                        }
 
-                    item {
-                        PollutantBreakdownSection(pollution = data.pollution)
-                        HorizontalDivider(color = Color(0xFFE0E0E0))
-                    }
+                        item {
+                            ImpactMeterSection(impact = data.impact)
+                            HorizontalDivider(color = Color(0xFFE0E0E0))
+                        }
 
-                    item {
-                        ItemsSection(items = data.items)
-                        HorizontalDivider(color = Color(0xFFE0E0E0))
-                    }
+                        item {
+                            PollutantBreakdownSection(pollution = data.pollution)
+                            HorizontalDivider(color = Color(0xFFE0E0E0))
+                        }
 
-                    item {
-                        MassSection(totalMassKg = data.totalMassKg, itemsMass = data.itemsMass)
-                        HorizontalDivider(color = Color(0xFFE0E0E0))
+                        item {
+                            ItemsSection(items = data.items)
+                            HorizontalDivider(color = Color(0xFFE0E0E0))
+                        }
+
+                        item {
+                            MassSection(totalMassKg = data.totalMassKg, itemsMass = data.itemsMass)
+                            HorizontalDivider(color = Color(0xFFE0E0E0))
+                        }
                     }
 
                     item {
@@ -422,6 +453,129 @@ fun ScanDetailView(
                     onStatusChange = onStatusChange,
                 )
             }
+        }
+    }
+}
+
+// ── Segments Section ───────────────────────────────────────────────────────────
+
+@Composable
+private fun SegmentsSection(grouped: Map<String, List<String>>) {
+    val categories = grouped.keys.toList()
+    var selectedCategory by remember { mutableStateOf(categories.firstOrNull() ?: "") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            "By Category",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF1B1B1B),
+        )
+        if (grouped.isNotEmpty()) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                categories.forEach { cat ->
+                    val count = grouped[cat]?.size ?: 0
+                    val selected = cat == selectedCategory
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                if (selected) categoryColor(cat) else categoryBg(cat)
+                            )
+                            .clickable { selectedCategory = cat }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                categoryEmoji(cat),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (selected) Color.White else categoryColor(cat)
+                            )
+                            Text(
+                                categoryLabel(cat),
+                                fontSize = 13.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selected) Color.White else categoryColor(cat),
+                            )
+                        }
+                    }
+                }
+            }
+            val imageUrls = grouped[selectedCategory] ?: emptyList()
+            SegmentGrid(imageUrls = imageUrls, category = selectedCategory)
+        } else {
+            Text("N/A", fontSize = 13.sp, color = Color.Gray)
+        }
+    }
+}
+
+// ── Total Mass Result Card ───────────────────────────────────────────────────
+
+@Composable
+private fun TotalMassResultCard(totalMassKg: Double?) {
+    val mass = totalMassKg ?: 0.0
+    val money = (mass * 500).toInt()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text("Total Mass", fontSize = 12.sp, color = neutralGray400)
+                    Text(
+                        "${"%.2f".fmt(mass)} kg",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF1565C0),
+                    )
+                }
+            }
+            HorizontalDivider(color = Color(0xFFEEEEEE))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Estimated Value", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = neutralGray700)
+                val moneyStr = money.toString().reversed().chunked(3).joinToString(",").reversed()
+                Text(
+                    "$moneyStr ₫",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E7D32),
+                )
+            }
+            Text(
+                "(1 kg = 500 ₫)",
+                fontSize = 11.sp,
+                color = Color.Gray,
+            )
         }
     }
 }

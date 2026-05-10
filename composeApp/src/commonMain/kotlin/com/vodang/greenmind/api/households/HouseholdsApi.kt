@@ -172,6 +172,12 @@ data class DetectImageUrlRequest(
 )
 
 @Serializable
+data class SegmentsDto(
+    val recyclable: List<String> = emptyList(),
+    val residual: List<String> = emptyList(),
+)
+
+@Serializable
 data class DetectItemDto(
     val name: String,
     val area: Int = 0,
@@ -223,6 +229,7 @@ data class DetectTrashHistoryDto(
     val annotatedImageUrl: String? = null,
     val depthMapUrl: String? = null,
     val itemsMass: List<DetectItemMassDto>? = null,
+    val segments: SegmentsDto? = null,
     val aiAnalysis: String? = null,
     val householdId: String? = null,
     val detectType: String? = null,
@@ -253,7 +260,8 @@ data class DetectTrashResultResponse(
 
 @Serializable
 data class AnalyzeImageRequest(
-    val imageUrl: String
+    val imageUrl: String,
+    val type: String = "DETECT_TRASH"
 )
 
 @Serializable
@@ -282,6 +290,7 @@ data class AnalyzeImageDataDto(
     @SerialName("annotatedImageUrl") val annotatedImageUrl: String? = null,
     @SerialName("depthMapUrl") val depthMapUrl: String? = null,
     @SerialName("aiAnalysis") val aiAnalysis: String? = null,
+    val segments: SegmentsDto? = null,
     val household: HouseholdDto? = null,
     @SerialName("detectedBy") val detectedBy: HouseholdMemberDto? = null,
     val status: String? = null,

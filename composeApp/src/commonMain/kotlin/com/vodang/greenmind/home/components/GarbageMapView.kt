@@ -85,10 +85,30 @@ fun buildRoutingHtml(
   <div id="map"></div>
   <script>
     var map=L.map('map',{zoomControl:false}).setView([$lat,$lng],$zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      maxZoom:19,attribution:'© OSM contributors'
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{
+      maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
     var routeControl=null;
+    var vnBoundaryStyle={color:'#C62828',weight:2,opacity:0.8,fillColor:'#E53935',fillOpacity:0.15};
+    var vnBoundaryUrl='https://raw.githubusercontent.com/ngotuankhoi/leaflet-with-hoangsa-truongsa/main/HoangSa-TruongSa.geojson';
+    fetch(vnBoundaryUrl).then(function(resp){return resp.json();}).then(function(geojson){
+      L.geoJSON(geojson,{style:vnBoundaryStyle,onEachFeature:function(feature,layer){
+        var name = 'Trường Sa';
+        if (feature.properties && feature.properties.name) name = feature.properties.name;
+        else if (feature.geometry) {
+            var coords = JSON.stringify(feature.geometry.coordinates);
+            var m = coords.match(/\[\s*\d+\.\d+\s*,\s*(\d+\.\d+)\s*\]/);
+            if (m && parseFloat(m[1]) > 14) name = 'Hoàng Sa';
+        }
+        var en=name==='Hoàng Sa'?'Paracel Islands':'Spratly Islands';
+        layer.bindPopup('<div style="font-family:sans-serif;"><strong>🏝️ '+name+'</strong><br/><small>'+en+'</small><br/>🏳️ Quốc gia: Việt Nam</div>');
+      }}).addTo(map);
+      var labelStyle = 'color:#C62828;font-weight:bold;font-size:14px;text-shadow:1px 1px 0 #fff,-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff;white-space:nowrap;text-align:center;pointer-events:none;';
+      var iconHS = L.divIcon({className: '', html: '<div style="'+labelStyle+'">Quần đảo Hoàng Sa</div>', iconSize: [150, 20], iconAnchor: [75, 10]});
+      L.marker([16.4, 112.0], {icon: iconHS, interactive: false}).addTo(map);
+      var iconTS = L.divIcon({className: '', html: '<div style="'+labelStyle+'">Quần đảo Trường Sa</div>', iconSize: [150, 20], iconAnchor: [75, 10]});
+      L.marker([10.0, 114.0], {icon: iconTS, interactive: false}).addTo(map);
+    }).catch(function(e){console.log('Failed to load Vietnam boundary:',e);});
     function buildRoute(wp){
       if(routeControl){map.removeControl(routeControl);}
       if(wp.length<2) return;
@@ -161,9 +181,30 @@ fun buildLeafletHtml(
   <div id="map"></div>
   <script>
     var map = L.map('map',{zoomControl:false}).setView([$lat,$lng],$zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      maxZoom:19, attribution:'© OSM contributors'
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{
+      maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
+    // Vietnam boundary layer - Hoàng Sa & Trường Sa (loaded from CDN)
+    var vnBoundaryStyle={color:'#C62828',weight:2,opacity:0.8,fillColor:'#E53935',fillOpacity:0.15};
+    var vnBoundaryUrl='https://raw.githubusercontent.com/ngotuankhoi/leaflet-with-hoangsa-truongsa/main/HoangSa-TruongSa.geojson';
+    fetch(vnBoundaryUrl).then(function(resp){return resp.json();}).then(function(geojson){
+      L.geoJSON(geojson,{style:vnBoundaryStyle,onEachFeature:function(feature,layer){
+        var name = 'Trường Sa';
+        if (feature.properties && feature.properties.name) name = feature.properties.name;
+        else if (feature.geometry) {
+            var coords = JSON.stringify(feature.geometry.coordinates);
+            var m = coords.match(/\[\s*\d+\.\d+\s*,\s*(\d+\.\d+)\s*\]/);
+            if (m && parseFloat(m[1]) > 14) name = 'Hoàng Sa';
+        }
+        var en=name==='Hoàng Sa'?'Paracel Islands':'Spratly Islands';
+        layer.bindPopup('<div style="font-family:sans-serif;"><strong>🏝️ '+name+'</strong><br/><small>'+en+'</small><br/>🏳️ Quốc gia: Việt Nam</div>');
+      }}).addTo(map);
+      var labelStyle = 'color:#C62828;font-weight:bold;font-size:14px;text-shadow:1px 1px 0 #fff,-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff;white-space:nowrap;text-align:center;pointer-events:none;';
+      var iconHS = L.divIcon({className: '', html: '<div style="'+labelStyle+'">Quần đảo Hoàng Sa</div>', iconSize: [150, 20], iconAnchor: [75, 10]});
+      L.marker([16.4, 112.0], {icon: iconHS, interactive: false}).addTo(map);
+      var iconTS = L.divIcon({className: '', html: '<div style="'+labelStyle+'">Quần đảo Trường Sa</div>', iconSize: [150, 20], iconAnchor: [75, 10]});
+      L.marker([10.0, 114.0], {icon: iconTS, interactive: false}).addTo(map);
+    }).catch(function(e){console.log('Failed to load Vietnam boundary:',e);});
     var pts=[$heatData];
     if(pts.length>0){
       L.heatLayer(pts,{
@@ -207,9 +248,30 @@ fun buildCampaignMapHtml(
   <div id="map"></div>
   <script>
     var map=L.map('map',{zoomControl:false}).setView([$centerLat,$centerLng],$zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      maxZoom:19,attribution:'© OSM contributors'
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{
+      maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
+    // Vietnam boundary layer - Hoàng Sa & Trường Sa (loaded from CDN)
+    var vnBoundaryStyle={color:'#C62828',weight:2,opacity:0.8,fillColor:'#E53935',fillOpacity:0.15};
+    var vnBoundaryUrl='https://raw.githubusercontent.com/ngotuankhoi/leaflet-with-hoangsa-truongsa/main/HoangSa-TruongSa.geojson';
+    fetch(vnBoundaryUrl).then(function(resp){return resp.json();}).then(function(geojson){
+      L.geoJSON(geojson,{style:vnBoundaryStyle,onEachFeature:function(feature,layer){
+        var name = 'Trường Sa';
+        if (feature.properties && feature.properties.name) name = feature.properties.name;
+        else if (feature.geometry) {
+            var coords = JSON.stringify(feature.geometry.coordinates);
+            var m = coords.match(/\[\s*\d+\.\d+\s*,\s*(\d+\.\d+)\s*\]/);
+            if (m && parseFloat(m[1]) > 14) name = 'Hoàng Sa';
+        }
+        var en=name==='Hoàng Sa'?'Paracel Islands':'Spratly Islands';
+        layer.bindPopup('<div style="font-family:sans-serif;"><strong>🏝️ '+name+'</strong><br/><small>'+en+'</small><br/>🏳️ Quốc gia: Việt Nam</div>');
+      }}).addTo(map);
+      var labelStyle = 'color:#C62828;font-weight:bold;font-size:14px;text-shadow:1px 1px 0 #fff,-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff;white-space:nowrap;text-align:center;pointer-events:none;';
+      var iconHS = L.divIcon({className: '', html: '<div style="'+labelStyle+'">Quần đảo Hoàng Sa</div>', iconSize: [150, 20], iconAnchor: [75, 10]});
+      L.marker([16.4, 112.0], {icon: iconHS, interactive: false}).addTo(map);
+      var iconTS = L.divIcon({className: '', html: '<div style="'+labelStyle+'">Quần đảo Trường Sa</div>', iconSize: [150, 20], iconAnchor: [75, 10]});
+      L.marker([10.0, 114.0], {icon: iconTS, interactive: false}).addTo(map);
+    }).catch(function(e){console.log('Failed to load Vietnam boundary:',e);});
     // Campaign circle (radius in meters)
     L.circle([$campaignLat,$campaignLng],{
       radius:$radius,

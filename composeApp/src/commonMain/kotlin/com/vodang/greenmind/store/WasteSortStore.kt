@@ -84,7 +84,12 @@ object WasteSortStore {
                         backendId = dto.id,
                         imageUrl = dto.annotatedImageUrl ?: dto.aiAnalysis ?: dto.imageUrl,
                         totalObjects = dto.totalObjects ?: 0,
-                        grouped = emptyMap(),
+                        grouped = dto.segments?.let { seg ->
+                            buildMap {
+                                if (seg.recyclable.isNotEmpty()) put("recyclable", seg.recyclable)
+                                if (seg.residual.isNotEmpty()) put("residual", seg.residual)
+                            }
+                        } ?: emptyMap(),
                         createdAt = dto.createdAt?.take(10) ?: today,
                         scannedBy = dto.detectedBy?.fullName ?: "Me",
                         status = when (dto.status) {
@@ -95,6 +100,7 @@ object WasteSortStore {
                         },
                         pollutantResult = pollutantResult,
                         totalMassKg = dto.totalMassKg,
+                        detectType = dto.detectType,
                     )
                 }
                 _entries.value = entries
@@ -154,7 +160,12 @@ object WasteSortStore {
                         backendId = dto.id,
                         imageUrl = dto.annotatedImageUrl ?: dto.aiAnalysis ?: dto.imageUrl,
                         totalObjects = dto.totalObjects ?: 0,
-                        grouped = emptyMap(),
+                        grouped = dto.segments?.let { seg ->
+                            buildMap {
+                                if (seg.recyclable.isNotEmpty()) put("recyclable", seg.recyclable)
+                                if (seg.residual.isNotEmpty()) put("residual", seg.residual)
+                            }
+                        } ?: emptyMap(),
                         createdAt = dto.createdAt?.take(10) ?: today,
                         scannedBy = dto.detectedBy?.fullName ?: "Me",
                         status = when (dto.status) {
@@ -165,6 +176,7 @@ object WasteSortStore {
                         },
                         pollutantResult = pollutantResult,
                         totalMassKg = dto.totalMassKg,
+                        detectType = dto.detectType,
                     )
                 }
                 _todayTotalKg.value = _entries.value

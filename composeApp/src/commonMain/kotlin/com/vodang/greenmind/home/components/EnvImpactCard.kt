@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import kotlin.math.roundToInt
+import com.vodang.greenmind.fmt
 
 private val red700   = Color(0xFFC62828)
 private val red50    = Color(0xFFFFEBEE)
@@ -188,12 +189,9 @@ fun EnvImpactCard(result: WasteDetectResponse, modifier: Modifier = Modifier) {
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF616161),
                 )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    result.activePollutants.forEach { (key, _) ->
-                        PollutantChip(pollutantLabel[key] ?: key)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    result.activePollutants.forEach { (key, value) ->
+                        PollutantBar(pollutantLabel[key] ?: key, value)
                     }
                 }
             }
@@ -265,13 +263,30 @@ private fun ImpactMeter(icon: String, label: String, value: Float) {
 }
 
 @Composable
-private fun PollutantChip(name: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(red50)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-    ) {
-        Text(name, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = red700)
+private fun PollutantBar(name: String, value: Double) {
+    val progress = (value / IMPACT_MAX).toFloat().coerceIn(0f, 1f)
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(name, fontSize = 12.sp, color = Color(0xFF424242))
+            Text(
+                "${value.fmt(2)} kg",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = red700,
+            )
+        }
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(6.dp)),
+            color = red700,
+            trackColor = red50,
+        )
     }
 }
