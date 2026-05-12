@@ -43,6 +43,7 @@ val EnStrings = AppStrings("en").apply {
     setPassword = "Set Password"
     addressAndTerms = "Address & Terms"
     fullName = "Full name"
+    dateOfBirth = "Date of birth"
     gender = "Gender"
     male = "Male"
     female = "Female"

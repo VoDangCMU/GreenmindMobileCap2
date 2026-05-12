@@ -42,7 +42,7 @@ actual class ChatSocketService {
                     val senderId = senderObj["id"]?.jsonPrimitive?.content ?: ""
                     val senderName = senderObj["fullName"]?.jsonPrimitive?.content ?: ""
                     val content = obj["content"]?.jsonPrimitive?.content ?: ""
-                    val createdAt = obj["createdAt"]?.jsonPrimitive?.content?.take(16)?.replace("T", " ") ?: ""
+                    val createdAt = obj["createdAt"]?.jsonPrimitive?.content ?: ""
 
                     onNewMessage(campaignId, ChatMessage(
                         id = id, senderId = senderId, senderName = senderName,

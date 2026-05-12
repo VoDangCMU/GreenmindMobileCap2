@@ -204,7 +204,13 @@ internal fun WasteVolumeCard(data: PeriodData) {
                     modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    data.labels.forEach { Text(it, fontSize = 9.sp, color = Color.Gray) }
+                    val displayLabels = if (n <= 7) data.labels else {
+                        (0 until 7).map { i ->
+                            val idx = ((i.toFloat() * (n - 1).toFloat()) / 6f).roundToInt().coerceIn(0, n - 1)
+                            data.labels[idx]
+                        }
+                    }
+                    displayLabels.forEach { Text(it, fontSize = 9.sp, color = Color.Gray) }
                 }
             }
             } // end else (enabled)
@@ -221,13 +227,14 @@ fun MultiSeriesCard(
     icon: ImageVector,
     seriesList: List<SeriesData>,
     xLabels: List<String>,
+    defaultActiveCount: Int = seriesList.size,
 ) {
     val s = LocalAppStrings.current
     val textMeasurer = rememberTextMeasurer()
     val n = xLabels.size
 
     // Track which series are enabled; reset when the series list changes (period switch)
-    var enabledLabels by remember(seriesList) { mutableStateOf(seriesList.map { it.label }.toSet()) }
+    var enabledLabels by remember(seriesList) { mutableStateOf(seriesList.take(defaultActiveCount).map { it.label }.toSet()) }
     val active = seriesList.filter { it.label in enabledLabels }
 
     Card(
@@ -256,7 +263,14 @@ fun MultiSeriesCard(
             }
 
             // Clickable legend — tap to toggle each series
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Batch toggle controls
+                LegendItem(label = "All", color = Color(0xFF2E7D32), enabled = enabledLabels.size == seriesList.size, onClick = {
+                    enabledLabels = seriesList.map { it.label }.toSet()
+                })
+                LegendItem(label = "None", color = Color(0xFF9CA3AF), enabled = enabledLabels.isEmpty(), onClick = {
+                    enabledLabels = emptySet()
+                })
                 seriesList.forEach { s ->
                     val enabled = s.label in enabledLabels
                     LegendItem(
@@ -264,7 +278,6 @@ fun MultiSeriesCard(
                         color   = s.color,
                         enabled = enabled,
                         onClick = {
-                            // Prevent disabling the last active series
                             if (enabled && enabledLabels.size > 1) enabledLabels = enabledLabels - s.label
                             else if (!enabled)                      enabledLabels = enabledLabels + s.label
                         }
@@ -347,7 +360,13 @@ fun MultiSeriesCard(
                     modifier = Modifier.fillMaxWidth().padding(start = 36.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    xLabels.forEach { Text(it, fontSize = 9.sp, color = Color.Gray) }
+                    val displayLabels = if (n <= 7) xLabels else {
+                        (0 until 7).map { i ->
+                            val idx = ((i.toFloat() * (n - 1).toFloat()) / 6f).roundToInt().coerceIn(0, n - 1)
+                            xLabels[idx]
+                        }
+                    }
+                    displayLabels.forEach { Text(it, fontSize = 9.sp, color = Color.Gray) }
                 }
             }
         }

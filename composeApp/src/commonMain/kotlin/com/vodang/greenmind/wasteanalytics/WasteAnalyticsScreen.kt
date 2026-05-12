@@ -18,9 +18,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.scandetail.allPollutantKeys
+import com.vodang.greenmind.scandetail.getPollutantLabel
 import kotlin.math.roundToInt
 import com.vodang.greenmind.fmt
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.register.pickerMillisToIsoDate
+import com.vodang.greenmind.time.currentTimeMillis
+import com.vodang.greenmind.time.todayLocalIsoDate
 import com.vodang.greenmind.wasteanalytics.components.MultiSeriesCard
 import com.vodang.greenmind.wasteanalytics.components.PeriodChip
 import com.vodang.greenmind.wasteanalytics.components.MetricChip
@@ -45,9 +50,18 @@ internal data class PeriodData(
     val airPollution: List<Float>,
     val waterPollution: List<Float>,
     val soilPollution: List<Float>,
-    val co2: List<Float>,
-    val dioxin: List<Float>,
-    val microplastic: List<Float>,
+    val pollutants: Map<String, List<Float>>,
+)
+
+private data class AnalyticsFilterState(
+    val hourDate: ParsedDate,
+    val dayStart: ParsedDate,
+    val dayEnd: ParsedDate,
+    val weekMonth: Int,
+    val weekYear: Int,
+    val monthYear: Int,
+    val yearStart: Int,
+    val yearEnd: Int,
 )
 
 private data class ParsedDate(val year: Int, val month: Int, val day: Int, val hour: Int)
@@ -79,64 +93,131 @@ private fun buildPeriodData(labels: List<String>, buckets: Array<MutableList<com
         airPollution = buckets.map { list -> list.mapNotNull { it.impact?.airPollution }.avgOrZero() },
         waterPollution = buckets.map { list -> list.mapNotNull { it.impact?.waterPollution }.avgOrZero() },
         soilPollution = buckets.map { list -> list.mapNotNull { it.impact?.soilPollution }.avgOrZero() },
-        co2 = buckets.map { list -> list.mapNotNull { it.pollution?.co2 }.avgOrZero() },
-        dioxin = buckets.map { list -> list.mapNotNull { it.pollution?.dioxin }.avgOrZero() },
-        microplastic = buckets.map { list -> list.mapNotNull { it.pollution?.microplastic }.avgOrZero() }
+        pollutants = allPollutantKeys.associate { key ->
+            val values = buckets.map { list ->
+                list.mapNotNull { it.pollution?.getPollutantValue(key) }.avgOrZero()
+            }
+            key to values
+        },
     )
 }
 
-private fun processData(raw: List<com.vodang.greenmind.api.households.DetectTrashHistoryDto>, period: String): PeriodData {
-    val emptyPeriod = PeriodData(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
+private fun com.vodang.greenmind.api.households.DetectPollutionDto.getPollutantValue(key: String): Double? = when (key) {
+    "CO2" -> co2
+    "dioxin" -> dioxin
+    "microplastic" -> microplastic
+    "toxic_chemicals" -> toxicChemicals
+    "non_biodegradable" -> nonBiodegradable
+    "NOx" -> nox
+    "SO2" -> so2
+    "CH4" -> ch4
+    "PM2.5" -> pm25
+    "Pb" -> pb
+    "Hg" -> hg
+    "Cd" -> cd
+    "nitrate" -> nitrate
+    "chemical_residue" -> chemicalResidue
+    "styrene" -> styrene
+    else -> null
+}
+
+private fun sampleEvenly(items: List<ParsedDate>, limit: Int): List<ParsedDate> {
+    if (items.size <= limit) return items
+    if (limit <= 1) return listOf(items.first())
+    return (0 until limit).map { i ->
+        val idx = ((i.toFloat() * (items.lastIndex.toFloat())) / (limit - 1).toFloat()).roundToInt().coerceIn(0, items.lastIndex)
+        items[idx]
+    }.distinctBy { "${it.year}-${it.month}-${it.day}" }
+}
+
+private fun processData(
+    raw: List<com.vodang.greenmind.api.households.DetectTrashHistoryDto>,
+    period: String,
+    filters: AnalyticsFilterState,
+): PeriodData {
+    val emptyPeriod = PeriodData(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyMap())
     if (raw.isEmpty()) return emptyPeriod
     
     val sorted = raw.sortedBy { it.createdAt.orEmpty() }
     
     return when (period) {
-        "Day" -> {
-            val labels = listOf("12am", "3am", "6am", "9am", "12pm", "3pm", "6pm", "9pm")
-            val buckets = Array(8) { mutableListOf<com.vodang.greenmind.api.households.DetectTrashHistoryDto>() }
+        "Hour" -> {
+            val labels = (0..23).map { h -> "%02d:00".format(h) }
+            val buckets = Array(24) { mutableListOf<com.vodang.greenmind.api.households.DetectTrashHistoryDto>() }
             sorted.forEach {
                 val pd = parseDate(it.createdAt)
-                val idx = (pd.hour / 3).coerceIn(0, 7)
-                buckets[idx].add(it)
+                if (pd.year == filters.hourDate.year && pd.month == filters.hourDate.month && pd.day == filters.hourDate.day) {
+                    val idx = pd.hour.coerceIn(0, 23)
+                    buckets[idx].add(it)
+                }
             }
             buildPeriodData(labels, buckets)
         }
-        "Week" -> {
-            val allDays = sorted.map { parseDate(it.createdAt) }.distinctBy { "${it.year}-${it.month}-${it.day}" }
-            val last7 = allDays.takeLast(7)
-            val labels = last7.map { "${it.day}/${it.month}" }
-            val buckets = Array(last7.size) { mutableListOf<com.vodang.greenmind.api.households.DetectTrashHistoryDto>() }
-            sorted.forEach { item ->
+        "Day" -> {
+            val start = filters.dayStart
+            val end = filters.dayEnd
+            val startKeyRaw = start.year * 10000 + start.month * 100 + start.day
+            val endKeyRaw = end.year * 10000 + end.month * 100 + end.day
+            val startKey = minOf(startKeyRaw, endKeyRaw)
+            val endKey = maxOf(startKeyRaw, endKeyRaw)
+            val inRange = sorted.filter {
+                val pd = parseDate(it.createdAt)
+                val key = pd.year * 10000 + pd.month * 100 + pd.day
+                key in startKey..endKey
+            }
+            val allDays = inRange.map { parseDate(it.createdAt) }
+                .distinctBy { "${it.year}-${it.month}-${it.day}" }
+                .sortedWith(compareBy({ it.year }, { it.month }, { it.day }))
+            val sampled = sampleEvenly(allDays, 7)
+            val labels = sampled.map { "%02d/%02d".format(it.day, it.month) }
+            val buckets = Array(sampled.size) { mutableListOf<com.vodang.greenmind.api.households.DetectTrashHistoryDto>() }
+            inRange.forEach { item ->
                 val pd = parseDate(item.createdAt)
-                val idx = last7.indexOfFirst { it.year == pd.year && it.month == pd.month && it.day == pd.day }
+                val idx = sampled.indexOfFirst { it.year == pd.year && it.month == pd.month && it.day == pd.day }
                 if (idx != -1) buckets[idx].add(item)
             }
-            if (labels.isEmpty()) buildPeriodData(listOf("No Data"), Array(1) { mutableListOf() })
-            else buildPeriodData(labels, buckets)
+            if (labels.isEmpty()) buildPeriodData(listOf("No Data"), Array(1) { mutableListOf() }) else buildPeriodData(labels, buckets)
         }
-        "Month" -> {
+        "Week" -> {
             val labels = listOf("W1", "W2", "W3", "W4")
             val buckets = Array(4) { mutableListOf<com.vodang.greenmind.api.households.DetectTrashHistoryDto>() }
             sorted.forEach {
                 val pd = parseDate(it.createdAt)
-                val idx = when (pd.day) {
-                    in 1..7 -> 0
-                    in 8..14 -> 1
-                    in 15..21 -> 2
-                    else -> 3
+                if (pd.year == filters.weekYear && pd.month == filters.weekMonth) {
+                    val idx = ((pd.day - 1) / 7).coerceIn(0, 3)
+                    buckets[idx].add(it)
                 }
-                buckets[idx].add(it)
             }
             buildPeriodData(labels, buckets)
         }
-        "Year" -> {
+        "Month" -> {
             val labels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
             val buckets = Array(12) { mutableListOf<com.vodang.greenmind.api.households.DetectTrashHistoryDto>() }
             sorted.forEach {
                 val pd = parseDate(it.createdAt)
-                val idx = (pd.month - 1).coerceIn(0, 11)
-                buckets[idx].add(it)
+                if (pd.year == filters.monthYear) {
+                    val idx = (pd.month - 1).coerceIn(0, 11)
+                    buckets[idx].add(it)
+                }
+            }
+            buildPeriodData(labels, buckets)
+        }
+        "Year" -> {
+            val yStart = minOf(filters.yearStart, filters.yearEnd)
+            val yEnd = maxOf(filters.yearStart, filters.yearEnd)
+            val years = (yStart..yEnd).toList()
+            val sampledYears = if (years.size <= 5) years else {
+                (0 until 5).map { i ->
+                    val idx = ((i.toFloat() * (years.lastIndex.toFloat())) / 4f).roundToInt().coerceIn(0, years.lastIndex)
+                    years[idx]
+                }.distinct()
+            }
+            val labels = sampledYears.map { it.toString() }
+            val buckets = Array(sampledYears.size) { mutableListOf<com.vodang.greenmind.api.households.DetectTrashHistoryDto>() }
+            sorted.forEach { item ->
+                val pd = parseDate(item.createdAt)
+                val idx = sampledYears.indexOf(pd.year)
+                if (idx != -1) buckets[idx].add(item)
             }
             buildPeriodData(labels, buckets)
         }
@@ -149,8 +230,24 @@ private fun processData(raw: List<com.vodang.greenmind.api.households.DetectTras
 @Composable
 fun WasteAnalyticsScreen(onBack: () -> Unit = {}) {
     val s = LocalAppStrings.current
-    var selectedPeriod by remember { mutableStateOf("Week") }
+    var selectedPeriod by remember { mutableStateOf("Hour") }
     var selectedMetric by remember { mutableStateOf("All") }
+
+    val today = remember { parseDate("${todayLocalIsoDate()}T00:00:00") }
+    var hourDate by remember { mutableStateOf(today) }
+    var dayStart by remember { mutableStateOf(
+        parseDate("${pickerMillisToIsoDate(currentTimeMillis() - 7L * 86400000L)}T00:00:00")
+    ) }
+    var dayEnd by remember { mutableStateOf(today) }
+    var weekMonth by remember { mutableIntStateOf(today.month.coerceIn(1, 12)) }
+    var weekYear by remember { mutableIntStateOf(today.year.coerceAtLeast(2000)) }
+    var monthYear by remember { mutableIntStateOf(today.year.coerceAtLeast(2000)) }
+    var yearStart by remember { mutableIntStateOf((today.year - 4).coerceAtLeast(2000)) }
+    var yearEnd by remember { mutableIntStateOf(today.year.coerceAtLeast(2000)) }
+
+    var showHourDatePicker by remember { mutableStateOf(false) }
+    var showDayStartPicker by remember { mutableStateOf(false) }
+    var showDayEndPicker by remember { mutableStateOf(false) }
     
     var isLoading by remember { mutableStateOf(true) }
     var rawData by remember { mutableStateOf<List<com.vodang.greenmind.api.households.DetectTrashHistoryDto>>(emptyList()) }
@@ -172,7 +269,23 @@ fun WasteAnalyticsScreen(onBack: () -> Unit = {}) {
         }
     }
     
-    val data = remember(rawData, selectedPeriod) { processData(rawData, selectedPeriod) }
+    val minYear = remember(rawData) { rawData.map { parseDate(it.createdAt).year }.filter { it > 0 }.minOrNull() ?: today.year }
+    val maxYear = remember(rawData) { rawData.map { parseDate(it.createdAt).year }.filter { it > 0 }.maxOrNull() ?: today.year }
+
+    val filters = remember(hourDate, dayStart, dayEnd, weekMonth, weekYear, monthYear, yearStart, yearEnd) {
+        AnalyticsFilterState(
+            hourDate = hourDate,
+            dayStart = dayStart,
+            dayEnd = dayEnd,
+            weekMonth = weekMonth,
+            weekYear = weekYear,
+            monthYear = monthYear,
+            yearStart = yearStart,
+            yearEnd = yearEnd,
+        )
+    }
+
+    val data = remember(rawData, selectedPeriod, filters) { processData(rawData, selectedPeriod, filters) }
 
     val showWaste      = selectedMetric == "All" || selectedMetric == "Waste (kg)"
     val showImpact     = selectedMetric == "All" || selectedMetric == "Impact"
@@ -180,7 +293,7 @@ fun WasteAnalyticsScreen(onBack: () -> Unit = {}) {
 
     val totalWaste = data.wasteKg.sum()
     val avgAir     = data.airPollution.average().toFloat().takeIf { !it.isNaN() } ?: 0f
-    val avgCo2     = data.co2.average().toFloat().takeIf { !it.isNaN() } ?: 0f
+    val avgCo2     = data.pollutants["CO2"]?.average()?.toFloat()?.takeIf { !it.isNaN() } ?: 0f
     val peakKg     = data.wasteKg.maxOrNull() ?: 0f
     val peakLabel  = data.labels.getOrNull(data.wasteKg.indexOfFirst { it == peakKg }.coerceAtLeast(0)) ?: ""
 
@@ -225,8 +338,81 @@ fun WasteAnalyticsScreen(onBack: () -> Unit = {}) {
 
                 // ── Period selector ───────────────────────────────────────────
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Day", "Week", "Month", "Year").forEach { p ->
+                    listOf("Hour", "Day", "Week", "Month", "Year").forEach { p ->
                         PeriodChip(label = p, selected = selectedPeriod == p) { selectedPeriod = p }
+                    }
+                }
+
+                when (selectedPeriod) {
+                    "Hour" -> {
+                        OutlinedButton(onClick = { showHourDatePicker = true }) {
+                            Text("Date: %02d/%02d/%04d".format(hourDate.day, hourDate.month, hourDate.year))
+                        }
+                    }
+                    "Day" -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { showDayStartPicker = true }, modifier = Modifier.weight(1f)) {
+                                Text("From: %02d/%02d/%04d".format(dayStart.day, dayStart.month, dayStart.year))
+                            }
+                            OutlinedButton(onClick = { showDayEndPicker = true }, modifier = Modifier.weight(1f)) {
+                                Text("To: %02d/%02d/%04d".format(dayEnd.day, dayEnd.month, dayEnd.year))
+                            }
+                        }
+                    }
+                    "Week" -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            var monthExpanded by remember { mutableStateOf(false) }
+                            var yearExpanded by remember { mutableStateOf(false) }
+                            Box {
+                                OutlinedButton(onClick = { monthExpanded = true }) { Text("Month: $weekMonth") }
+                                DropdownMenu(expanded = monthExpanded, onDismissRequest = { monthExpanded = false }) {
+                                    (1..12).forEach { m ->
+                                        DropdownMenuItem(text = { Text(m.toString()) }, onClick = { weekMonth = m; monthExpanded = false })
+                                    }
+                                }
+                            }
+                            Box {
+                                OutlinedButton(onClick = { yearExpanded = true }) { Text("Year: $weekYear") }
+                                DropdownMenu(expanded = yearExpanded, onDismissRequest = { yearExpanded = false }) {
+                                    (minYear..maxYear).forEach { y ->
+                                        DropdownMenuItem(text = { Text(y.toString()) }, onClick = { weekYear = y; yearExpanded = false })
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    "Month" -> {
+                        var yearExpanded by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton(onClick = { yearExpanded = true }) { Text("Year: $monthYear") }
+                            DropdownMenu(expanded = yearExpanded, onDismissRequest = { yearExpanded = false }) {
+                                (minYear..maxYear).forEach { y ->
+                                    DropdownMenuItem(text = { Text(y.toString()) }, onClick = { monthYear = y; yearExpanded = false })
+                                }
+                            }
+                        }
+                    }
+                    "Year" -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            var fromExpanded by remember { mutableStateOf(false) }
+                            var toExpanded by remember { mutableStateOf(false) }
+                            Box {
+                                OutlinedButton(onClick = { fromExpanded = true }) { Text("From: $yearStart") }
+                                DropdownMenu(expanded = fromExpanded, onDismissRequest = { fromExpanded = false }) {
+                                    (minYear..maxYear).forEach { y ->
+                                        DropdownMenuItem(text = { Text(y.toString()) }, onClick = { yearStart = y; fromExpanded = false })
+                                    }
+                                }
+                            }
+                            Box {
+                                OutlinedButton(onClick = { toExpanded = true }) { Text("To: $yearEnd") }
+                                DropdownMenu(expanded = toExpanded, onDismissRequest = { toExpanded = false }) {
+                                    (minYear..maxYear).forEach { y ->
+                                        DropdownMenuItem(text = { Text(y.toString()) }, onClick = { yearEnd = y; toExpanded = false })
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -253,7 +439,7 @@ fun WasteAnalyticsScreen(onBack: () -> Unit = {}) {
                     )
                     SummaryChip(
                         s.avgAir,
-                        "${(avgAir * 100).roundToInt()}%",
+                        "${(avgAir * 100).roundToInt()}",
                         red700,
                         Modifier.weight(1f)
                     )
@@ -281,16 +467,30 @@ fun WasteAnalyticsScreen(onBack: () -> Unit = {}) {
 
                 // ── Pollutants chart ──────────────────────────────────────────
                 if (showPollutants) {
+                    val pollutantSeries = data.pollutants.entries
+                        .sortedByDescending { (_, values) -> values.average().toFloat() }
+                        .map { (key, values) ->
+                            val color = when (key) {
+                                "CO2" -> red700; "CH4" -> Color(0xFF795548)
+                                "PM2.5" -> Color(0xFF607D8B); "NOx" -> Color(0xFF9C27B0)
+                                "SO2" -> Color(0xFFFF9800); "Pb" -> Color(0xFF3F51B5)
+                                "Hg" -> Color(0xFF009688); "Cd" -> Color(0xFFE91E63)
+                                "nitrate" -> Color(0xFF4CAF50); "chemical_residue" -> Color(0xFFFF5722)
+                                "microplastic" -> teal600; "dioxin" -> purple700
+                                "toxic_chemicals" -> Color(0xFF673AB7)
+                                "non_biodegradable" -> Color(0xFF795548)
+                                "styrene" -> Color(0xFF2196F3)
+                                else -> Color.Gray
+                            }
+                            SeriesData(getPollutantLabel(key), color, values)
+                        }
                     MultiSeriesCard(
                         title    = s.keyPollutants,
-                        subtitle = s.co2DioxinMicroplastic,
+                        subtitle = "All pollutants (3 most significant shown by default)",
                         icon     = Icons.Filled.Cloud,
-                        seriesList = listOf(
-                            SeriesData(s.seriesCO2,         red700,   data.co2),
-                            SeriesData(s.seriesDioxin,       purple700, data.dioxin),
-                            SeriesData(s.seriesMicroplastic, teal600,  data.microplastic),
-                        ),
+                        seriesList = pollutantSeries,
                         xLabels = data.labels,
+                        defaultActiveCount = pollutantSeries.size,
                     )
                 }
 
@@ -320,5 +520,54 @@ fun WasteAnalyticsScreen(onBack: () -> Unit = {}) {
                 Spacer(Modifier.navigationBarsPadding())
             }
         }
+    }
+
+    if (showHourDatePicker) {
+        val state = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showHourDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let {
+                        val p = parseDate("${pickerMillisToIsoDate(it)}T00:00:00")
+                        hourDate = p
+                    }
+                    showHourDatePicker = false
+                }) { Text(s.select) }
+            },
+            dismissButton = { TextButton(onClick = { showHourDatePicker = false }) { Text(s.cancel) } },
+        ) { DatePicker(state = state) }
+    }
+
+    if (showDayStartPicker) {
+        val state = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDayStartPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let {
+                        dayStart = parseDate("${pickerMillisToIsoDate(it)}T00:00:00")
+                    }
+                    showDayStartPicker = false
+                }) { Text(s.select) }
+            },
+            dismissButton = { TextButton(onClick = { showDayStartPicker = false }) { Text(s.cancel) } },
+        ) { DatePicker(state = state) }
+    }
+
+    if (showDayEndPicker) {
+        val state = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDayEndPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let {
+                        dayEnd = parseDate("${pickerMillisToIsoDate(it)}T00:00:00")
+                    }
+                    showDayEndPicker = false
+                }) { Text(s.select) }
+            },
+            dismissButton = { TextButton(onClick = { showDayEndPicker = false }) { Text(s.cancel) } },
+        ) { DatePicker(state = state) }
     }
 }

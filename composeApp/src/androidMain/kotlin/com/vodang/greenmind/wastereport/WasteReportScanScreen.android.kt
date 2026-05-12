@@ -63,12 +63,10 @@ private data class CapturedPhoto(
 )
 
 private val wasteTypeOptions = listOf(
-    "plastic" to "🧴  Plastic",
-    "organic" to "🍌  Organic",
-    "metal"   to "🔩  Metal",
-    "glass"   to "🫙  Glass",
-    "mixed"   to "🗑️  Mixed",
-    "other"   to "❓  Other",
+    "mixed" to "Mixed",
+    "plastic" to "Plastic",
+    "hazardous" to "Hazardous",
+    "organic" to "Organic",
 )
 
 private fun createWastePhotoUri(context: android.content.Context): Uri {

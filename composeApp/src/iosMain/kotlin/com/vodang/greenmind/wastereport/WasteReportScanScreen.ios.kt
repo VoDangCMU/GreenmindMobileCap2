@@ -47,12 +47,10 @@ private data class CapturedPhoto(
 )
 
 private val wasteTypeOptions = listOf(
+    "mixed" to "Mixed",
     "plastic" to "Plastic",
+    "hazardous" to "Hazardous",
     "organic" to "Organic",
-    "metal"   to "Metal",
-    "glass"   to "Glass",
-    "mixed"   to "Mixed",
-    "other"   to "Other",
 )
 
 @OptIn(ExperimentalForeignApi::class)

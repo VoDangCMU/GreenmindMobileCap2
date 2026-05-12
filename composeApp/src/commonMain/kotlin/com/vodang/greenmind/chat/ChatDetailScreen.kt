@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.chat.components.ChatBubble
 import com.vodang.greenmind.chat.components.ChatInputBar
+import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.ChatStore
 import kotlinx.coroutines.launch
 
@@ -29,10 +30,12 @@ fun ChatDetailScreen(
     onBack: () -> Unit,
     showHeader: Boolean = true,
 ) {
+    val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val messages = ChatStore.messages
     val isLoading = ChatStore.isLoading
+    val error = ChatStore.error
 
     LaunchedEffect(thread.id) {
         ChatStore.openCampaign(thread.id)
@@ -93,6 +96,13 @@ fun ChatDetailScreen(
         if (isLoading && messages.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Color(0xFF43A047))
+            }
+        } else if (error != null && messages.isEmpty()) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(error, fontSize = 13.sp, color = Color(0xFF9CA3AF))
+                    Button(onClick = { ChatStore.openCampaign(thread.id) }) { Text(s.blogRetry) }
+                }
             }
         } else {
             LazyColumn(

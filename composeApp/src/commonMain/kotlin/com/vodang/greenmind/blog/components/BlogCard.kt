@@ -42,6 +42,13 @@ private fun authorInitials(name: String, username: String): String =
     name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercaseChar() }.joinToString("")
         .ifBlank { username.take(2).uppercase() }
 
+private fun stripHtmlBasic(html: String): String =
+    html.replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), " ")
+        .replace(Regex("<[^>]+>"), "")
+        .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+        .replace("&nbsp;", " ").replace("&quot;", "\"").replace("&#39;", "'")
+        .replace(Regex("\\s+"), " ").trim()
+
 @Composable
 fun BlogCard(
     post: BlogDto,
@@ -53,8 +60,9 @@ fun BlogCard(
 ) {
     val s = LocalAppStrings.current
     val initials = authorInitials(post.author?.fullName ?: "", post.author?.username ?: "?")
+    val plainContent = post.content?.let(::stripHtmlBasic)
     var showFullContent by remember { mutableStateOf(false) }
-    val isLongContent = (post.content?.length ?: 0) > 250
+    val isLongContent = (plainContent?.length ?: 0) > 250
 
     // Shimmer animation
     val shimmerTransition = rememberInfiniteTransition(label = "shimmer")
@@ -133,9 +141,9 @@ fun BlogCard(
                     Box(Modifier.fillMaxWidth(0.85f).height(14.dp).clip(RoundedCornerShape(4.dp)).background(shimmerBrush))
                     Box(Modifier.fillMaxWidth(0.6f).height(14.dp).clip(RoundedCornerShape(4.dp)).background(shimmerBrush))
                 }
-            } else if (!post.content.isNullOrBlank()) {
+            } else if (!plainContent.isNullOrBlank()) {
                 Spacer(Modifier.height(6.dp))
-                val content = if (isLongContent && !showFullContent) post.content.take(250) + "..." else post.content
+                val content = if (isLongContent && !showFullContent) plainContent.take(250) + "..." else plainContent
                 Text(
                     content,
                     modifier = Modifier

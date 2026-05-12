@@ -61,8 +61,9 @@ fun LeaderboardTab(
     var entries by remember { mutableStateOf<List<LeaderboardEntryDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var reloadKey by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(accessToken) {
+    LaunchedEffect(accessToken, reloadKey) {
         isLoading = true
         error = null
         try {
@@ -102,7 +103,7 @@ fun LeaderboardTab(
             error != null -> Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(error!!, fontSize = 14.sp, color = gray500, textAlign = TextAlign.Center)
-                    Button(onClick = { }, colors = ButtonDefaults.buttonColors(containerColor = green800), shape = RoundedCornerShape(10.dp)) {
+                    Button(onClick = { reloadKey++ }, colors = ButtonDefaults.buttonColors(containerColor = green800), shape = RoundedCornerShape(10.dp)) {
                         Text(s.blogRetry)
                     }
                 }
@@ -121,11 +122,14 @@ fun LeaderboardTab(
                 if (entries.size >= 3) {
                     item { PodiumRow(entries.take(3)) }
                     item { Spacer(Modifier.height(4.dp)) }
-                }
-
-                val showTop5 = entries.size.coerceAtLeast(3).let { if (it > 3) entries.subList(3, minOf(entries.size, 5)) else emptyList() }
-                items(showTop5, key = { it.userId }) { entry ->
-                    LeaderboardRow(entry = entry)
+                    val showTop5 = if (entries.size > 3) entries.subList(3, minOf(entries.size, 5)) else emptyList()
+                    items(showTop5, key = { it.userId }) { entry ->
+                        LeaderboardRow(entry = entry)
+                    }
+                } else {
+                    items(entries, key = { it.userId }) { entry ->
+                        LeaderboardRow(entry = entry)
+                    }
                 }
 
                 if (entries.size > 5) {

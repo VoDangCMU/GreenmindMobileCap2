@@ -38,6 +38,7 @@ class AppStrings(val langCode: String) {
     var setPassword: String = ""
     var addressAndTerms: String = ""
     var fullName: String = ""
+    var dateOfBirth: String = ""
     var gender: String = ""
     var male: String = ""
     var female: String = ""

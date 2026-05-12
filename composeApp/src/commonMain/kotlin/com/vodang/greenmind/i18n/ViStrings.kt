@@ -43,6 +43,7 @@ val ViStrings = AppStrings("vi").apply {
     setPassword = "Đặt mật khẩu"
     addressAndTerms = "Địa chỉ & Điều khoản"
     fullName = "Họ và tên"
+    dateOfBirth = "Ngày tháng năm sinh"
     gender = "Giới tính"
     male = "Nam"
     female = "Nữ"

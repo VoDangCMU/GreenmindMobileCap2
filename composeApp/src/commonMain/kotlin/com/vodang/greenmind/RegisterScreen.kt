@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vodang.greenmind.location.Geo
 import kotlinx.coroutines.launch
 import com.vodang.greenmind.api.auth.RegisterEmailRequest
 import com.vodang.greenmind.api.auth.registerWithEmail
@@ -40,7 +41,10 @@ import com.vodang.greenmind.api.cities.getCitiesByCountry
 import com.vodang.greenmind.api.restcountries.CountryDto
 import com.vodang.greenmind.api.restcountries.getAllCountries
 import com.vodang.greenmind.i18n.LocalAppStrings
+import com.vodang.greenmind.register.classifyVietnamRegionByLatitude
+import com.vodang.greenmind.register.pickerMillisToIsoDate
 import com.vodang.greenmind.store.SettingsStore
+import kotlinx.coroutines.flow.firstOrNull
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +57,8 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
     var road         by remember { mutableStateOf("") }
     var city         by remember { mutableStateOf("") }
     var gender       by remember { mutableStateOf("other") }
+    var dateOfBirth  by remember { mutableStateOf("") }
+    var showDobPicker by remember { mutableStateOf(false) }
 
     var selectedCountry    by remember { mutableStateOf<CountryDto?>(null) }
     var showCountryPicker  by remember { mutableStateOf(false) }
@@ -77,7 +83,7 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
     val green500 = Color(0xFF4CAF50)
     val fieldShape = RoundedCornerShape(12.dp)
 
-    val step1Valid = email.isNotBlank()
+    val step1Valid = fullName.isNotBlank() && email.isNotBlank() && dateOfBirth.isNotBlank()
     val step2Valid = password.isNotEmpty() && password == confirm
     val step3Valid = acceptTerms
 
@@ -253,6 +259,29 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                                     imeAction = ImeAction.Done,
                                 ),
                             )
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                    value = dateOfBirth,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text(s.dateOfBirth) },
+                                    placeholder = { Text("YYYY-MM-DD", color = Color.Gray) },
+                                    trailingIcon = { Text("📅") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = fieldShape,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = green800,
+                                        focusedLabelColor = green800,
+                                        cursorColor = green800,
+                                    ),
+                                )
+                                Spacer(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clickable { showDobPicker = true },
+                                )
+                            }
                             Text(s.gender, fontSize = if (isSmall) 12.sp else 13.sp, color = Color(0xFF757575))
                             Row(
                                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -469,19 +498,21 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                                             isLoading = true
                                             try {
                                                 val countryName = selectedCountry?.name?.common
+                                                val currentLat = Geo.service.locationUpdates.firstOrNull()?.latitude
+                                                val region = currentLat?.let(::classifyVietnamRegionByLatitude) ?: "Central"
                                                 val req = RegisterEmailRequest(
                                                     email = email,
                                                     password = password,
                                                     confirmPassword = confirm,
                                                     fullName = fullName.ifBlank { "User" },
-                                                    dateOfBirth = "2000-01-01",
+                                                    dateOfBirth = dateOfBirth,
                                                     location = listOfNotNull(
                                                         road.ifBlank { null },
                                                         city.ifBlank { null },
                                                         countryName,
                                                     ).joinToString(", "),
                                                     gender = gender,
-                                                    region = countryName ?: city.ifBlank { "unknown" },
+                                                    region = region,
                                                 )
                                                 val resp = registerWithEmail(req)
                                                 SettingsStore.setAccessToken(resp.accessToken)
@@ -653,6 +684,27 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
                     }
                 }
             }
+        }
+    }
+
+    if (showDobPicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDobPicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val picked = datePickerState.selectedDateMillis
+                        if (picked != null) dateOfBirth = pickerMillisToIsoDate(picked)
+                        showDobPicker = false
+                    },
+                ) { Text(s.select) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDobPicker = false }) { Text(s.cancel) }
+            },
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }

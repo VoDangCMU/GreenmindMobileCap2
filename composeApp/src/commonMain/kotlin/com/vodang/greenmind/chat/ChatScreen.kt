@@ -20,12 +20,20 @@ fun ChatScreen(onBack: () -> Unit, onThreadClick: (ChatThread) -> Unit) {
     val s = LocalAppStrings.current
     val threads = ChatStore.threads
     val isLoading = ChatStore.isLoading
+    val error = ChatStore.error
 
     LaunchedEffect(Unit) { ChatStore.loadThreads() }
 
     if (isLoading) {
         Box(Modifier.fillMaxSize().background(Color(0xFFF5F5F5)), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = Color(0xFF43A047))
+        }
+    } else if (error != null && threads.isEmpty()) {
+        Box(Modifier.fillMaxSize().background(Color(0xFFF5F5F5)), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(error, fontSize = 13.sp, color = Color(0xFF9CA3AF))
+                Button(onClick = { ChatStore.loadThreads() }) { Text(s.blogRetry) }
+            }
         }
     } else if (threads.isEmpty()) {
         Box(Modifier.fillMaxSize().background(Color(0xFFF5F5F5)), contentAlignment = Alignment.Center) {

@@ -34,16 +34,20 @@ object ChatStore {
     var threads by mutableStateOf<List<ChatThread>>(emptyList())
     var messages by mutableStateOf<List<ChatMessage>>(emptyList())
     var isLoading by mutableStateOf(false)
+    var error by mutableStateOf<String?>(null)
     var activeCampaignId by mutableStateOf<String?>(null)
 
     fun loadThreads() {
         val token = SettingsStore.getAccessToken() ?: return
         isLoading = true
+        error = null
         scope.launch {
             try {
                 val dtos = getChatList(token)
                 threads = dtos.sortedByDescending { it.lastMessage?.createdAt ?: it.campaignCreatedAt }.map { it.toChatThread() }
-            } catch (_: Throwable) { }
+            } catch (e: Throwable) {
+                error = e.message ?: "Failed to load chat threads"
+            }
             isLoading = false
         }
     }
@@ -51,8 +55,10 @@ object ChatStore {
     fun openCampaign(campaignId: String) {
         val token = SettingsStore.getAccessToken() ?: return
         val userId = SettingsStore.getUser()?.id ?: ""
+        socket.setUserId(userId)
         activeCampaignId = campaignId
         isLoading = true
+        error = null
         messages = emptyList()
 
         // Show pending notifications for other campaigns
@@ -88,7 +94,9 @@ object ChatStore {
             try {
                 val resp = getCampaignMessages(token, campaignId)
                 messages = resp.data.map { it.toChatMessage(userId) }
-            } catch (_: Throwable) { }
+            } catch (e: Throwable) {
+                error = e.message ?: "Failed to load campaign messages"
+            }
             isLoading = false
         }
     }
