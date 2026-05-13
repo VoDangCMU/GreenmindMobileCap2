@@ -32,18 +32,16 @@ val green50  = Color(0xFFE8F5E9)
 // ── Data model ────────────────────────────────────────────────────────────────
 
 /** Lifecycle stages for a scanned entry. */
-enum class WasteSortStatus { SCANNED, SORTED, BRINGOUTED, COLLECTED }
+enum class WasteSortStatus { SORTED, BRINGOUTED, COLLECTED }
 
 val WasteSortStatus.label: String
     get() = when (this) {
-        WasteSortStatus.SCANNED    -> "Scanned"
         WasteSortStatus.SORTED     -> "Sorted"
         WasteSortStatus.BRINGOUTED -> "Brought Out"
         WasteSortStatus.COLLECTED  -> "Collected"
     }
 
 fun WasteSortStatus.i18nLabel(s: AppStrings) = when (this) {
-    WasteSortStatus.SCANNED    -> s.wasteScanned
     WasteSortStatus.SORTED     -> s.wasteSorted
     WasteSortStatus.BRINGOUTED -> s.wasteBroughtOut
     WasteSortStatus.COLLECTED  -> s.wasteCollected
@@ -58,7 +56,7 @@ data class WasteSortEntry(
     val grouped: Map<String, List<String>>,
     val createdAt: String,   // display string e.g. "Apr 2, 2026"
     val scannedBy: String,
-    val status: WasteSortStatus = WasteSortStatus.SCANNED,
+    val status: WasteSortStatus = WasteSortStatus.SORTED,
     val pollutantResult: WasteDetectResponse? = null,
     val greenScoreResult: GreenScoreEntryDto? = null,
     val totalMassKg: Double? = null,

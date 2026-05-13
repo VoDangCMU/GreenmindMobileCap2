@@ -84,7 +84,7 @@ actual fun WasteSortScanScreen(
                     grouped      = grouped,
                     createdAt    = nowIso8601().take(10),
                     scannedBy    = userName,
-                    status       = WasteSortStatus.SCANNED,
+                    status       = WasteSortStatus.SORTED,
                     totalMassKg  = dto.totalMassKg,
                 )
                 onResult(entry)

@@ -93,10 +93,10 @@ object WasteSortStore {
                         createdAt = dto.createdAt?.take(10) ?: today,
                         scannedBy = dto.detectedBy?.fullName ?: "Me",
                         status = when (dto.status) {
-                            "detected" -> WasteSortStatus.SCANNED
+                            "detected" -> WasteSortStatus.SORTED
                             "brought_out" -> WasteSortStatus.BRINGOUTED
                             "picked_up", "collected" -> WasteSortStatus.COLLECTED
-                            else -> WasteSortStatus.SCANNED
+                            else -> WasteSortStatus.SORTED
                         },
                         pollutantResult = pollutantResult,
                         totalMassKg = dto.totalMassKg,
@@ -169,10 +169,10 @@ object WasteSortStore {
                         createdAt = dto.createdAt?.take(10) ?: today,
                         scannedBy = dto.detectedBy?.fullName ?: "Me",
                         status = when (dto.status) {
-                            "detected" -> WasteSortStatus.SCANNED
+                            "detected" -> WasteSortStatus.SORTED
                             "brought_out" -> WasteSortStatus.BRINGOUTED
                             "picked_up", "collected" -> WasteSortStatus.COLLECTED
-                            else -> WasteSortStatus.SCANNED
+                            else -> WasteSortStatus.SORTED
                         },
                         pollutantResult = pollutantResult,
                         totalMassKg = dto.totalMassKg,

@@ -56,7 +56,6 @@ private val stepPending = Color(0xFFBDBDBD)
 private val stepBg      = Color(0xFFE8F5E9)
 
 internal val STEPS = listOf(
-    WasteSortStatus.SCANNED,
     WasteSortStatus.SORTED,
     WasteSortStatus.BRINGOUTED,
     WasteSortStatus.COLLECTED,
@@ -541,17 +540,6 @@ private fun ActionButton(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         when (entry.status) {
-            WasteSortStatus.SCANNED -> {
-                Button(
-                    onClick = { onStatusChange(WasteSortStatus.SORTED) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = stepDone),
-                ) {
-                    Text(s.markAsSorted, fontWeight = FontWeight.Bold)
-                }
-            }
-
             WasteSortStatus.SORTED -> {
                 Button(
                     onClick = {

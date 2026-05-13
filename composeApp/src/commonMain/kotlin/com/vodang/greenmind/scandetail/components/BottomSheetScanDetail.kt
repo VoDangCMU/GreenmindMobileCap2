@@ -70,68 +70,53 @@ fun BottomSheetScanDetail(
             }
 
             // Action buttons
-            when (currentStatus) {
-                WasteSortStatus.SCANNED -> {
-                    Button(
-                        onClick = {
-                            currentStatus = WasteSortStatus.SORTED
-                            onStatusChange(WasteSortStatus.SORTED)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                    ) {
-                        Text("Mark as Sorted", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                    }
-                }
-                WasteSortStatus.SORTED -> {
-                    Button(
-                        onClick = {
-                            val backendId = data.backendId
-                            if (backendId == null) {
-                                currentStatus = WasteSortStatus.BRINGOUTED
-                                onStatusChange(WasteSortStatus.BRINGOUTED)
-                                return@Button
-                            }
-                            isBusy = true
-                            errorMsg = null
-                            scope.launch {
-                                try {
-                                    val token = SettingsStore.getAccessToken()
-                                        ?: throw IllegalStateException("Not signed in")
-                                    bringOutDetectTrash(token, backendId)
+                when (currentStatus) {
+                    WasteSortStatus.SORTED -> {
+                        Button(
+                            onClick = {
+                                val backendId = data.backendId
+                                if (backendId == null) {
                                     currentStatus = WasteSortStatus.BRINGOUTED
                                     onStatusChange(WasteSortStatus.BRINGOUTED)
-                                } catch (e: Throwable) {
-                                    AppLogger.e("BottomSheet", "bring-out failed: ${e.message}")
-                                    errorMsg = e.message ?: "Failed"
-                                } finally {
-                                    isBusy = false
+                                    return@Button
                                 }
+                                isBusy = true
+                                errorMsg = null
+                                scope.launch {
+                                    try {
+                                        val token = SettingsStore.getAccessToken()
+                                            ?: throw IllegalStateException("Not signed in")
+                                        bringOutDetectTrash(token, backendId)
+                                        currentStatus = WasteSortStatus.BRINGOUTED
+                                        onStatusChange(WasteSortStatus.BRINGOUTED)
+                                    } catch (e: Throwable) {
+                                        AppLogger.e("BottomSheet", "bring-out failed: ${e.message}")
+                                        errorMsg = e.message ?: "Failed"
+                                    } finally {
+                                        isBusy = false
+                                    }
+                                }
+                            },
+                            enabled = !isBusy,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
+                        ) {
+                            if (isBusy) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Updating...", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            } else {
+                                Text("Mark as Brought Out", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             }
-                        },
-                        enabled = !isBusy,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
-                    ) {
-                        if (isBusy) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Updating...", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                        } else {
-                            Text("Mark as Brought Out", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        }
+                        errorMsg?.let {
+                            Text(it, color = Color(0xFFD32F2F), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                         }
                     }
-                    errorMsg?.let {
-                        Text(it, color = Color(0xFFD32F2F), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                    }
-                }
-                WasteSortStatus.BRINGOUTED -> {
+                    WasteSortStatus.BRINGOUTED -> {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -159,7 +144,6 @@ fun BottomSheetScanDetail(
 @Composable
 private fun StatusChip(status: WasteSortStatus) {
     val (bgColor, textColor, label) = when (status) {
-        WasteSortStatus.SCANNED -> Triple(Color(0xFFFFF3E0), Color(0xFFE65100), "Scanned")
         WasteSortStatus.SORTED -> Triple(Color(0xFFE3F2FD), Color(0xFF1565C0), "Sorted")
         WasteSortStatus.BRINGOUTED -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "Brought Out")
         WasteSortStatus.COLLECTED -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "Collected")

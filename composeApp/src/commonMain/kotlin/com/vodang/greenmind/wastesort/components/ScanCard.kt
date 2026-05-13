@@ -48,7 +48,6 @@ fun ScanCard(entry: WasteSortEntry, onClick: () -> Unit) {
                         .clip(RoundedCornerShape(8.dp))
                         .background(
                             when (entry.status) {
-                                WasteSortStatus.SCANNED    -> Color(0xFFEEEEEE)
                                 WasteSortStatus.SORTED     -> green50
                                 WasteSortStatus.BRINGOUTED -> Color(0xFFE3F2FD)
                                 WasteSortStatus.COLLECTED  -> Color(0xFF2E7D32).copy(alpha = 0.15f)
@@ -61,7 +60,6 @@ fun ScanCard(entry: WasteSortEntry, onClick: () -> Unit) {
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = when (entry.status) {
-                            WasteSortStatus.SCANNED    -> Color(0xFF616161)
                             WasteSortStatus.SORTED     -> green800
                             WasteSortStatus.BRINGOUTED -> Color(0xFF1565C0)
                             WasteSortStatus.COLLECTED  -> green800

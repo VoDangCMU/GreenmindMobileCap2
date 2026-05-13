@@ -447,17 +447,6 @@ internal fun DetectActionButton(
         HorizontalDivider(color = Color(0xFFE0E0E0))
 
         when (status) {
-            WasteSortStatus.SCANNED -> {
-                Button(
-                    onClick = { onStatusChange("sorted") },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = stepDone),
-                ) {
-                    Text("Mark as Sorted", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            }
-
             WasteSortStatus.SORTED -> {
                 Button(
                     onClick = {
@@ -524,7 +513,6 @@ internal fun DetectActionButton(
 @Composable
 private fun StatusChip(status: WasteSortStatus) {
     val (bgColor, textColor, label) = when (status) {
-        WasteSortStatus.SCANNED -> Triple(Color(0xFFFFF3E0), Color(0xFFE65100), "Scanned")
         WasteSortStatus.SORTED -> Triple(Color(0xFFE3F2FD), Color(0xFF1565C0), "Sorted")
         WasteSortStatus.BRINGOUTED -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "Brought Out")
         WasteSortStatus.COLLECTED -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "Collected")

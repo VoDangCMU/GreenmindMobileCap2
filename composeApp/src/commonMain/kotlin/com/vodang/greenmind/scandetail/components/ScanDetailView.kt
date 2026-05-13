@@ -52,7 +52,6 @@ private val stepPending = Color(0xFFBDBDBD)
 private val stepBg      = Color(0xFFE8F5E9)
 
 private val STEPS = listOf(
-    WasteSortStatus.SCANNED,
     WasteSortStatus.SORTED,
     WasteSortStatus.BRINGOUTED,
     WasteSortStatus.COLLECTED,
@@ -60,7 +59,6 @@ private val STEPS = listOf(
 
 val label: (WasteSortStatus) -> String = { status ->
     when (status) {
-        WasteSortStatus.SCANNED    -> "Scanned"
         WasteSortStatus.SORTED     -> "Sorted"
         WasteSortStatus.BRINGOUTED -> "Brought Out"
         WasteSortStatus.COLLECTED  -> "Collected"
@@ -185,19 +183,6 @@ fun FixedBottomBar(
 
         // Action button
         when (status) {
-            WasteSortStatus.SCANNED -> {
-                Button(
-                    onClick = { onStatusChange(WasteSortStatus.SORTED) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = stepDone),
-                ) {
-                    Text(s.markAsSorted, fontWeight = FontWeight.Bold)
-                }
-            }
-
             WasteSortStatus.SORTED -> {
                 Button(
                     onClick = {
@@ -271,7 +256,6 @@ fun FixedBottomBar(
 @Composable
 fun StatusBadge(status: WasteSortStatus, modifier: Modifier = Modifier) {
     val (bgColor, textColor, label) = when (status) {
-        WasteSortStatus.SCANNED -> Triple(Color(0xFFFFF3E0), Color(0xFFE65100), "Scanned")
         WasteSortStatus.SORTED -> Triple(Color(0xFFE3F2FD), Color(0xFF1565C0), "Sorted")
         WasteSortStatus.BRINGOUTED -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "Brought Out")
         WasteSortStatus.COLLECTED -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "Collected")

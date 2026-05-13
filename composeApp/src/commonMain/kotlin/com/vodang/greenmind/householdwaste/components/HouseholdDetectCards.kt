@@ -47,12 +47,12 @@ private val gray400c  = Color(0xFF9CA3AF)
 @Composable
 internal fun StatusBadge(status: WasteSortStatus) {
     val bg = when(status) {
-        WasteSortStatus.SCANNED, WasteSortStatus.SORTED -> Color(0xFFE3F2FD)
+        WasteSortStatus.SORTED -> Color(0xFFE3F2FD)
         WasteSortStatus.BRINGOUTED -> Color(0xFFFEF3C7)
         WasteSortStatus.COLLECTED -> Color(0xFFE8F5E9)
     }
     val fg = when(status) {
-        WasteSortStatus.SCANNED, WasteSortStatus.SORTED -> Color(0xFF1565C0)
+        WasteSortStatus.SORTED -> Color(0xFF1565C0)
         WasteSortStatus.BRINGOUTED -> Color(0xFFB45309)
         WasteSortStatus.COLLECTED -> Color(0xFF2E7D32)
     }

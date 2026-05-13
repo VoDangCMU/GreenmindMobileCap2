@@ -134,7 +134,7 @@ private fun WasteSortScanContent(
                     } ?: emptyMap(),
                     createdAt       = nowIso8601().take(10),
                     scannedBy       = userName,
-                    status          = WasteSortStatus.SCANNED,
+                    status          = WasteSortStatus.SORTED,
                     pollutantResult = if (data.pollution != null && data.impact != null) {
                         WasteDetectResponse(
                             items        = data.items?.map {
