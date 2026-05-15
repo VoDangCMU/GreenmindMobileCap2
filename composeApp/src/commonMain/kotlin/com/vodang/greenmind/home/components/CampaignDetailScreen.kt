@@ -44,6 +44,23 @@ import androidx.compose.ui.window.DialogProperties
 import com.vodang.greenmind.home.components.RouteMap
 import com.vodang.greenmind.home.components.RouteMapPoint
 import com.vodang.greenmind.location.Location
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
+import kotlin.math.PI
+import kotlin.math.pow
+import kotlin.math.roundToInt
+
+/** Haversine distance in meters between two lat/lng points. */
+private fun distanceMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+    val r = 6371000.0
+    val toRad = PI / 180.0
+    val dLat = (lat2 - lat1) * toRad
+    val dLng = (lng2 - lng1) * toRad
+    val a = sin(dLat / 2).pow(2) + cos(lat1 * toRad) * cos(lat2 * toRad) * sin(dLng / 2).pow(2)
+    return r * 2 * atan2(sqrt(a), sqrt(1 - a))
+}
 
 private val green800v = Color(0xFF2E7D32)
 private val green600v = Color(0xFF388E3C)
@@ -311,7 +328,10 @@ fun CampaignDetailScreen(
                             isBusy = false
                         }
                     }
-                    "REGISTERED" -> {
+                    "PENDING" -> {
+                        StatusBadge(s.volunteerPendingApproval, orange600v, orange50v)
+                    }
+                    "REGISTERED", "APPROVED" -> {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             StatusBadge(s.registeredStatus(s.volunteerRegistered), green600v, green50v)
                             ActionButton(s.volunteerCheckIn, teal600v, Modifier.weight(1f)) {
@@ -320,8 +340,19 @@ fun CampaignDetailScreen(
                                     isBusy = true; error = null
                                     try {
                                         val loc = Geo.service.locationUpdates.firstOrNull()
-                                        val lat = loc?.latitude ?: 0.0
-                                        val lng = loc?.longitude ?: 0.0
+                                        if (loc == null) {
+                                            error = s.waitingForGps
+                                            isBusy = false
+                                            return@launch
+                                        }
+                                        val lat = loc.latitude
+                                        val lng = loc.longitude
+                                        val dist = distanceMeters(lat, lng, campaign.lat, campaign.lng)
+                                        if (dist > campaign.radius) {
+                                            error = s.volunteerCheckInTooFar(dist.roundToInt())
+                                            isBusy = false
+                                            return@launch
+                                        }
                                         val result = checkInCampaign(access, campaign.id, lat, lng)
                                         val converted = result.toCampaignParticipant(p.user)
                                         participant = converted

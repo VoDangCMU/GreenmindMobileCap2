@@ -24,11 +24,12 @@ private const val AI_BASE_URL = "https://ai-greenmind.khoav4.com"
 
 @Serializable
 data class PlantAnalysisResponse(
+    @SerialName("id")                       val id: String,
     @SerialName("vegetable_area")           val vegetableArea: Int,
     @SerialName("dish_area")               val dishArea: Double,
     @SerialName("vegetable_ratio_percent") val vegetableRatioPercent: Double,
-    @SerialName("plant_image_base64")      val plantImageBase64: String,
-    @SerialName("dish_image_base64")       val dishImageBase64: String,
+    @SerialName("plant_image_url")         val plantImageUrl: String,
+    @SerialName("created_at")              val createdAt: String,
 )
 
 // ── App-facing data model ─────────────────────────────────────────────────────
@@ -50,46 +51,46 @@ private val mealAiHttpClient = buildHttpClient(
     socketTimeoutMs  = 120_000,
 )
 
-// ── API call ──────────────────────────────────────────────────────────────────
+@Serializable
+private data class AnalyzeMealRequest(
+    @SerialName("imageUrl") val imageUrl: String,
+)
+
+private const val API_BASE_URL = "https://vodang-api.gauas.com"
 
 /**
- * POST /analyze-image-plant — uploads a meal image and returns the plant ratio analysis.
+ * POST /plant-analysis/analyze — sends an image URL and returns plant ratio analysis.
  *
- * @param imageBytes  Raw bytes of the captured image (JPEG).
- * @param filename    File name sent in the multipart form (default: "meal.jpg").
+ * @param imageUrl    URL of the uploaded meal image.
+ * @param accessToken JWT token for authenticated endpoint.
  */
-suspend fun analyzeMeal(
-    imageBytes: ByteArray,
-    filename: String = "meal.jpg",
+suspend fun analyzeMealByUrl(
+    imageUrl: String,
+    accessToken: String,
 ): MealAnalysisResult {
-    AppLogger.i("MealAI", "analyzeMeal filename=$filename bytes=${imageBytes.size}")
+    AppLogger.i("MealAI", "analyzeMealByUrl imageUrl=$imageUrl")
     try {
-        val response = mealAiHttpClient.post("$AI_BASE_URL/analyze-image-plant") {
-            setBody(MultiPartFormDataContent(formData {
-                append("file", imageBytes, Headers.build {
-                    append(HttpHeaders.ContentType, "image/jpeg")
-                    append(HttpHeaders.ContentDisposition, "filename=\"$filename\"")
-                })
-            }))
+        val response = mealAiHttpClient.post("$API_BASE_URL/plant-analysis/analyze") {
+            setBody(AnalyzeMealRequest(imageUrl))
         }
         if (!response.status.isSuccess()) {
             val msg = try { response.body<ErrorResponse>().message }
                       catch (_: Throwable) { response.bodyAsText() }
-            AppLogger.e("MealAI", "analyzeMeal failed: ${response.status.value} $msg")
+            AppLogger.e("MealAI", "analyzeMealByUrl failed: ${response.status.value} $msg")
             throw ApiException(response.status.value, msg)
         }
         val dto = response.body<PlantAnalysisResponse>()
-        AppLogger.i("MealAI", "analyzeMeal success ratio=${dto.vegetableRatioPercent}")
+        AppLogger.i("MealAI", "analyzeMealByUrl success ratio=${dto.vegetableRatioPercent}")
         return MealAnalysisResult(
             plantRatio       = dto.vegetableRatioPercent.toInt().coerceIn(0, 100),
             description      = "",
-            plantImageBase64 = dto.plantImageBase64,
-            dishImageBase64  = dto.dishImageBase64,
+            plantImageBase64 = dto.plantImageUrl,
+            dishImageBase64  = null,
         )
     } catch (e: ApiException) {
         throw e
     } catch (e: Throwable) {
-        AppLogger.e("MealAI", "analyzeMeal error: ${e.message}")
+        AppLogger.e("MealAI", "analyzeMealByUrl error: ${e.message}")
         throw ApiException(0, e.message ?: "Network error")
     }
 }

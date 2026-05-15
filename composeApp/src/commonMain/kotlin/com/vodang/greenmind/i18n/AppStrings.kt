@@ -211,6 +211,8 @@ class AppStrings(val langCode: String) {
     var volunteerCheckOut: String = ""
     var volunteerCheckedIn: String = ""
     var volunteerCheckedOut: String = ""
+    var volunteerPendingApproval: String = ""
+    var volunteerCheckInTooFar: (Int) -> String = { _ -> "" }
     var volunteerLoading: String = ""
     var volunteerLoadError: String = ""
     var volunteerNoCampaigns: String = ""

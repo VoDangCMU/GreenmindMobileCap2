@@ -149,7 +149,7 @@ fun CampaignsList(
         val myActive = campaigns.filter { c ->
             val state = campaignStates[c.id]
             val p = state?.participant
-            p != null && (p.status == "REGISTERED" || p.status == "CHECKED_IN")
+            p != null && (p.status == "PENDING" || p.status == "REGISTERED" || p.status == "APPROVED" || p.status == "CHECKED_IN")
         }
         sortByDistance(myActive, userLocation)
     }
@@ -356,8 +356,17 @@ fun CampaignsList(
                                         campaignStates[campaign.id] = state.copy(busy = true, error = null)
                                         try {
                                             val loc = Geo.service.locationUpdates.firstOrNull()
-                                            val lat = loc?.latitude ?: 0.0
-                                            val lng = loc?.longitude ?: 0.0
+                                            if (loc == null) {
+                                                campaignStates[campaign.id] = state.copy(busy = false, error = s.waitingForGps)
+                                                return@launch
+                                            }
+                                            val lat = loc.latitude
+                                            val lng = loc.longitude
+                                            val dist = distanceMeters(lat, lng, campaign.lat, campaign.lng)
+                                            if (dist > campaign.radius) {
+                                                campaignStates[campaign.id] = state.copy(busy = false, error = s.volunteerCheckInTooFar(dist.roundToInt()))
+                                                return@launch
+                                            }
                                             val result = checkInCampaign(accessToken, campaign.id, lat, lng)
                                             campaignStates[campaign.id] = CampaignsUiState(
                                                 participant = result.toCampaignParticipant(participant.user)
@@ -476,7 +485,10 @@ private fun CampaignsCampaignRow(
             } else {
                 when (participantStatus) {
                     null -> CampaignsActionButton(s.volunteerJoinButton, green800c, onRegister)
-                    "REGISTERED" -> {
+                    "PENDING" -> {
+                        CampaignsStatusBadge(s.volunteerPendingApproval, orange600c, orange50c)
+                    }
+                    "REGISTERED", "APPROVED" -> {
                         CampaignsStatusBadge(s.registeredStatus(s.volunteerRegistered), green600c, green50c)
                         Spacer(Modifier.width(8.dp))
                         CampaignsActionButton(s.volunteerCheckIn, teal600c, onCheckIn)

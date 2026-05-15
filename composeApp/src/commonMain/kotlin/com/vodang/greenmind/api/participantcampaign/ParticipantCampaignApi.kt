@@ -52,6 +52,13 @@ data class ParticipantCampaignDto(
     val updatedAt: String,
 )
 
+/** Response wrapper for POST /participant-campaigns/{id}/register */
+@Serializable
+data class RegisterCampaignResponse(
+    val message: String,
+    val participant: ParticipantCampaignDto,
+)
+
 @Serializable
 data class LocationRequest(
     val lat: Double,
@@ -91,7 +98,7 @@ suspend fun registerCampaign(accessToken: String, campaignId: String): Participa
         }
         AppLogger.d("ParticipantCampaign", "registerCampaign → HTTP ${resp.status.value}")
         return if (resp.status.isSuccess()) {
-            resp.body()
+            resp.body<RegisterCampaignResponse>().participant
         } else {
             val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
             AppLogger.e("ParticipantCampaign", "registerCampaign failed: ${resp.status.value} $text")

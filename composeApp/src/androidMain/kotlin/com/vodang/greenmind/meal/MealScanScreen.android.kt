@@ -33,10 +33,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.vodang.greenmind.api.meal.MealAnalysisResult
 import com.vodang.greenmind.permission.CameraPermissionGate
-import com.vodang.greenmind.api.meal.analyzeMeal
+import com.vodang.greenmind.api.meal.analyzeMealByUrl
 import com.vodang.greenmind.i18n.LocalAppStrings
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -208,22 +206,18 @@ private fun MealScanContent(
                                 try {
                                     val bytes = capturedBytes!!
                                     val token = com.vodang.greenmind.store.SettingsStore.getAccessToken()
-                                    val (analysisResult, uploadedUrl) = coroutineScope {
-                                        val analysisDeferred = async {
-                                            analyzeMeal(bytes, "meal_${System.currentTimeMillis()}.jpg")
-                                        }
-                                        val uploadDeferred = if (token != null) async {
-                                            try {
-                                                com.vodang.greenmind.api.upload.requestAndUpload(
-                                                    accessToken = token,
-                                                    filename = "meal_${System.currentTimeMillis()}.jpg",
-                                                    fileBytes = bytes,
-                                                    contentType = "image/jpeg",
-                                                ).imageUrl
-                                            } catch (_: Throwable) { null }
-                                        } else null
-                                        analysisDeferred.await() to uploadDeferred?.await()
+                                    if (token == null) {
+                                        error = s.mealError
+                                        phase = MealScanPhase.IDLE
+                                        return@launch
                                     }
+                                    val uploadedUrl = com.vodang.greenmind.api.upload.requestAndUpload(
+                                        accessToken = token,
+                                        filename = "meal_${System.currentTimeMillis()}.jpg",
+                                        fileBytes = bytes,
+                                        contentType = "image/jpeg",
+                                    ).imageUrl
+                                    val analysisResult = analyzeMealByUrl(uploadedUrl, token)
                                     result = analysisResult
                                     imageUrl = uploadedUrl
                                     phase = MealScanPhase.RESULT

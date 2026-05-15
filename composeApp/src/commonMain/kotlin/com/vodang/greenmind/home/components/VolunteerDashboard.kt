@@ -244,8 +244,17 @@ fun VolunteerDashboard(
                                         campaignStates[campaign.id] = state.copy(busy = true, error = null)
                                         try {
                                             val loc = Geo.service.locationUpdates.firstOrNull()
-                                            val lat = loc?.latitude ?: 0.0
-                                            val lng = loc?.longitude ?: 0.0
+                                            if (loc == null) {
+                                                campaignStates[campaign.id] = state.copy(busy = false, error = s.waitingForGps)
+                                                return@launch
+                                            }
+                                            val lat = loc.latitude
+                                            val lng = loc.longitude
+                                            val dist = distanceMeters(lat, lng, campaign.lat, campaign.lng)
+                                            if (dist > campaign.radius) {
+                                                campaignStates[campaign.id] = state.copy(busy = false, error = s.volunteerCheckInTooFar(dist.roundToInt()))
+                                                return@launch
+                                            }
                                             val result = checkInCampaign(accessToken, campaign.id, lat, lng)
                                             campaignStates[campaign.id] = CampaignUiState(
                                                 participant = result.toCampaignParticipant(participant.user)
@@ -372,8 +381,12 @@ private fun CampaignRow(
                         // Not registered
                         ActionButton(s.volunteerJoinButton, green800v, onRegister)
                     }
-                    "REGISTERED" -> {
-                        // Registered, not checked in
+                    "PENDING" -> {
+                        // Registered, waiting for approval
+                        StatusBadge(s.volunteerPendingApproval, orange600v, orange50v)
+                    }
+                    "REGISTERED", "APPROVED" -> {
+                        // Approved, not checked in
                         StatusBadge(s.registeredStatus(s.volunteerRegistered), green600v, green50v)
                         Spacer(Modifier.width(8.dp))
                         ActionButton(s.volunteerCheckIn, teal600v, onCheckIn)

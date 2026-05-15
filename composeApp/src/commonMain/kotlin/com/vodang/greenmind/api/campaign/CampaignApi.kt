@@ -399,6 +399,103 @@ suspend fun rejectParticipant(
     }
 }
 
+// ── Chat DTOs ───────────────────────────────────────────────────────────────────
+
+@Serializable
+data class ChatMessageSender(
+    val id: String,
+    val fullName: String,
+    val role: String,
+)
+
+@Serializable
+data class ChatMessageDto(
+    val id: String,
+    val campaignId: String,
+    val sender: ChatMessageSender,
+    val content: String,
+    val createdAt: String,
+)
+
+@Serializable
+data class ChatMessageLastMessage(
+    val content: String,
+    val senderId: String,
+    val createdAt: String,
+)
+
+@Serializable
+data class ChatListItemDto(
+    val campaignId: String,
+    val campaignName: String,
+    val campaignStatus: String,
+    val messageCount: Int,
+    val lastMessage: ChatMessageLastMessage,
+    val campaignCreatedAt: String,
+    val isCreator: Boolean,
+)
+
+@Serializable
+data class FetchMessagesResponse(
+    val data: List<ChatMessageDto>,
+    val total: Int,
+    val skip: Int,
+    val take: Int,
+)
+
+// ── API calls ─────────────────────────────────────────────────────────────────
+
+/** GET /campaigns/{id}/messages — returns chat history for a campaign */
+suspend fun getChatMessages(
+    accessToken: String,
+    campaignId: String,
+    take: Int? = null,
+    skip: Int? = null,
+): FetchMessagesResponse {
+    AppLogger.i("Campaign", "getChatMessages campaignId=$campaignId take=$take skip=$skip")
+    try {
+        val resp = httpClient.get("$BASE_URL/campaigns/$campaignId/messages") {
+            header("Authorization", "Bearer $accessToken")
+            take?.let { parameter("take", it) }
+            skip?.let { parameter("skip", it) }
+        }
+        AppLogger.d("Campaign", "getChatMessages → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Campaign", "getChatMessages failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("Campaign", "getChatMessages error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
+/** GET /campaigns/chat-list — returns chat list for current user */
+suspend fun getChatList(accessToken: String): List<ChatListItemDto> {
+    AppLogger.i("Campaign", "getChatList")
+    try {
+        val resp = httpClient.get("$BASE_URL/campaigns/chat-list") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("Campaign", "getChatList → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            AppLogger.e("Campaign", "getChatList failed: ${resp.status.value} $text")
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("Campaign", "getChatList error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
 /** Converts ParticipantCampaignDto (API response) to CampaignParticipant (UI model) */
 fun ParticipantCampaignDto.toCampaignParticipant(user: CampaignParticipantUser) = CampaignParticipant(
     id = id,
