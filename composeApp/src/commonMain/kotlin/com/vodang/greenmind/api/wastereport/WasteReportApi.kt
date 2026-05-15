@@ -21,20 +21,17 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class WasteReportDto(
-    val id: String,
-    val code: String,
-    val wasteType: String,
-    val wardName: String,
+    val id: String = "",
+    val code: String = "",
+    val wardName: String = "",
     val lat: Double = 0.0,
     val lng: Double = 0.0,
-    val description: String,
-    val status: String,
-    val createdAt: String,
-    val imageKey: String? = null,
+    val description: String = "",
+    val status: String = "",
+    val createdAt: String = "",
     val imageUrl: String? = null,
+    val reportedBy: String? = null,
     val reportedByUserId: String? = null,
-    val assignedCollectorId: String? = null,
-    val assignedTo: String? = null,
     val imageEvidenceUrl: String? = null,
     val resolvedAt: String? = null,
     val campaignId: String? = null,
@@ -55,35 +52,38 @@ data class WasteReportPageResponse(
     val limit: Int,
 )
 
+/** Wrapper for POST /waste-reports response: { message, data } */
+@Serializable
+data class CreateWasteReportResponseWrapper(
+    val message: String,
+    val data: WasteReportDto,
+)
+
 // ── Requests ─────────────────────────────────────────────────────────────────
 
 @Serializable
 data class CreateWasteReportRequest(
-    val wasteType: String,
     val wardName: String,
     val lat: Double,
     val lng: Double,
     val description: String,
-    val imageKey: String,
     val imageUrl: String,
 )
 
 @Serializable
 data class UpdateWasteReportRequest(
-    val wasteType: String,
     val description: String,
-    val imageKey: String,
     val imageUrl: String,
 )
 
 // ── API calls ─────────────────────────────────────────────────────────────────
 
-/** POST /waste-reports — create a new report (response is the DTO directly) */
+/** POST /waste-reports — create a new report (response wraps DTO in {message, data}) */
 suspend fun createWasteReport(
     accessToken: String,
     request: CreateWasteReportRequest,
 ): WasteReportDto {
-    AppLogger.i("WasteReport", "createWasteReport wasteType=${request.wasteType} ward=${request.wardName} imageKey=${request.imageKey}")
+    AppLogger.i("WasteReport", "createWasteReport ward=${request.wardName} imageUrl=${request.imageUrl}")
     try {
         val resp = httpClient.post("$BASE_URL/waste-reports") {
             header("Authorization", "Bearer $accessToken")
@@ -93,9 +93,10 @@ suspend fun createWasteReport(
         AppLogger.d("WasteReport", "createWasteReport → HTTP ${resp.status.value}")
         return if (resp.status.isSuccess()) {
             val raw = resp.bodyAsText()
-            AppLogger.d("WasteReport", "createWasteReport raw body (${raw.length} chars): ${raw.take(500)}")
+            AppLogger.d("WasteReport", "createWasteReport raw body (${raw.length} chars): ${raw.take(800)}")
             try {
-                resp.body()
+                val wrapper = resp.body<CreateWasteReportResponseWrapper>()
+                wrapper.data
             } catch (e: Throwable) {
                 AppLogger.e("WasteReport", "createWasteReport parse error on: $raw")
                 throw e
@@ -209,7 +210,7 @@ suspend fun updateWasteReport(
     id: String,
     request: UpdateWasteReportRequest,
 ): WasteReportDto {
-    AppLogger.i("WasteReport", "updateWasteReport id=$id wasteType=${request.wasteType}")
+    AppLogger.i("WasteReport", "updateWasteReport id=$id")
     try {
         val resp = httpClient.patch("$BASE_URL/waste-reports/$id") {
             header("Authorization", "Bearer $accessToken")

@@ -9,6 +9,9 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.awaitAll
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
 
@@ -268,4 +271,16 @@ suspend fun checkinPickup(accessToken: String, id: String, request: CollectorChe
         AppLogger.e("WasteCollector", "checkinPickup error: ${e.message}")
         throw ApiException(0, e.message ?: "Network error")
     }
+}
+
+/** POST /collectors/pickups/{id}/checkin — batch variant for multiple points at same address */
+suspend fun checkinPickupBatch(
+    accessToken: String,
+    points: List<Pair<String, CollectorCheckinRequest>>,
+): List<Result<CollectorCheckinResponse>> = coroutineScope {
+    points.map { (id, request) ->
+        async {
+            runCatching { checkinPickup(accessToken, id, request) }
+        }
+    }.awaitAll()
 }

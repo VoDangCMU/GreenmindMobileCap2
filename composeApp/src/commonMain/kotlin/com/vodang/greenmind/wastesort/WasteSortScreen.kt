@@ -157,13 +157,13 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
                 onBack = { selectedApiGroup = null },
                 onStatusChange = { newStatus ->
                     scanData = scanData.copy(status = newStatus)
-                    WasteSortStore.triggerRefresh()
+                    // Use notifyRefresh() to update UI without triggering API reload (avoids race condition)
+                    WasteSortStore.notifyRefresh()
                 },
                 displayMode = DisplayMode.FULL_SCREEN,
             )
         }
         detailData != null -> {
-            val liveEntry = entries.find { it.id == selectedEntryId }
             ScanDetailView(
                 data = detailData!!,
                 onBack = {
@@ -171,11 +171,11 @@ fun WasteSortScreen(onScanClick: () -> Unit = {}) {
                     detailData = null
                 },
                 onStatusChange = { newStatus ->
+                    // OPTIMISTIC: Update detailData immediately for responsive UI
+                    detailData = detailData?.copy(status = newStatus)
+                    // PERSIST: Update store in background
                     selectedEntryId?.let { id ->
                         WasteSortStore.updateStatus(id, newStatus)
-                        entries.find { it.id == id }?.let { entry ->
-                            detailData = entry.copy(status = newStatus).toScanDetailData()
-                        }
                     }
                 },
                 displayMode = DisplayMode.FULL_SCREEN,

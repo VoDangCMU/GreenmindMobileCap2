@@ -19,11 +19,13 @@ enum class AppScreen {
     CHAT, CHAT_DETAIL,
     WASTE_SORT, WASTE_REPORT, WASTE_IMPACT, WASTE_ANALYTICS, WASTE_TOTAL_MASS,
     HOUSEHOLD_WASTE,
+    WASTE_STATUS,
     MEAL_SCAN, BILL_SCAN,
     ENERGY, WALK_DISTANCE, ENVIRONMENTAL_IMPACT,
     CAMPAIGNS,
     PROFILE_DETAIL, SETTINGS, CATALOGUE, PRE_APP_SURVEY, SURVEY,
     HOUSEHOLD_SETTINGS,
+    PAYMENT,
 }
 
 data class NavItem(
@@ -62,6 +64,7 @@ object Navigation {
             AppScreen.WASTE_SCAN, AppScreen.WASTE_SORT, AppScreen.MEAL_SCAN, AppScreen.BILL_SCAN,
             AppScreen.ENVIRONMENTAL_IMPACT -> AppScreen.WASTE_SCAN
             AppScreen.HOUSEHOLD, AppScreen.HOUSEHOLD_WASTE, AppScreen.HOUSEHOLD_SETTINGS -> AppScreen.HOUSEHOLD
+            AppScreen.PAYMENT -> AppScreen.HOME
             else -> current
         }
     }

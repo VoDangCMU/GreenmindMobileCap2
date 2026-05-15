@@ -35,12 +35,13 @@ private val amber600 = Color(0xFFFFB300)
 private val blue600 = Color(0xFF1976D2)
 private val blue50 = Color(0xFFE3F2FD)
 
-data class WastePoint(val id: Int, val reportId: String, val address: String, val zone: String, val collected: Boolean, val bags: Int, val lat: Double?, val lng: Double?)
+data class WastePoint(val id: Int, val reportId: String, val address: String, val groupKey: String, val zone: String, val collected: Boolean, val bags: Int, val lat: Double?, val lng: Double?)
 
 private fun CollectorDetectRecordDto.toWastePoint(index: Int, unknownLocation: String) = WastePoint(
     id = index,
     reportId = id,
     address = household?.address ?: unknownLocation,
+    groupKey = household?.address ?: unknownLocation,
     zone = detectType,
     collected = status == "picked_up" || status == "done" || status == "completed" || status == "resolved",
     bags = totalObjects ?: totalMassKg?.toInt() ?: 0,
@@ -82,20 +83,6 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
     val totalCount = points.size
 
     val token = SettingsStore.getAccessToken() ?: ""
-    // Always composed so the activity-result launcher stays registered.
-    CheckInScanFlow(
-        reportId = checkInReportId,
-        accessToken = token,
-        onSuccess = {
-            checkInReportId = null
-            scope.launch {
-                runCatching { 
-                    reports = getBroughtOut(token).data
-                }
-            }
-        },
-        onDismiss = { checkInReportId = null },
-    )
 
     Column(
         modifier = Modifier
@@ -144,10 +131,23 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
                     MetricCard(Icons.Filled.AssignmentInd, s.routeLabel, "$totalCount", s.today, blue50, blue600, blue600, Modifier.weight(1f).aspectRatio(1f))
                 }
 
-                CheckInCard(points, onCheckInClick = { reportId -> checkInReportId = reportId })
+                CheckInCard(points, onCheckInClick = { group -> checkInReportId = group.firstOrNull()?.reportId })
                 CollectionRouteCard(points)
                 CollectionRouteMapCard(points = routePoints)
-                // GarbageHeatmapCard()
+                CheckInScanFlow(
+                    allPoints = points,
+                    reportId = checkInReportId,
+                    accessToken = token,
+                    onSuccess = {
+                        checkInReportId = null
+                        scope.launch {
+                            runCatching {
+                                reports = getBroughtOut(token).data
+                            }
+                        }
+                    },
+                    onDismiss = { checkInReportId = null },
+                )
             }
         }
     }

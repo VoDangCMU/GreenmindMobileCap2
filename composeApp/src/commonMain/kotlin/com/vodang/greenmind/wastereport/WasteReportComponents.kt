@@ -43,16 +43,6 @@ private val red700   = Color(0xFFC62828)
 private val blue50   = Color(0xFFE3F2FD)
 private val blue700  = Color(0xFF1565C0)
 
-private fun wasteTypeDisplayLabel(type: String): String {
-    return when (type.lowercase()) {
-        "mixed" -> "🗑️ Mixed"
-        "plastic" -> "🧴 Plastic"
-        "hazardous" -> "⚠️ Hazardous"
-        "organic" -> "🍌 Organic"
-        else -> type.replaceFirstChar { it.uppercase() }
-    }
-}
-
 @Composable
 internal fun WasteReportCard(report: WasteReportDto, onClick: () -> Unit) {
     Card(
@@ -81,12 +71,6 @@ internal fun WasteReportCard(report: WasteReportDto, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        wasteTypeDisplayLabel(report.wasteType),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1B1B1B),
-                    )
                     Text(
                         formatDateTimeLocal(report.createdAt),
                         fontSize = 11.sp,
@@ -167,14 +151,10 @@ internal fun WasteReportDetailSheet(report: WasteReportDto, onDismiss: () -> Uni
             }
 
             // Details
-            DetailRow("Type", wasteTypeDisplayLabel(report.wasteType), Icons.Filled.Delete)
             DetailRow("Ward", report.wardName, Icons.Filled.LocationOn)
             DetailRow("Reported", formatDateTimeLocal(report.createdAt), Icons.Filled.CalendarMonth)
             if (!report.resolvedAt.isNullOrBlank()) {
                 DetailRow("Resolved", formatDateTimeLocal(report.resolvedAt), Icons.Filled.CheckCircle)
-            }
-            if (!report.assignedTo.isNullOrBlank()) {
-                DetailRow("Assigned to", report.assignedTo, Icons.Filled.Build)
             }
             if (report.pollutionScore != null) {
                 DetailRow("Pollution score", "%.2f".fmt(report.pollutionScore), Icons.Filled.Warning)

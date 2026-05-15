@@ -84,9 +84,10 @@ fun HouseholdDashboard(
     onScanMealClick: () -> Unit = {},
     onScanBillClick: () -> Unit = {},
     // Lifestyle features
-    onElectricityClick: () -> Unit = {},
+    onWasteStatusClick: () -> Unit = {},
     onWalkDistanceClick: () -> Unit = {},
     onEnvironmentalImpactClick: () -> Unit = {},
+    onPaymentClick: () -> Unit = {},
     // Community features
     onBlogClick: () -> Unit = {},
     onCampaignsClick: () -> Unit = {},
@@ -162,7 +163,7 @@ fun HouseholdDashboard(
 
             // Row 2: Impact & analytics
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Max)) {
-                FeatureGridButton(Icons.Filled.Biotech, s.environmentalImpact, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onEnvironmentalImpactClick() }
+                PaymentGridButton(label = s.paymentTitle, modifier = Modifier.weight(1f)) { onPaymentClick() }
                 FeatureGridButton(Icons.Filled.Analytics, s.wasteImpactTitle, OrangeBg50, OrangeIcon, Modifier.weight(1f)) { onWasteImpactClick() }
                 FeatureGridButton(Icons.AutoMirrored.Filled.TrendingUp, s.wasteStatTitle, BlueBg50, BlueIcon, Modifier.weight(1f)) { onWasteStatClick() }
             }
@@ -170,7 +171,7 @@ fun HouseholdDashboard(
             // Row 3: Household & lifestyle
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Max)) {
                 FeatureGridButton(Icons.Filled.AssignmentInd, s.householdWasteStatusTitle, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onHouseholdWasteClick() }
-                FeatureGridButton(Icons.Filled.Lightbulb, s.electricityUsage, YellowBg50, YellowIcon, Modifier.weight(1f)) { onElectricityClick() }
+                FeatureGridButton(Icons.Filled.ListAlt, s.householdWasteStatusTitle, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onWasteStatusClick() }
                 FeatureGridButton(Icons.AutoMirrored.Filled.DirectionsWalk, s.walkDistance, GreenBg50, GreenIcon, Modifier.weight(1f)) { onWalkDistanceClick() }
             }
 

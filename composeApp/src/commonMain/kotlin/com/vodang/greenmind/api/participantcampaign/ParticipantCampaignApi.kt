@@ -14,6 +14,29 @@ import kotlinx.serialization.Serializable
 // ── DTOs ─────────────────────────────────────────────────────────────────────
 
 @Serializable
+data class MyCampaignDto(
+    val id: String,
+    val name: String,
+    val description: String,
+    val startDate: String,
+    val endDate: String,
+    val status: String,
+    val lat: Double,
+    val lng: Double,
+    val radius: Int,
+    val participantStatus: String,
+    val checkInTime: String? = null,
+    val checkOutTime: String? = null,
+    val createdBy: CampaignCreatorDto,
+)
+
+@Serializable
+data class CampaignCreatorDto(
+    val id: String,
+    val fullName: String,
+)
+
+@Serializable
 data class ParticipantCampaignDto(
     val id: String,
     val campaignId: String,
@@ -37,11 +60,11 @@ data class LocationRequest(
 
 // ── API calls ─────────────────────────────────────────────────────────────────
 
-/** GET /participant-campaigns/my — returns all participation records for the current user */
-suspend fun getMyParticipations(accessToken: String): List<ParticipantCampaignDto> {
+/** GET /participant-campaigns — returns campaigns the current user has registered for */
+suspend fun getMyParticipations(accessToken: String): List<MyCampaignDto> {
     AppLogger.i("ParticipantCampaign", "getMyParticipations")
     try {
-        val resp = httpClient.get("$BASE_URL/participant-campaigns/my") {
+        val resp = httpClient.get("$BASE_URL/participant-campaigns") {
             header("Authorization", "Bearer $accessToken")
         }
         AppLogger.d("ParticipantCampaign", "getMyParticipations → HTTP ${resp.status.value}")

@@ -5,13 +5,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -21,12 +25,13 @@ import androidx.core.content.FileProvider
 import com.vodang.greenmind.api.upload.requestAndUpload
 import com.vodang.greenmind.api.wastecollector.CollectorCheckinRequest
 import com.vodang.greenmind.api.wastecollector.checkinPickup
+import com.vodang.greenmind.api.wastecollector.checkinPickupBatch
 import com.vodang.greenmind.permission.CameraPermissionGate
 import com.vodang.greenmind.util.AppLogger
 import kotlinx.coroutines.launch
 import java.io.File
 
-private enum class Phase { IDLE, UPLOADING, PATCHING, ERROR }
+private enum class Phase { IDLE, UPLOADING, BATCHING, ERROR }
 
 private fun createPhotoUri(context: android.content.Context): Uri {
     val dir  = File(context.cacheDir, "camera_photos").also { it.mkdirs() }
@@ -36,18 +41,20 @@ private fun createPhotoUri(context: android.content.Context): Uri {
 
 @Composable
 actual fun CheckInScanFlow(
+    allPoints: List<WastePoint>,
     reportId: String?,
     accessToken: String,
     onSuccess: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     CameraPermissionGate(onDenied = onDismiss) {
-    CheckInScanContent(reportId = reportId, accessToken = accessToken, onSuccess = onSuccess, onDismiss = onDismiss)
+    CheckInScanContent(allPoints = allPoints, reportId = reportId, accessToken = accessToken, onSuccess = onSuccess, onDismiss = onDismiss)
     }
 }
 
 @Composable
 private fun CheckInScanContent(
+    allPoints: List<WastePoint>,
     reportId: String?,
     accessToken: String,
     onSuccess: () -> Unit,
@@ -59,8 +66,18 @@ private fun CheckInScanContent(
     var phase      by remember { mutableStateOf(Phase.IDLE) }
     var errorMsg   by remember { mutableStateOf("") }
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
+    var total      by remember { mutableIntStateOf(0) }
+    var completed  by remember { mutableIntStateOf(0) }
+    var failedAddresses by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    // Launcher must be registered unconditionally (always in the composition tree).
+    // Derive the group from the triggering reportId
+    val triggerPoint = remember(reportId, allPoints) {
+        reportId?.let { id -> allPoints.find { it.reportId == id } }
+    }
+    val groupPoints = remember(triggerPoint, allPoints) {
+        triggerPoint?.let { t -> allPoints.filter { it.groupKey == t.groupKey && !it.collected } } ?: emptyList()
+    }
+
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { saved ->
@@ -77,21 +94,35 @@ private fun CheckInScanContent(
         scope.launch {
             try {
                 phase = Phase.UPLOADING
-                AppLogger.i("CheckIn", "Uploading evidence for report $reportId")
+                AppLogger.i("CheckIn", "Uploading evidence for ${groupPoints.size} reports")
                 val filename = "checkin_${System.currentTimeMillis()}.jpg"
                 val upload   = requestAndUpload(accessToken, filename, bytes, "image/jpeg")
 
-                phase = Phase.PATCHING
-                AppLogger.i("CheckIn", "Calling checkinPickup report=$reportId url=${upload.imageUrl}")
-                checkinPickup(
-                    accessToken = accessToken,
-                    id = reportId!!,
-                    request = CollectorCheckinRequest(imageUrl = upload.imageUrl),
-                )
+                phase = Phase.BATCHING
+                total = groupPoints.size
+                completed = 0
+                failedAddresses = emptyList()
 
-                AppLogger.i("CheckIn", "Check-in complete for report $reportId")
-                phase = Phase.IDLE
-                onSuccess()
+                val requests = groupPoints.map { it.reportId to CollectorCheckinRequest(upload.imageUrl) }
+                val results = checkinPickupBatch(accessToken, requests)
+
+                results.forEachIndexed { idx, result ->
+                    result.onSuccess {
+                        completed++
+                        AppLogger.i("CheckIn", "Batch ${idx + 1}/${groupPoints.size} done for ${groupPoints[idx].reportId}")
+                    }.onFailure { e ->
+                        failedAddresses = failedAddresses + groupPoints[idx].address
+                        AppLogger.e("CheckIn", "Batch ${idx + 1} failed: ${e.message}")
+                    }
+                }
+
+                if (failedAddresses.isEmpty()) {
+                    phase = Phase.IDLE
+                    onSuccess()
+                } else {
+                    errorMsg = failedAddresses.joinToString(", ")
+                    phase = Phase.ERROR
+                }
             } catch (e: Throwable) {
                 AppLogger.e("CheckIn", "Check-in failed: ${e.message}")
                 errorMsg = e.message ?: "Unknown error"
@@ -100,10 +131,13 @@ private fun CheckInScanContent(
         }
     }
 
-    // Launch camera when reportId becomes non-null (key change fires after launcher is registered).
     LaunchedEffect(reportId) {
         if (reportId == null) {
-            phase = Phase.IDLE  // reset when dismissed
+            phase = Phase.IDLE
+            return@LaunchedEffect
+        }
+        if (groupPoints.isEmpty()) {
+            onDismiss()
             return@LaunchedEffect
         }
         val uri = createPhotoUri(context)
@@ -111,7 +145,6 @@ private fun CheckInScanContent(
         cameraLauncher.launch(uri)
     }
 
-    // Show overlay only while active
     if (reportId != null && phase != Phase.IDLE) {
         Box(
             modifier = Modifier
@@ -120,17 +153,41 @@ private fun CheckInScanContent(
             contentAlignment = Alignment.Center,
         ) {
             when (phase) {
-                Phase.UPLOADING, Phase.PATCHING -> {
+                Phase.UPLOADING -> {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         CircularProgressIndicator(color = Color.White)
                         Text(
-                            if (phase == Phase.UPLOADING) "⬆  Uploading photo…" else "✅  Saving check-in…",
+                            "⬆  Uploading photo…",
                             color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+                Phase.BATCHING -> {
+                    Column(
+                        modifier = Modifier.padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        CircularProgressIndicator(color = Color.White)
+                        Text(
+                            "✅  Saving $completed/$total…",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        LinearProgressIndicator(
+                            progress = { if (total == 0) 0f else completed.toFloat() / total },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = Color(0xFF4CAF50),
+                            trackColor = Color.White.copy(alpha = 0.3f),
                         )
                     }
                 }
@@ -142,7 +199,10 @@ private fun CheckInScanContent(
                     ) {
                         Text("⚠", fontSize = 40.sp)
                         Text(
-                            errorMsg,
+                            if (failedAddresses.isNotEmpty())
+                                "Failed: ${failedAddresses.joinToString(", ")}"
+                            else
+                                errorMsg,
                             color = Color.White,
                             fontSize = 13.sp,
                             textAlign = TextAlign.Center,

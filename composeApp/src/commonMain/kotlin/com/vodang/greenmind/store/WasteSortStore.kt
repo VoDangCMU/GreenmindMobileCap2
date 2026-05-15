@@ -29,6 +29,11 @@ object WasteSortStore {
     private val _greenScoreTrigger = MutableStateFlow(0)
     val greenScoreTrigger: StateFlow<Int> = _greenScoreTrigger.asStateFlow()
 
+    /** Just notify UI to refresh without reloading from API (avoids race condition with pending backend updates) */
+    fun notifyRefresh() {
+        _refreshTrigger.value += 1
+    }
+
     /** User scan history from API (all 3 types merged) */
     private val _userHistory = MutableStateFlow<List<DetectTrashHistoryDto>>(emptyList())
     val userHistory: StateFlow<List<DetectTrashHistoryDto>> = _userHistory.asStateFlow()
@@ -222,5 +227,6 @@ object WasteSortStore {
             if (entry.id == id) entry.copy(greenScoreResult = greenScore) else entry
         }
         _greenScoreTrigger.value += 1
+        _refreshTrigger.value += 1  // Ensure LaunchedEffect re-runs to update detailData
     }
 }

@@ -26,6 +26,7 @@ import com.vodang.greenmind.api.campaign.CampaignParticipant
 import com.vodang.greenmind.api.campaign.CampaignParticipantUser
 import com.vodang.greenmind.api.campaign.CampaignReport
 import com.vodang.greenmind.api.campaign.toCampaignParticipant
+import com.vodang.greenmind.api.participantcampaign.MyCampaignDto
 import com.vodang.greenmind.api.participantcampaign.ParticipantCampaignDto
 import com.vodang.greenmind.api.participantcampaign.getMyParticipations
 import com.vodang.greenmind.api.participantcampaign.checkInCampaign
@@ -71,7 +72,7 @@ fun CampaignDetailScreen(
     val currentUser = remember { SettingsStore.getUser() }
 
     var participant by remember { mutableStateOf<CampaignParticipant?>(null) }
-    var participations by remember { mutableStateOf<List<ParticipantCampaignDto>>(emptyList()) }
+    var participations by remember { mutableStateOf<List<MyCampaignDto>>(emptyList()) }
 
     LaunchedEffect(campaign) {
         participations = try {
@@ -80,10 +81,10 @@ fun CampaignDetailScreen(
             emptyList()
         }
         val currentUserId = currentUser?.id ?: ""
-        participant = participations.find { it.userId == currentUserId && it.campaignId == campaign.id }?.let { p ->
+        participant = participations.find { it.id == campaign.id }?.let { p ->
             CampaignParticipant(
-                id = p.id,
-                status = p.status,
+                id = "",
+                status = p.participantStatus,
                 checkInTime = p.checkInTime,
                 checkOutTime = p.checkOutTime,
                 user = CampaignParticipantUser(

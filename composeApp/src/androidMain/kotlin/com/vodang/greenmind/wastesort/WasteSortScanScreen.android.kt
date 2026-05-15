@@ -155,29 +155,34 @@ private fun WasteSortScanContent(
                 )
 
                 AppLogger.i("HouseholdScan", "analyzeImage ok id=${data.id} mass=${data.totalMassKg}")
-                onResult(entry)
 
-                // 5. Fetch green score in background
-                WasteSortStore.storeScope.launch {
+                // 5. Fetch green score BEFORE showing result (wait for it to complete)
+                var greenScoreEntry: com.vodang.greenmind.api.households.GreenScoreEntryDto? = null
+                try {
+                    val greenScoreResp = submitGreenScoreByDetectId(token, data.id)
+                    greenScoreEntry = greenScoreResp.data
+                    AppLogger.i("HouseholdScan", "submitGreenScoreByDetectId ok id=${greenScoreResp.data.id}")
+                } catch (e: Throwable) {
+                    AppLogger.e("HouseholdScan", "submitGreenScoreByDetectId failed: ${e.message}")
+                    // Fallback: try history
                     try {
-                        val greenScoreResp = submitGreenScoreByDetectId(token, data.id)
-                        WasteSortStore.updateGreenScore(entry.id, greenScoreResp.data)
-                        AppLogger.i("HouseholdScan", "submitGreenScoreByDetectId ok id=${greenScoreResp.data.id}")
-                    } catch (e: Throwable) {
-                        AppLogger.e("HouseholdScan", "submitGreenScoreByDetectId failed: ${e.message}")
-                        // Fallback: try history
-                        try {
-                            val historyResp = getGreenScoreHistory(token)
-                            val latest = historyResp.data.lastOrNull()
-                            if (latest != null) {
-                                WasteSortStore.updateGreenScore(entry.id, latest)
-                                AppLogger.i("HouseholdScan", "getGreenScoreHistory fallback ok")
-                            }
-                        } catch (e2: Throwable) {
-                            AppLogger.e("HouseholdScan", "getGreenScoreHistory fallback failed: ${e2.message}")
+                        val historyResp = getGreenScoreHistory(token)
+                        greenScoreEntry = historyResp.data.lastOrNull()
+                        if (greenScoreEntry != null) {
+                            AppLogger.i("HouseholdScan", "getGreenScoreHistory fallback ok")
                         }
+                    } catch (e2: Throwable) {
+                        AppLogger.e("HouseholdScan", "getGreenScoreHistory fallback failed: ${e2.message}")
                     }
                 }
+
+                // 6. Update entry with green score before showing result
+                val entryWithScore = if (greenScoreEntry != null) {
+                    entry.copy(greenScoreResult = greenScoreEntry)
+                } else {
+                    entry
+                }
+                onResult(entryWithScore)
             } catch (e: Throwable) {
                 AppLogger.e("HouseholdScan", "analyzeImage failed: ${e.message}")
                 errorMsg = e.message ?: "Detection failed"

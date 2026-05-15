@@ -48,7 +48,6 @@ data class CampaignReport(
     val pollutionLevel: String? = null,
     val lat: Double,
     val lng: Double,
-    val wasteType: String,
     val wardName: String,
     val status: String,
     val reportedByUserId: String,
@@ -108,6 +107,54 @@ data class UpdateCampaignStatusRequest(
     val status: String,
 )
 
+@Serializable
+data class CampaignDetailDto(
+    val name: String,
+    val description: String,
+    val startDate: String,
+    val endDate: String,
+    val lat: Double,
+    val lng: Double,
+    val radius: Int,
+    val reportIds: List<String>,
+    val status: String,
+)
+
+@Serializable
+data class CampaignAccessDeniedResponse(
+    val message: String = "You must be an approved participant to view campaign details"
+)
+
+@Serializable
+data class ParticipantDto(
+    val id: String,
+    val userId: String,
+    val status: String,
+    val checkInTime: String? = null,
+    val checkOutTime: String? = null,
+    val user: ParticipantUserDto,
+    val createdAt: String,
+)
+
+@Serializable
+data class ParticipantUserDto(
+    val id: String,
+    val fullName: String,
+    val email: String,
+    val phoneNumber: String? = null,
+)
+
+@Serializable
+data class GetParticipantsResponse(
+    val participants: List<ParticipantDto>,
+)
+
+@Serializable
+data class ApproveRejectResponse(
+    val message: String,
+    val participant: ParticipantDto,
+)
+
 // ── API calls ─────────────────────────────────────────────────────────────────
 
 /** GET /campaigns — returns all campaigns */
@@ -133,7 +180,7 @@ suspend fun getAllCampaigns(accessToken: String): List<CampaignDto> {
 }
 
 /** GET /campaigns/{id} */
-suspend fun getCampaignById(accessToken: String, id: String): CampaignDto {
+suspend fun getCampaignById(accessToken: String, id: String): CampaignDetailDto {
     AppLogger.i("Campaign", "getCampaignById id=$id")
     try {
         val resp = httpClient.get("$BASE_URL/campaigns/$id") {
@@ -256,6 +303,98 @@ suspend fun cancelCampaign(accessToken: String, id: String) {
     } catch (e: ApiException) { throw e }
     catch (e: Throwable) {
         AppLogger.e("Campaign", "cancelCampaign error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
+/** GET /campaigns/{id}/participants */
+suspend fun getCampaignParticipants(accessToken: String, campaignId: String): GetParticipantsResponse {
+    AppLogger.i("Campaign", "getCampaignParticipants campaignId=$campaignId")
+    try {
+        val resp = httpClient.get("$BASE_URL/campaigns/$campaignId/participants") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("Campaign", "getCampaignParticipants → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("Campaign", "getCampaignParticipants error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
+/** GET /campaigns/{id}/participants/pending */
+suspend fun getPendingParticipants(accessToken: String, campaignId: String): List<ParticipantDto> {
+    AppLogger.i("Campaign", "getPendingParticipants campaignId=$campaignId")
+    try {
+        val resp = httpClient.get("$BASE_URL/campaigns/$campaignId/participants/pending") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("Campaign", "getPendingParticipants → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("Campaign", "getPendingParticipants error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
+/** POST /campaigns/{id}/participants/{participantId}/approve */
+suspend fun approveParticipant(
+    accessToken: String,
+    campaignId: String,
+    participantId: String,
+): ApproveRejectResponse {
+    AppLogger.i("Campaign", "approveParticipant campaignId=$campaignId participantId=$participantId")
+    try {
+        val resp = httpClient.post("$BASE_URL/campaigns/$campaignId/participants/$participantId/approve") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("Campaign", "approveParticipant → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("Campaign", "approveParticipant error: ${e.message}")
+        throw ApiException(0, e.message ?: "Network error")
+    }
+}
+
+/** POST /campaigns/{id}/participants/{participantId}/reject */
+suspend fun rejectParticipant(
+    accessToken: String,
+    campaignId: String,
+    participantId: String,
+): ApproveRejectResponse {
+    AppLogger.i("Campaign", "rejectParticipant campaignId=$campaignId participantId=$participantId")
+    try {
+        val resp = httpClient.post("$BASE_URL/campaigns/$campaignId/participants/$participantId/reject") {
+            header("Authorization", "Bearer $accessToken")
+        }
+        AppLogger.d("Campaign", "rejectParticipant → HTTP ${resp.status.value}")
+        return if (resp.status.isSuccess()) {
+            resp.body()
+        } else {
+            val text = try { resp.body<ErrorResponse>().message } catch (_: Throwable) { resp.bodyAsText() }
+            throw ApiException(resp.status.value, text)
+        }
+    } catch (e: ApiException) { throw e }
+    catch (e: Throwable) {
+        AppLogger.e("Campaign", "rejectParticipant error: ${e.message}")
         throw ApiException(0, e.message ?: "Network error")
     }
 }

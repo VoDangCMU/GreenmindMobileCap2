@@ -39,6 +39,7 @@ fun ViewAllRecordsScreen(
     onScoreClick: (GreenScoreEntryDto) -> Unit,
 ) {
     val s = LocalAppStrings.current
+    var selectedScore by remember { mutableStateOf<GreenScoreEntryDto?>(null) }
     val title = when (mode) {
         ViewAllMode.HOUSEHOLD_SCANS -> s.scanHistoryScreen
         ViewAllMode.USER_SCANS -> s.myScanReports
@@ -67,12 +68,16 @@ fun ViewAllRecordsScreen(
                 }
                 ViewAllMode.GREEN_SCORES -> {
                     greenScores.reversed().forEach { score ->
-                        ScoreEntryRow(score, onOpenDetail = onScoreClick)
+                        ScoreEntryRow(score, onOpenDetail = { selectedScore = it })
                     }
                 }
                 else -> {}
             }
             Spacer(Modifier.navigationBarsPadding())
         }
+    }
+
+    selectedScore?.let { score ->
+        GreenScoreDetailSheet(entry = score, onDismiss = { selectedScore = null })
     }
 }

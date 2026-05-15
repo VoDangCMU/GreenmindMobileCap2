@@ -69,12 +69,21 @@ private data class ParsedDate(val year: Int, val month: Int, val day: Int, val h
 private fun parseDate(iso: String?): ParsedDate {
     if (iso == null || iso.length < 19) return ParsedDate(0, 0, 0, 0)
     return try {
-        ParsedDate(
-            year = iso.substring(0, 4).toInt(),
-            month = iso.substring(5, 7).toInt(),
-            day = iso.substring(8, 10).toInt(),
-            hour = iso.substring(11, 13).toInt()
-        )
+        val year = iso.substring(0, 4).toInt()
+        val month = iso.substring(5, 7).toInt()
+        val day = iso.substring(8, 10).toInt()
+        val hour = iso.substring(11, 13).toInt()
+        // Parse timezone offset: "+07:00" → +7, "-05:30" → -5, "Z" → 0
+        val offsetHours = if (iso.length >= 25 && iso[19] in "+-") {
+            val sign = if (iso[19] == '+') 1 else -1
+            val offH = iso.substring(20, 22).toInt()
+            val offM = iso.substring(23, 25).toInt()
+            sign * (offH + offM / 60)
+        } else 0
+        val adjustedHour = (hour + offsetHours) % 24
+        val adjustedDay = if (adjustedHour < 0) day - 1 else day
+        val adjustedMonth = if (adjustedDay < 1) month - 1 else month
+        ParsedDate(year, adjustedMonth, if (adjustedDay < 1) 1 else adjustedDay, (adjustedHour + 24) % 24)
     } catch (e: Exception) {
         ParsedDate(0, 0, 0, 0)
     }
@@ -230,7 +239,7 @@ private fun processData(
 @Composable
 fun WasteAnalyticsScreen(onBack: () -> Unit = {}) {
     val s = LocalAppStrings.current
-    var selectedPeriod by remember { mutableStateOf("Hour") }
+    var selectedPeriod by remember { mutableStateOf("Day") }
     var selectedMetric by remember { mutableStateOf("All") }
 
     val today = remember { parseDate("${todayLocalIsoDate()}T00:00:00") }

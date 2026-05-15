@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 actual fun CheckInScanFlow(
+    allPoints: List<WastePoint>,
     reportId: String?,
     accessToken: String,
     onSuccess: () -> Unit,

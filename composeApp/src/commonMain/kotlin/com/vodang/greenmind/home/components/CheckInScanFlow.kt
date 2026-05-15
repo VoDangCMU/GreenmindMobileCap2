@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
  */
 @Composable
 expect fun CheckInScanFlow(
+    allPoints: List<WastePoint>,
     reportId: String?,
     accessToken: String,
     onSuccess: () -> Unit,

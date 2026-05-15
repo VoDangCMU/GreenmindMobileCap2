@@ -217,7 +217,7 @@ fun HouseholdWasteScreen(
                 if (greenScoreEntries.isEmpty()) {
                     EmptyStateMessage(icon = Icons.Outlined.Eco, message = s.noScoreHistory)
                 } else {
-                    GreenScoreCard(entry = greenScoreEntries.last(), onClick = { selectedScore = greenScoreEntries.last() })
+                    GreenScoreCard(entry = greenScoreEntries.last(), onClick = { viewAllMode = ViewAllMode.GREEN_SCORES })
                 }
                 if (greenScoreEntries.size > 1) {
                     ViewAllButton(text = s.viewAllHistory, onClick = { viewAllMode = ViewAllMode.GREEN_SCORES })

@@ -307,7 +307,9 @@ fun ScanDetailView(
                         .padding(bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    if (!isTotalMassOnly) {
+                    // Only show EcoScoreSection when green score is loading or exists (scan result context)
+                    // NOT for historical API records (both null)
+                    if (!isTotalMassOnly && (data.greenScore != null || data.isGreenScoreLoading)) {
                         EcoScoreSection(greenScore = data.greenScore, isLoading = data.isGreenScoreLoading)
                         HorizontalDivider(color = Color(0xFFE0E0E0))
                     }
@@ -366,7 +368,9 @@ fun ScanDetailView(
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                     contentPadding = PaddingValues(bottom = 8.dp),
                 ) {
-                    if (!isTotalMassOnly) {
+                    // Only show EcoScoreSection when green score is loading or exists (scan result context)
+                    // NOT for historical API records (both null)
+                    if (data.greenScore != null || data.isGreenScoreLoading) {
                         item {
                             EcoScoreSection(greenScore = data.greenScore, isLoading = data.isGreenScoreLoading)
                             HorizontalDivider(color = Color(0xFFE0E0E0))

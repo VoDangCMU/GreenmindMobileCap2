@@ -127,12 +127,10 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                             val created = createWasteReport(
                                 token,
                                 CreateWasteReportRequest(
-                                    wasteType   = form.wasteType,
                                     wardName    = form.wardName,
                                     lat         = form.lat,
                                     lng         = form.lng,
                                     description = form.description,
-                                    imageKey    = form.imageKey,
                                     imageUrl    = form.imageUrl,
                                 )
                             )

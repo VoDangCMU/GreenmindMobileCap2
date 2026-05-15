@@ -32,30 +32,31 @@ fun ImagesSection(
 ) {
     var previewUrl by remember { mutableStateOf<String?>(null) }
 
+    // Primary image: AI Analyst (falls back to original if not available)
+    val primaryUrl = aiAnalysisUrl ?: imageUrl
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.White),
     ) {
-        // Main image (full width)
+        // Main image (AI Analyst) - full width with aspect ratio, no fixed height crop
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
-                .clickable { previewUrl = imageUrl },
+                .clickable { previewUrl = primaryUrl },
         ) {
             NetworkImage(
-                url = imageUrl,
+                url = primaryUrl,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(0.dp)),
             )
         }
 
-        // Additional images (horizontal scroll)
+        // Additional images (horizontal scroll): original image and depth map only
         val additionalImages = listOfNotNull(
-            annotatedImageUrl?.let { "Annotated" to it },
-            aiAnalysisUrl?.let { "AI Analysis" to it },
+            imageUrl.takeIf { it != primaryUrl }?.let { "Original" to it },
             depthMapUrl?.let { "Depth Map" to it },
         )
 
@@ -77,7 +78,7 @@ fun ImagesSection(
                             url = url,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(80.dp)
+                                .aspectRatio(1f)
                                 .clip(RoundedCornerShape(8.dp)),
                         )
                         Spacer(Modifier.height(4.dp))

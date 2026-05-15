@@ -62,13 +62,6 @@ private data class CapturedPhoto(
     val imageUrl: String? = null,
 )
 
-private val wasteTypeOptions = listOf(
-    "mixed" to "Mixed",
-    "plastic" to "Plastic",
-    "hazardous" to "Hazardous",
-    "organic" to "Organic",
-)
-
 private fun createWastePhotoUri(context: android.content.Context): Uri {
     val dir  = File(context.cacheDir, "camera_photos").also { it.mkdirs() }
     val file = File(dir, "waste_${System.currentTimeMillis()}.jpg")
@@ -105,7 +98,6 @@ private fun WasteReportScanContent(
     val photos      = remember { mutableStateListOf<CapturedPhoto>() }
 
     // Form fields
-    var selectedWasteType by remember { mutableStateOf("mixed") }
     var description       by remember { mutableStateOf("") }
     var wardName          by remember { mutableStateOf("") }
     var currentLat        by remember { mutableStateOf(0.0) }
@@ -338,45 +330,6 @@ private fun WasteReportScanContent(
                         )
                     }
 
-                    // ── Waste type ────────────────────────────────────────────
-                    Text(
-                        s.wasteReportLabel,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF424242),
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        wasteTypeOptions.chunked(3).forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                row.forEach { (value, label) ->
-                                    val sel = selectedWasteType == value
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(if (sel) green800 else Color.White)
-                                            .border(
-                                                width = if (sel) 0.dp else 1.dp,
-                                                color = Color(0xFFE0E0E0),
-                                                shape = RoundedCornerShape(10.dp),
-                                            )
-                                            .clickable { selectedWasteType = value }
-                                            .padding(vertical = 10.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            label,
-                                            fontSize = 12.sp,
-                                            color = if (sel) Color.White else Color(0xFF424242),
-                                            fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
-                                        )
-                                    }
-                                }
-                                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
-                            }
-                        }
-                    }
-
                     // ── Ward ──────────────────────────────────────────────────
                     OutlinedTextField(
                         value = wardName,
@@ -446,13 +399,8 @@ private fun WasteReportScanContent(
                             error = null
                             onStartSubmit(
                                 WasteReportFormData(
-                                    imageKey  = last.key ?: "",
                                     imageUrl  = last.imageUrl ?: "",
-                                    wasteType = selectedWasteType,
-                                    description = description.ifBlank {
-                                        wasteTypeOptions.find { it.first == selectedWasteType }
-                                            ?.second?.trim() ?: selectedWasteType
-                                    },
+                                    description = description,
                                     lat      = currentLat,
                                     lng      = currentLng,
                                     wardName = wardName.ifBlank { "Unknown" },

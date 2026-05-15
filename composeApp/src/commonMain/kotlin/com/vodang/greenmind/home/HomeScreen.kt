@@ -47,6 +47,7 @@ import com.vodang.greenmind.wastereport.WasteReportScreen
 import com.vodang.greenmind.wasteimpact.WasteImpactScreen
 import com.vodang.greenmind.householdwaste.HouseholdSettingsScreen
 import com.vodang.greenmind.householdwaste.HouseholdWasteScreen
+import com.vodang.greenmind.householdwaste.WasteStatusScreen
 import com.vodang.greenmind.wasteanalytics.WasteAnalyticsScreen
 import com.vodang.greenmind.meal.MealScreen
 import com.vodang.greenmind.bill.BillScreen
@@ -60,6 +61,7 @@ import com.vodang.greenmind.blog.BlogScreen
 import com.vodang.greenmind.chat.ChatScreen
 import com.vodang.greenmind.chat.ChatDetailScreen
 import com.vodang.greenmind.chat.ChatThread
+import com.vodang.greenmind.payment.PaymentScreen
 import com.vodang.greenmind.store.ChatStore
 import com.vodang.greenmind.api.campaign.CampaignDto
 import com.vodang.greenmind.todos.TodoScreen
@@ -260,6 +262,10 @@ fun HomeScreen(
             title = s.householdSettings
             subtitle = null
         }
+        AppScreen.WASTE_STATUS -> {
+            title = s.wasteStatus
+            subtitle = null
+        }
         AppScreen.CATALOGUE -> {
             title = s.catalogue
             subtitle = null
@@ -279,6 +285,10 @@ fun HomeScreen(
         AppScreen.CHAT_DETAIL -> {
             title = ""
             subtitle = null
+        }
+        AppScreen.PAYMENT -> {
+            title = s.paymentTitle
+            subtitle = s.paymentSubtitle
         }
     }
 
@@ -377,9 +387,10 @@ fun HomeScreen(
                             onWasteTotalMassClick = { Navigation.navigate(AppScreen.WASTE_TOTAL_MASS) },
                             onScanMealClick = { Navigation.navigate(AppScreen.MEAL_SCAN) },
                             onScanBillClick = { Navigation.navigate(AppScreen.BILL_SCAN) },
-                            onElectricityClick = { Navigation.navigate(AppScreen.ENERGY) },
+                            onWasteStatusClick = { Navigation.navigate(AppScreen.WASTE_STATUS) },
                             onWalkDistanceClick = { Navigation.navigate(AppScreen.WALK_DISTANCE) },
                             onEnvironmentalImpactClick = { Navigation.navigate(AppScreen.ENVIRONMENTAL_IMPACT) },
+                            onPaymentClick = { Navigation.navigate(AppScreen.PAYMENT) },
                             onBlogClick = { Navigation.navigate(AppScreen.BLOG) },
                             onCampaignsClick = { Navigation.navigate(AppScreen.CAMPAIGNS) },
                             showPreAppSurveyBadge = !hasPreAppSurvey,
@@ -429,6 +440,9 @@ fun HomeScreen(
                     onSettingsClick = { Navigation.navigate(AppScreen.HOUSEHOLD_SETTINGS) },
                 )
                 AppScreen.HOUSEHOLD_SETTINGS -> HouseholdSettingsScreen(
+                    onBack = { Navigation.goBack() },
+                )
+                AppScreen.WASTE_STATUS -> WasteStatusScreen(
                     onBack = { Navigation.goBack() },
                 )
                 AppScreen.MEAL_SCAN -> MealScreen()
@@ -481,6 +495,7 @@ fun HomeScreen(
                 AppScreen.SURVEY -> SurveyScreen()
                 AppScreen.PROFILE_DETAIL -> ProfileScreen()
                 AppScreen.CHAT_DETAIL -> { }
+                AppScreen.PAYMENT -> PaymentScreen()
             }
         }
 
@@ -702,8 +717,8 @@ fun HomeScreen(
                             Navigation.navigate(AppScreen.WASTE_ANALYTICS)
                             showRightDrawer = false
                         })
-                        RightDrawerItem(label = s.electricityUsage, icon = Icons.Filled.Lightbulb, onClick = {
-                            Navigation.navigate(AppScreen.ENERGY)
+                        RightDrawerItem(label = s.electricityUsage, icon = Icons.Filled.ListAlt, onClick = {
+                            Navigation.navigate(AppScreen.WASTE_STATUS)
                             showRightDrawer = false
                         })
                         RightDrawerItem(label = s.walkDistance, icon = Icons.AutoMirrored.Filled.DirectionsWalk, onClick = {

@@ -46,13 +46,6 @@ private data class CapturedPhoto(
     val imageUrl: String? = null,
 )
 
-private val wasteTypeOptions = listOf(
-    "mixed" to "Mixed",
-    "plastic" to "Plastic",
-    "hazardous" to "Hazardous",
-    "organic" to "Organic",
-)
-
 @OptIn(ExperimentalForeignApi::class)
 @Composable
 actual fun WasteReportScanScreen(
@@ -68,7 +61,6 @@ actual fun WasteReportScanScreen(
     var phase       by remember { mutableStateOf(WasteReportScanPhase.IDLE) }
     val photos      = remember { mutableStateListOf<CapturedPhoto>() }
 
-    var selectedWasteType by remember { mutableStateOf("mixed") }
     var description       by remember { mutableStateOf("") }
     var wardName          by remember { mutableStateOf("") }
     var currentLat        by remember { mutableStateOf(0.0) }
@@ -172,20 +164,6 @@ actual fun WasteReportScanScreen(
                             }
                         }
 
-                        Text(s.wasteTypeLabel, color = green800)
-                        wasteTypeOptions.forEach { (value, label) ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth()
-                                    .background(if (selectedWasteType == value) green50 else Color.Transparent, RoundedCornerShape(8.dp))
-                                    .padding(8.dp)
-                                    .clickable { selectedWasteType = value },
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                RadioButton(selected = selectedWasteType == value, onClick = { selectedWasteType = value })
-                                Text(label)
-                            }
-                        }
-
                         OutlinedTextField(
                             value = description,
                             onValueChange = { description = it },
@@ -209,9 +187,7 @@ actual fun WasteReportScanScreen(
                                 val photo = photos.lastOrNull { it.state == UploadState.DONE }
                                 if (photo == null) { error = "Please wait for image to upload"; return@Button }
                                 onStartSubmit(WasteReportFormData(
-                                    imageKey     = photo.key ?: "",
                                     imageUrl     = photo.imageUrl ?: "",
-                                    wasteType    = selectedWasteType,
                                     description  = description,
                                     lat          = currentLat,
                                     lng          = currentLng,
