@@ -59,8 +59,8 @@ fun ImpactMeterSection(
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(s.envImpact, fontSize = 12.sp, color = neutralGray400)
                 if (impact == null) {
-                    Text("N/A", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = neutralGray400)
-                    Text("No impact data", fontSize = 11.sp, color = neutralGray400)
+                    Text(s.notApplicable, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = neutralGray400)
+                    Text(s.noPollutantData, fontSize = 11.sp, color = neutralGray400)
                 } else {
                     // Show max impact
                     val maxImpact = maxOf(impact.air, impact.water, impact.soil)
@@ -72,7 +72,7 @@ fun ImpactMeterSection(
                         fontWeight = FontWeight.ExtraBold,
                         color = maxColor,
                     )
-                    Text("max impact", fontSize = 11.sp, color = maxColor.copy(alpha = 0.7f))
+                    Text(s.maxImpact, fontSize = 11.sp, color = maxColor.copy(alpha = 0.7f))
                 }
             }
             Box(
@@ -176,6 +176,7 @@ fun PollutantBreakdownSection(
     pollution: Map<String, Double>?,
     modifier: Modifier = Modifier,
 ) {
+    val s = LocalAppStrings.current
     val hasPollution = pollution != null && pollution.isNotEmpty()
 
     var expanded by remember { mutableStateOf(false) }
@@ -195,13 +196,13 @@ fun PollutantBreakdownSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Pollutant Analysis", fontSize = 12.sp, color = neutralGray400)
+                Text(s.pollutantAnalysis, fontSize = 12.sp, color = neutralGray400)
                 if (pollution == null) {
-                    Text("N/A", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = neutralGray400)
-                    Text("No pollutant analysis", fontSize = 11.sp, color = neutralGray400)
+                    Text(s.notApplicable, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = neutralGray400)
+                    Text(s.noPollutantData, fontSize = 11.sp, color = neutralGray400)
                 } else if (pollution.isEmpty()) {
-                    Text("Clean", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = pollutantGreen)
-                    Text("No pollutants detected", fontSize = 11.sp, color = pollutantGreen)
+                    Text(s.cleanWaste, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = pollutantGreen)
+                    Text(s.noPollutantsDetected, fontSize = 11.sp, color = pollutantGreen)
                 } else {
                     Text("${pollution.size}", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = pollutantRed)
                     Text("${pollution.size} pollutants detected", fontSize = 11.sp, color = pollutantRed)

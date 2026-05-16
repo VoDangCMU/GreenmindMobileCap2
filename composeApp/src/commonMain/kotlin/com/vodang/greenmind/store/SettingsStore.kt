@@ -17,6 +17,10 @@ private const val KEY_MIN_MOVE_METERS    = "min_move_meters"
 private const val KEY_MAX_WALK_SPEED     = "max_walk_speed_ms"
 private const val KEY_LOCATION_ENABLED   = "location_enabled"
 private const val KEY_ENABLE_ROLE_SWITCHER = "enable_role_switcher"
+private const val KEY_METRICS_AUTO_ENABLED = "metrics_auto_enabled"
+private const val KEY_METRICS_UPDATE_HOUR  = "metrics_update_hour"
+private const val KEY_METRICS_UPDATE_MIN   = "metrics_update_minute"
+private const val KEY_METRICS_LAST_RUN_MS  = "metrics_last_run_ms"
 
 object SettingsStore {
 
@@ -115,6 +119,41 @@ object SettingsStore {
     fun setRoleSwitcherEnabled(enabled: Boolean) {
         settings.putBoolean(KEY_ENABLE_ROLE_SWITCHER, enabled)
         _roleSwitcherEnabled.value = enabled
+    }
+
+    // ── Ocean metrics auto-update ────────────────────────────────────────────
+
+    private val _metricsAutoEnabled = MutableStateFlow(
+        settings.getBooleanOrNull(KEY_METRICS_AUTO_ENABLED) ?: true
+    )
+    private val _metricsUpdateHour = MutableStateFlow(
+        settings.getIntOrNull(KEY_METRICS_UPDATE_HOUR) ?: 21
+    )
+    private val _metricsUpdateMinute = MutableStateFlow(
+        settings.getIntOrNull(KEY_METRICS_UPDATE_MIN) ?: 0
+    )
+    private val _metricsLastRunMs = MutableStateFlow(
+        settings.getLongOrNull(KEY_METRICS_LAST_RUN_MS) ?: 0L
+    )
+
+    val metricsAutoEnabled:  StateFlow<Boolean> = _metricsAutoEnabled.asStateFlow()
+    val metricsUpdateHour:   StateFlow<Int>     = _metricsUpdateHour.asStateFlow()
+    val metricsUpdateMinute: StateFlow<Int>     = _metricsUpdateMinute.asStateFlow()
+    val metricsLastRunMs:    StateFlow<Long>    = _metricsLastRunMs.asStateFlow()
+
+    fun setMetricsAutoEnabled(enabled: Boolean) {
+        settings.putBoolean(KEY_METRICS_AUTO_ENABLED, enabled)
+        _metricsAutoEnabled.value = enabled
+    }
+    fun setMetricsUpdateTime(hour: Int, minute: Int) {
+        settings.putInt(KEY_METRICS_UPDATE_HOUR, hour)
+        settings.putInt(KEY_METRICS_UPDATE_MIN, minute)
+        _metricsUpdateHour.value = hour
+        _metricsUpdateMinute.value = minute
+    }
+    fun setMetricsLastRunMs(ms: Long) {
+        settings.putLong(KEY_METRICS_LAST_RUN_MS, ms)
+        _metricsLastRunMs.value = ms
     }
 
     init {

@@ -110,7 +110,7 @@ fun LeaderboardTab(
             }
             entries.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("🏆", fontSize = 40.sp)
+                    Text(s.leaderboardTrophy, fontSize = 40.sp)
                     Text(s.leaderboardEmpty, fontSize = 14.sp, color = gray500)
                 }
             }
@@ -149,7 +149,7 @@ fun LeaderboardTab(
                                 colors = CardDefaults.cardColors(containerColor = Color.White),
                             ) {
                                 Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                                    Text("+ ${entries.size - 5} more contributors", fontSize = 13.sp, color = gray500)
+                                    Text(s.leaderboardMoreContributors(entries.size - 5), fontSize = 13.sp, color = gray500)
                                 }
                             }
                         }
@@ -260,12 +260,13 @@ private data class PodiumStyle(
 
 @Composable
 fun LeaderboardDivider() {
+    val s = LocalAppStrings.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HorizontalDivider(modifier = Modifier.weight(1f), color = gray400.copy(alpha = 0.4f))
-        Text(" ··· ", fontSize = 14.sp, color = gray400, fontWeight = FontWeight.Bold)
+        Text(s.leaderboardSeparator, fontSize = 14.sp, color = gray400, fontWeight = FontWeight.Bold)
         HorizontalDivider(modifier = Modifier.weight(1f), color = gray400.copy(alpha = 0.4f))
     }
 }
@@ -292,7 +293,7 @@ fun CurrentUserRow(entry: LeaderboardEntryDto) {
                 Modifier.size(36.dp).clip(CircleShape).background(green800),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("#${entry.rank}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(s.leaderboardRank + entry.rank.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
             Box(
                 Modifier.size(36.dp).clip(CircleShape).background(Color.White).border(2.dp, green800, CircleShape),
@@ -302,7 +303,7 @@ fun CurrentUserRow(entry: LeaderboardEntryDto) {
             }
             Column(Modifier.weight(1f)) {
                 Text(entry.fullName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1C1B1F))
-                Text("@${entry.username}", fontSize = 11.sp, color = gray400)
+                Text(s.leaderboardUsername + entry.username, fontSize = 11.sp, color = gray400)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Surface(shape = RoundedCornerShape(20.dp), color = green800) {
@@ -314,7 +315,7 @@ fun CurrentUserRow(entry: LeaderboardEntryDto) {
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     )
                 }
-                Text("You", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = green800)
+                Text(s.leaderboardYou, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = green800)
             }
         }
     }
@@ -346,7 +347,7 @@ fun LeaderboardRow(entry: LeaderboardEntryDto) {
                 Modifier.size(36.dp).clip(CircleShape).background(rankBg ?: Color(0xFFF3F4F6)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("#${entry.rank}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = rankColor ?: gray500)
+                Text(s.leaderboardRank + entry.rank.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = rankColor ?: gray500)
             }
             Box(
                 Modifier.size(36.dp).clip(CircleShape).background(green100),
@@ -356,7 +357,7 @@ fun LeaderboardRow(entry: LeaderboardEntryDto) {
             }
             Column(Modifier.weight(1f)) {
                 Text(entry.fullName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1C1B1F))
-                Text("@${entry.username}", fontSize = 11.sp, color = gray400)
+                Text(s.leaderboardUsername + entry.username, fontSize = 11.sp, color = gray400)
             }
             Surface(shape = RoundedCornerShape(20.dp), color = Color(0xFFA5D6A7)) {
                 Text(

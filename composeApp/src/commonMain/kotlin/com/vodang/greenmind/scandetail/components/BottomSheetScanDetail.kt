@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.households.bringOutDetectTrash
 import com.vodang.greenmind.scandetail.DisplayMode
+import com.vodang.greenmind.i18n.LocalAppStrings
+import androidx.compose.ui.res.stringResource
 import com.vodang.greenmind.scandetail.ScanDetailData
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.util.AppLogger
@@ -31,6 +33,7 @@ fun BottomSheetScanDetail(
     onStatusChange: (WasteSortStatus) -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
     var isBusy by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -65,7 +68,7 @@ fun BottomSheetScanDetail(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Status", fontSize = 14.sp, color = Color(0xFF374151))
+                Text(s.status, fontSize = 14.sp, color = Color(0xFF374151))
                 StatusChip(status = currentStatus)
             }
 
@@ -107,9 +110,9 @@ fun BottomSheetScanDetail(
                             if (isBusy) {
                                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Updating...", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                Text(s.updatingLabel, color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             } else {
-                                Text("Mark as Brought Out", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                Text(s.markAsBroughtOut, color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             }
                         }
                         errorMsg?.let {
@@ -123,7 +126,7 @@ fun BottomSheetScanDetail(
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("Waiting for collector to pick up", fontSize = 14.sp, color = Color(0xFF757575), fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                        Text(s.waitingForCollector, fontSize = 14.sp, color = Color(0xFF757575), fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
                     }
                 }
                 WasteSortStatus.COLLECTED -> {
@@ -133,7 +136,7 @@ fun BottomSheetScanDetail(
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("Collection complete", fontSize = 14.sp, color = Color(0xFF2E7D32), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text(s.collectedComplete, fontSize = 14.sp, color = Color(0xFF2E7D32), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     }
                 }
             }

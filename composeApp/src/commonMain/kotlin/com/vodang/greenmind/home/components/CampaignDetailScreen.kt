@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import com.vodang.greenmind.api.campaign.CampaignDto
 import com.vodang.greenmind.api.campaign.CampaignParticipant
 import com.vodang.greenmind.api.campaign.CampaignParticipantUser
@@ -211,7 +212,7 @@ fun CampaignDetailScreen(
                 shape = RoundedCornerShape(12.dp),
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Th\u1eddi gian", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                    Text(s.campaignTime, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
                     Text(s.dateRange(formatDate(campaign.startDate), formatDate(campaign.endDate)),
                         fontSize = 14.sp, color = Color(0xFF616161))
                 }
@@ -224,7 +225,7 @@ fun CampaignDetailScreen(
                 shape = RoundedCornerShape(12.dp),
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("M\u00f4 t\u1ea3", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                    Text(s.campaignDescriptionLabel, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
                     Text(campaign.description, fontSize = 14.sp, color = Color(0xFF616161), lineHeight = 20.sp)
                 }
             }
@@ -236,7 +237,7 @@ fun CampaignDetailScreen(
                 shape = RoundedCornerShape(12.dp),
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("\u0110\u1ecba \u0111i\u1ec3m", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
+                    Text(s.campaignLocation, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
                     Text(s.locationRadius(campaign.lat, campaign.lng, campaign.radius), fontSize = 13.sp, color = Color.Gray)
                 }
             }
@@ -409,7 +410,7 @@ fun CampaignDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Text(
-                            "B\u00e1o c\u00e1o (${campaign.reports.size})",
+                            "${s.myScanReports} (${campaign.reports.size})",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF424242),
@@ -426,6 +427,7 @@ fun CampaignDetailScreen(
 
 @Composable
 private fun ReportEvidenceItem(report: CampaignReport) {
+    val s = LocalAppStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // Report header
         Row(
@@ -465,7 +467,7 @@ private fun ReportEvidenceItem(report: CampaignReport) {
 
         // Evidence image (collection proof)
         if (!report.imageEvidenceUrl.isNullOrBlank()) {
-            Text("Collection Evidence", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF616161))
+            Text(s.collectionEvidence, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF616161))
             NetworkImage(
                 url = report.imageEvidenceUrl,
                 modifier = Modifier

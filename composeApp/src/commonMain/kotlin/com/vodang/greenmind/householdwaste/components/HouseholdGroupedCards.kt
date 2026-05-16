@@ -35,6 +35,7 @@ import com.vodang.greenmind.wastesort.WasteSortStatus
 import com.vodang.greenmind.wastesort.label
 import com.vodang.greenmind.wastesort.components.LifecycleProgressBar
 import com.vodang.greenmind.householdwaste.parseWasteSortStatus
+import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.wastesort.categoryBg
 import com.vodang.greenmind.wastesort.categoryColor
 import com.vodang.greenmind.wastesort.categoryEmoji
@@ -67,6 +68,7 @@ private val typeLabelBg = mapOf(
 @Composable
 internal fun GroupedDetectScanCard(records: List<DetectTrashHistoryDto>, onClick: () -> Unit) {
     val primary     = records.minByOrNull { it.createdAt ?: "" } ?: records.first()
+    val s = LocalAppStrings.current
     val detectTrash = records.find { it.detectType == "detect_trash" }
     val totalMass   = records.find { it.detectType == "total_mass" }
     val hasMass     = totalMass?.totalMassKg != null
@@ -108,19 +110,19 @@ internal fun GroupedDetectScanCard(records: List<DetectTrashHistoryDto>, onClick
                 if (objCount != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(14.dp), tint = gray400c)
-                        Text("$objCount objects", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = gray700c)
+                        Text(s.detectedItemsCount(objCount), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = gray700c)
                     }
                 }
                 if (hasMass) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Filled.Scale, contentDescription = null, modifier = Modifier.size(14.dp), tint = green700)
-                        Text("${"%.2f".fmt(totalMass!!.totalMassKg)} kg", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = green700)
+                        Text(s.massKg(totalMass!!.totalMassKg), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = green700)
                     }
                 }
             }
 
             (detectTrash ?: primary).items?.take(3)?.joinToString(" · ") {
-                if (it.massKg != null) "${"%.2f".fmt(it.massKg)}kg ${it.name}"
+                if (it.massKg != null) "${s.massKg(it.massKg!!)} ${it.name}"
                 else "${it.quantity}× ${it.name}"
             }?.let {
                 Text(it, fontSize = 11.sp, color = gray400c, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -134,6 +136,7 @@ internal fun GroupedDetectScanCard(records: List<DetectTrashHistoryDto>, onClick
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, onDismiss: () -> Unit) {
+    val s = LocalAppStrings.current
     val sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var previewUrl       by remember { mutableStateOf<String?>(null) }
     var latestGreenScore by remember { mutableStateOf<GreenScoreEntryDto?>(null) }
@@ -190,7 +193,7 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Scan Report", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = gray700c)
+                Text(s.scanReport, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = gray700c)
                 Text(primary.createdAt?.take(10) ?: "", fontSize = 12.sp, color = gray400c)
             }
 
@@ -208,7 +211,7 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
             val primarySegments = records.firstNotNullOfOrNull { it.segments }
             if (primarySegments != null && (primarySegments.recyclable.isNotEmpty() || primarySegments.residual.isNotEmpty())) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Segments", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.segments, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 val segCategories = buildList {
                     if (primarySegments.recyclable.isNotEmpty()) add("recyclable")
                     if (primarySegments.residual.isNotEmpty()) add("residual")
@@ -254,7 +257,7 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
                 SegmentGrid(imageUrls = segUrls, category = segSelected)
             } else {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Segments", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.segments, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 Text("N/A", fontSize = 12.sp, color = gray400c)
             }
 
@@ -264,7 +267,7 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 totalObjects?.let { DetectStatChip("$it objects", Color(0xFFE8F5E9), green700, icon = Icons.Filled.Search) }
-                totalMassKg?.let  { DetectStatChip("${"%.2f".fmt(it)} kg", Color(0xFFEFF6FF), Color(0xFF1D4ED8), icon = Icons.Filled.Scale) }
+                totalMassKg?.let  { DetectStatChip(s.massKg(it), Color(0xFFEFF6FF), Color(0xFF1D4ED8), icon = Icons.Filled.Scale) }
             }
 
             // Eco score
@@ -273,13 +276,13 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
             // Detected items (from detect_trash)
             if (!items.isNullOrEmpty()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Detected items", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.detectedItems, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items.forEach { item ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("• ${item.name}", fontSize = 12.sp, color = gray700c, modifier = Modifier.weight(1f))
+                            Text(s.itemBullet(item.name), fontSize = 12.sp, color = gray700c, modifier = Modifier.weight(1f))
                             val detail = when {
-                                item.massKg != null -> "${"%.3f".fmt(item.massKg)} kg"
+                                item.massKg != null -> s.massKgPrecision3(item.massKg!!)
                                 item.quantity > 0   -> "×${item.quantity}"
                                 else                -> ""
                             }
@@ -294,12 +297,12 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
             // Item masses (from total_mass)
             if (!itemsMass.isNullOrEmpty()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Item masses", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.itemMassesLabel, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     itemsMass.forEach { item ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("• ${item.name}", fontSize = 12.sp, color = gray700c, modifier = Modifier.weight(1f))
-                            Text("${"%.3f".fmt(item.massKg)} kg", fontSize = 12.sp, color = gray400c, fontWeight = FontWeight.Medium)
+                            Text(s.itemBullet(item.name), fontSize = 12.sp, color = gray700c, modifier = Modifier.weight(1f))
+                            Text(s.massKgPrecision3(item.massKg), fontSize = 12.sp, color = gray400c, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -326,7 +329,7 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
                 ).filter { it.second > 0.0 }
                 if (pollutants.isNotEmpty()) {
                     HorizontalDivider(color = Color(0xFFEEEEEE))
-                    Text("Pollution", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                    Text(s.pollutionLabel, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         pollutants.forEach { (label, value) ->
                             DetectImpactBar("• $label", value)
@@ -338,18 +341,18 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
             // Environmental impact (from predict_pollutant_impact)
             if (impact != null) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Environmental Impact", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.envImpact, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    impact.airPollution?.let   { DetectImpactBar("Air pollution",   it, icon = Icons.Filled.Air) }
-                    impact.soilPollution?.let  { DetectImpactBar("Soil pollution",  it, icon = Icons.Filled.Eco) }
-                    impact.waterPollution?.let { DetectImpactBar("Water pollution", it, icon = Icons.Filled.WaterDrop) }
+                    impact.airPollution?.let   { DetectImpactBar(s.airPollution,   it, icon = Icons.Filled.Air) }
+                    impact.soilPollution?.let  { DetectImpactBar(s.soilPollution,  it, icon = Icons.Filled.Eco) }
+                    impact.waterPollution?.let { DetectImpactBar(s.waterPollution, it, icon = Icons.Filled.WaterDrop) }
                 }
             }
 
             // Annotated image (from detect_trash)
             if (!annotatedUrl.isNullOrBlank()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Annotated Image", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.annotatedImage, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 NetworkImage(
                     url = annotatedUrl,
                     modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(12.dp))
@@ -360,7 +363,7 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
             // AI analysis image (from detect_trash)
             if (!aiAnalysisUrl.isNullOrBlank()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("AI Analysis", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.aiAnalysis, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 NetworkImage(
                     url = aiAnalysisUrl,
                     modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(12.dp))
@@ -371,7 +374,7 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
             // Depth map (from total_mass)
             if (!depthMapUrl.isNullOrBlank()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Depth Map", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.depthMap, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 NetworkImage(
                     url = depthMapUrl,
                     modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(12.dp))
@@ -382,7 +385,7 @@ internal fun GroupedDetectScanDetailSheet(records: List<DetectTrashHistoryDto>, 
             // Detected by
             primary.detectedBy?.let { by ->
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Detected by", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.detectedBy, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 Text("${by.fullName} (${by.username})", fontSize = 12.sp, color = gray400c)
             }
 
@@ -420,6 +423,7 @@ internal fun DetectActionButton(
     recordId: String,
     onStatusChange: (String) -> Unit,
 ) {
+    val s = LocalAppStrings.current
     val scope = rememberCoroutineScope()
     var isBusy by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -440,7 +444,7 @@ internal fun DetectActionButton(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Status", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = gray700c)
+            Text(s.status, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = gray700c)
             StatusChip(status = status)
         }
 
@@ -473,9 +477,9 @@ internal fun DetectActionButton(
                     if (isBusy) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
-                        Text("Updating…", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(s.updatingLabel, color = Color.White, fontWeight = FontWeight.Bold)
                     } else {
-                        Text("Mark as Brought Out", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(s.markAsBroughtOut, color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
                 errorMsg?.let {
@@ -491,7 +495,7 @@ internal fun DetectActionButton(
                 ) {
                     Icon(Icons.Filled.HourglassEmpty, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF757575))
                     Spacer(Modifier.width(6.dp))
-                    Text("Waiting for collector pickup", fontSize = 14.sp, color = Color(0xFF757575), fontWeight = FontWeight.Medium)
+                    Text(s.waitingCollectorPickup, fontSize = 14.sp, color = Color(0xFF757575), fontWeight = FontWeight.Medium)
                 }
             }
 
@@ -503,7 +507,7 @@ internal fun DetectActionButton(
                 ) {
                     Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp), tint = stepDone)
                     Spacer(Modifier.width(6.dp))
-                    Text("Collected — cycle complete!", fontSize = 14.sp, color = stepDone, fontWeight = FontWeight.Bold)
+                    Text(s.collectedCycleComplete, fontSize = 14.sp, color = stepDone, fontWeight = FontWeight.Bold)
                 }
             }
         }

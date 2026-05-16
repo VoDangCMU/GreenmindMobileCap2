@@ -22,7 +22,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
+import com.vodang.greenmind.api.ocean.OceanMetricType
 import com.vodang.greenmind.components.AppScaffold
 import com.vodang.greenmind.home.components.LanguagePickerModal
 import com.vodang.greenmind.home.components.OceanScoreCard
@@ -30,6 +32,7 @@ import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.navigation.AppScreen
 import com.vodang.greenmind.store.GpsTick
 import com.vodang.greenmind.store.LocationLogStore
+import com.vodang.greenmind.store.OceanStore
 import com.vodang.greenmind.permission.PermissionGroup
 import com.vodang.greenmind.permission.PermissionRequester
 import com.vodang.greenmind.store.LocationTrackingStore
@@ -43,6 +46,14 @@ import kotlinx.coroutines.launch
 
 private val green800 = Green800
 private val green50  = Green50
+
+/** Row descriptor for the metrics auto-update section. */
+private data class MetricRow(
+    val key: String,
+    val emoji: String,
+    val label: String,
+    val metric: OceanMetricType?,
+)
 
 @Composable
 fun SettingsScreen() {
@@ -61,12 +72,13 @@ fun SettingsScreen() {
     var sliderMove by remember(minMove) { mutableStateOf(minMove) }
     var showLangPicker by remember { mutableStateOf(false) }
 
-    // Metrics auto-update state
-    var metricsAutoEnabled  by remember { mutableStateOf(true) }
-    var metricsUpdateHour   by remember { mutableStateOf(21) }
-    var metricsUpdateMinute by remember { mutableStateOf(0) }
+    // Metrics auto-update state (persisted in SettingsStore)
+    val metricsAutoEnabled  by SettingsStore.metricsAutoEnabled.collectAsState()
+    val metricsUpdateHour   by SettingsStore.metricsUpdateHour.collectAsState()
+    val metricsUpdateMinute by SettingsStore.metricsUpdateMinute.collectAsState()
+    val refreshingMetrics   by OceanStore.refreshingMetrics.collectAsState()
     var showTimePicker      by remember { mutableStateOf(false) }
-    var refreshingMetrics   by remember { mutableStateOf(emptySet<String>()) }
+    var stubRefreshing      by remember { mutableStateOf(emptySet<String>()) }
     val metricsScope = rememberCoroutineScope()
 
     val intervalOptions = listOf(
@@ -229,7 +241,7 @@ fun SettingsScreen() {
                         }
                         Switch(
                             checked = metricsAutoEnabled,
-                            onCheckedChange = { metricsAutoEnabled = it },
+                            onCheckedChange = { SettingsStore.setMetricsAutoEnabled(it) },
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = green800),
                         )
                     }
@@ -267,26 +279,30 @@ fun SettingsScreen() {
                     HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 8.dp))
 
                     // Update All button
+                    // UI-key → backend OceanMetricType (null = no backend endpoint yet)
                     val metrics = listOf(
-                        Triple("daily_spending",         "💸", s.dailySpending),
-                        Triple("night_out",              "🌙", s.nightOut),
-                        Triple("spend_variability",      "📊", s.spendVariability),
-                        Triple("brand_novelty",          "🛍️", s.brandNovelty),
-                        Triple("list_adherence",         "📋", s.listAdherence),
-                        Triple("daily_distance",         "🚶", s.dailyDistance),
-                        Triple("novel_location_ratio",   "📍", s.novelLocationRatio),
-                        Triple("public_transit_ratio",   "🚌", s.publicTransitRatio),
+                        MetricRow("daily_spending",       "💸", s.dailySpending,       OceanMetricType.AVG_DAILY_SPEND),
+                        MetricRow("night_out",            "🌙", s.nightOut,             null),
+                        MetricRow("spend_variability",    "📊", s.spendVariability,     OceanMetricType.SPEND_VARIABILITY),
+                        MetricRow("brand_novelty",        "🛍️", s.brandNovelty,         null),
+                        MetricRow("list_adherence",       "📋", s.listAdherence,        OceanMetricType.LIST_ADHERENCE),
+                        MetricRow("daily_distance",       "🚶", s.dailyDistance,        OceanMetricType.DAILY_DISTANCE_KM),
+                        MetricRow("novel_location_ratio", "📍", s.novelLocationRatio,   null),
+                        MetricRow("public_transit_ratio", "🚌", s.publicTransitRatio,   null),
                     )
-                    val allKeys = metrics.map { it.first }.toSet()
-                    val isRefreshingAll = allKeys.all { it in refreshingMetrics }
+                    // "Refreshing" if either the OceanStore (real API) or stub set marks it busy.
+                    fun isMetricRefreshing(row: MetricRow): Boolean {
+                        val apiPath = row.metric?.path
+                        return (apiPath != null && apiPath in refreshingMetrics) || row.key in stubRefreshing
+                    }
+                    val supportedPaths = OceanMetricType.values().map { it.path }.toSet()
+                    val isRefreshingAll = supportedPaths.all { it in refreshingMetrics } && supportedPaths.isNotEmpty()
                     Button(
                         onClick = {
                             if (!isRefreshingAll) {
-                                metricsScope.launch {
-                                    refreshingMetrics = allKeys
-                                    delay(1500) // TODO: replace with actual API call
-                                    refreshingMetrics = emptySet()
-                                }
+                                // Fires all 4 supported metric endpoints in parallel, then
+                                // refetches the ocean record once all complete.
+                                OceanStore.refreshAllMetrics()
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -306,17 +322,17 @@ fun SettingsScreen() {
                     HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 4.dp))
 
                     // Metric rows
-                    metrics.forEachIndexed { idx, (key, emoji, label) ->
+                    metrics.forEachIndexed { idx, row ->
                         if (idx > 0) HorizontalDivider(color = Color(0xFFF5F5F5))
-                        val isRefreshing = key in refreshingMetrics
+                        val isRefreshing = isMetricRefreshing(row)
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Text(emoji, fontSize = 18.sp)
+                            Text(row.emoji, fontSize = 18.sp)
                             Text(
-                                text = label,
+                                text = row.label,
                                 fontSize = 13.sp,
                                 color = Color(0xFF212121),
                                 modifier = Modifier.weight(1f),
@@ -332,10 +348,17 @@ fun SettingsScreen() {
                                     shape = RoundedCornerShape(8.dp),
                                     color = green50,
                                     modifier = Modifier.clickable {
-                                        metricsScope.launch {
-                                            refreshingMetrics = refreshingMetrics + key
-                                            delay(1500) // TODO: replace with actual API call
-                                            refreshingMetrics = refreshingMetrics - key
+                                        val m = row.metric
+                                        if (m != null) {
+                                            // Real backend call + refetch ocean.
+                                            OceanStore.refreshMetric(m)
+                                        } else {
+                                            // No backend endpoint yet — stub spinner so the UI still feels responsive.
+                                            metricsScope.launch {
+                                                stubRefreshing = stubRefreshing + row.key
+                                                delay(1500)
+                                                stubRefreshing = stubRefreshing - row.key
+                                            }
                                         }
                                     },
                                 ) {
@@ -363,7 +386,7 @@ fun SettingsScreen() {
             ) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (locationLogs.isEmpty()) {
-                        Text("No location events yet", fontSize = 13.sp, color = Color.Gray)
+                        Text(s.noLocationEvents, fontSize = 13.sp, color = Color.Gray)
                     } else {
                         locationLogs.asReversed().forEachIndexed { idx, log ->
                             if (idx > 0) HorizontalDivider(color = Color(0xFFF0F0F0))
@@ -497,7 +520,7 @@ fun SettingsScreen() {
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Test Notification", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
+                    Text(s.testNotification, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
                     Spacer(Modifier.height(8.dp))
                     val notifGranted by PermissionRequester.grantedFlow(PermissionGroup.NOTIFICATION).collectAsState()
                     Button(
@@ -517,7 +540,7 @@ fun SettingsScreen() {
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)),
                     ) {
-                        Text("Send Test Notification", color = Color.White, fontWeight = FontWeight.Medium)
+                        Text(s.sendTestNotification, color = Color.White, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -531,8 +554,7 @@ fun SettingsScreen() {
             hour = metricsUpdateHour,
             minute = metricsUpdateMinute,
             onConfirm = { h, m ->
-                metricsUpdateHour = h
-                metricsUpdateMinute = m
+                SettingsStore.setMetricsUpdateTime(h, m)
                 showTimePicker = false
             },
             onDismiss = { showTimePicker = false },

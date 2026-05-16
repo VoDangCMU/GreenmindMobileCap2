@@ -131,6 +131,7 @@ class AppStrings(val langCode: String) {
     var wasteImpactTip: String = ""
     var householdWasteStatusTitle: String = ""
     var householdWasteStatusDesc: String = ""
+    var householdDashboardTitle: String = ""
     var wasteStatus: String = ""
     var noScans: String = ""
     var wasteStatTitle: String = ""
@@ -668,6 +669,19 @@ class AppStrings(val langCode: String) {
     var fabCollapse: String = ""
     var fabExpand: String = ""
 
+    // ── Filter ────────────────────────────────────────────────────────────────────
+    var filterAll: String = ""
+    var filterSorted: String = ""
+    var filterBroughtOut: String = ""
+    var filterCollected: String = ""
+    var filterByStatus: String = ""
+    var filterByDate: String = ""
+    var periodToday: String = ""
+    var period7Days: String = ""
+    var period30Days: String = ""
+    var periodAllTime: String = ""
+    var apply: String = ""
+
     // ── Scan Detail ──────────────────────────────────────────────────────────────
     var ecoScore: String = ""
     var noScoreYet: String = ""
@@ -695,6 +709,18 @@ class AppStrings(val langCode: String) {
     var totalMass: String = ""
     var detectedItemsList: String = ""
     var massItemsDetected: (Int) -> String = { _ -> "" }
+    var status: String = ""
+    var notApplicable: String = ""
+    var detectedBy: String = ""
+    var annotatedImage: String = ""
+    var aiAnalysis: String = ""
+    var depthMap: String = ""
+    var scanReport: String = ""
+    var segments: String = ""
+    var itemMasses: String = ""
+    var totalMassLabel: String = ""
+    var estimatedValue: String = ""
+    var updatingLabel: String = ""
 
     // ── Error Log ────────────────────────────────────────────────────────────────
     var errorLog: (Int) -> String = { _ -> "" }
@@ -751,6 +777,69 @@ class AppStrings(val langCode: String) {
     var paymentStatusOverdue: String = ""
     var paymentStatusCancelled: String = ""
     var paymentStatus: String = ""
+
+    // ── Bill / Invoice ───────────────────────────────────────────────────────────
+    var billTotals: String = ""
+    var billSubtotal: String = ""
+    var billDiscount: String = ""
+    var billGrandTotal: String = ""
+    var billQty: String = ""
+    var billUnit: String = ""
+    var billTax: String = ""
+    var billItem: String = ""
+
+    // ── Household ────────────────────────────────────────────────────────────────
+    var noLocationEvents: String = ""
+
+    // ── Blog / Leaderboard ───────────────────────────────────────────────────────
+    var sponsored: String = ""
+    var readMinutes: (Int) -> String = { _ -> "" }
+    var leaderboardTrophy: String = ""
+    var leaderboardMoreContributors: (Int) -> String = { _ -> "" }
+    var leaderboardSeparator: String = ""
+    var leaderboardRank: String = ""
+    var leaderboardUsername: String = ""
+    var leaderboardYou: String = ""
+    var maxImpact: String = ""
+    var showAll: (Int) -> String = { _ -> "" }
+    var showLess: String = ""
+    var showAllPollutants: (Int) -> String = { _ -> "" }
+    var ecoScorePercent: (Int) -> String = { _ -> "" }
+    var activePollutants: (Int) -> String = { _ -> "" }
+    var collectedCycleComplete: String = ""
+    var waitingCollectorPickup: String = ""
+    var detectedItemsCount: (Int) -> String = { _ -> "" }
+    var itemMassesLabel: String = ""
+    var pollutionLabel: String = ""
+    var byCategoryLabel: String = ""
+    var itemBullet: (String) -> String = { _ -> "" }
+    var massKg: (Double) -> String = { _ -> "" }
+    var objectsDetected: (Int) -> String = { _ -> "" }
+    var noSignificantPollutants: String = ""
+    var massKgPrecision3: (Double) -> String = { _ -> "" }
+
+    // ── Waste Analytics ─────────────────────────────────────────────────────────
+    var dateLabel: String = ""
+    var fromLabel: String = ""
+    var toLabel: String = ""
+    var yearLabel: String = ""
+    var monthLabel: String = ""
+
+    // ── Campaign ────────────────────────────────────────────────────────────────
+    var campaignTime: String = ""
+    var campaignDescriptionLabel: String = ""
+    var campaignLocation: String = ""
+    var collectionEvidence: String = ""
+
+    // ── Waste Report Status ─────────────────────────────────────────────────────
+    var wasteReportComplete: String = ""
+    var wasteReportSendingReport: String = ""
+    var wasteReportPhotoUploaded: String = ""
+    var wasteReportSendingInfo: String = ""
+
+    // ── Settings ────────────────────────────────────────────────────────────────
+    var testNotification: String = ""
+    var sendTestNotification: String = ""
 
     // ── Bottom Navigation ───────────────────────────────────────────────────────
     var community: String = ""

@@ -18,7 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.fmt
+import androidx.compose.ui.res.stringResource
 import com.vodang.greenmind.scandetail.ScanItem
+import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.scandetail.neutralGray400
 import com.vodang.greenmind.scandetail.neutralGray700
 import com.vodang.greenmind.scandetail.scanGreen
@@ -32,6 +34,7 @@ fun ItemsSection(
     items: List<ScanItem>?,
     modifier: Modifier = Modifier,
 ) {
+    val s = LocalAppStrings.current
     val hasItems = !items.isNullOrEmpty()
     var expanded by remember { mutableStateOf(false) }
 
@@ -50,14 +53,14 @@ fun ItemsSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Detected Items", fontSize = 12.sp, color = neutralGray400)
+                Text(s.detectedItemsList, fontSize = 12.sp, color = neutralGray400)
                 if (!hasItems) {
-                    Text("N/A", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = neutralGray400)
-                    Text("No items detected", fontSize = 11.sp, color = neutralGray400)
+                    Text(s.notApplicable, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = neutralGray400)
+                    Text(s.noDataYet, fontSize = 11.sp, color = neutralGray400)
                 } else {
                     val totalQty = items.sumOf { it.quantity }
                     Text("$totalQty", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = scanGreen)
-                    Text("$totalQty items", fontSize = 11.sp, color = neutralGray400)
+                    Text(s.massItemsDetected(totalQty), fontSize = 11.sp, color = neutralGray400)
                 }
             }
             Box(
@@ -134,6 +137,7 @@ fun MassSection(
     itemsMass: List<com.vodang.greenmind.scandetail.ScanItemMass>?,
     modifier: Modifier = Modifier,
 ) {
+    val s = LocalAppStrings.current
     val hasMass = totalMassKg != null || !itemsMass.isNullOrEmpty()
     var expanded by remember { mutableStateOf(false) }
 
@@ -152,18 +156,13 @@ fun MassSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Total Mass", fontSize = 12.sp, color = neutralGray400)
+                Text(s.totalMassLabel, fontSize = 12.sp, color = neutralGray400)
                 if (totalMassKg == null) {
-                    Text("N/A", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = neutralGray400)
-                    Text("No mass data", fontSize = 11.sp, color = neutralGray400)
+                    Text(s.notApplicable, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = neutralGray400)
+                    Text(s.noMassData, fontSize = 11.sp, color = neutralGray400)
                 } else {
-                    Text(
-                        "%.2f kg".fmt(totalMassKg),
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = massBlue,
-                    )
-                    Text("${itemsMass?.size ?: 0} item masses", fontSize = 11.sp, color = neutralGray400)
+                    Text(s.massKg(totalMassKg), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = massBlue)
+                    Text(s.itemMassesLabel, fontSize = 11.sp, color = neutralGray400)
                 }
             }
             Box(
@@ -196,8 +195,8 @@ fun MassSection(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text("Total Mass", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = neutralGray700)
-                        Text("%.2f kg".fmt(totalMassKg), fontSize = 12.sp, color = massBlue, fontWeight = FontWeight.Bold)
+                        Text(s.totalMassLabel, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = neutralGray700)
+                        Text(s.massKg(totalMassKg), fontSize = 12.sp, color = massBlue, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -206,14 +205,14 @@ fun MassSection(
                         HorizontalDivider(color = Color(0xFFEEEEEE))
                         Spacer(Modifier.height(4.dp))
                     }
-                    Text("Item Masses", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = neutralGray700)
+                    Text(s.itemMassesLabel, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = neutralGray700)
                     itemsMass.forEach { item ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text("• ${item.name}", fontSize = 12.sp, color = neutralGray700, modifier = Modifier.weight(1f))
-                            Text("%.3f kg".fmt(item.massKg), fontSize = 12.sp, color = neutralGray400, fontWeight = FontWeight.Medium)
+                            Text(s.itemBullet(item.name), fontSize = 12.sp, color = neutralGray700, modifier = Modifier.weight(1f))
+                            Text(s.massKgPrecision3(item.massKg), fontSize = 12.sp, color = neutralGray400, fontWeight = FontWeight.Medium)
                         }
                     }
                 }

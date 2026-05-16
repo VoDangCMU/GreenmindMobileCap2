@@ -1,5 +1,10 @@
 package com.vodang.greenmind.wasteimpact
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -39,6 +44,7 @@ import com.vodang.greenmind.scandetail.toScanDetailData
 import com.vodang.greenmind.scandetail.components.ScanDetailView
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
+import com.vodang.greenmind.store.WasteSortStore
 import com.vodang.greenmind.wasteimpact.components.HeroStat
 import com.vodang.greenmind.wasteimpact.components.ImpactMeter
 import com.vodang.greenmind.wasteimpact.components.ImpactSummary
@@ -48,6 +54,7 @@ import com.vodang.greenmind.wasteimpact.components.ScanHistoryRow
 import com.vodang.greenmind.wasteimpact.components.ecoScoreColor
 import com.vodang.greenmind.wasteimpact.components.ecoScoreLabel
 import com.vodang.greenmind.wastesort.WasteSortEntry
+import com.vodang.greenmind.wastesort.WasteSortScanScreen
 import kotlin.math.roundToInt
 
 // ── Palette (re-used from components; duplicated here to avoid circular imports) ──
@@ -208,6 +215,11 @@ fun WasteImpactScreen() {
     var refreshKey    by remember { mutableIntStateOf(0) }
     var selectedEntry by remember { mutableStateOf<WasteSortEntry?>(null) }
 
+    // Scan flow state — same mechanism as WasteSortScreen
+    var showScan   by remember { mutableStateOf(false) }
+    var useGallery by remember { mutableStateOf(false) }
+    var fabExpanded by remember { mutableStateOf(false) }
+
     val household by HouseholdStore.household.collectAsState()
 
     // Fetch user's scan history + green score from the server
@@ -236,6 +248,7 @@ fun WasteImpactScreen() {
     val mergedEntries = apiEntries
 
     BackHandler(enabled = selectedEntry != null) { selectedEntry = null }
+    BackHandler(enabled = showScan) { showScan = false }
 
     val current = selectedEntry
     if (current != null) {
@@ -243,6 +256,23 @@ fun WasteImpactScreen() {
             data = current.toScanDetailData(),
             onBack = { selectedEntry = null },
             displayMode = DisplayMode.FULL_SCREEN,
+        )
+        return
+    }
+
+    if (showScan) {
+        WasteSortScanScreen(
+            onResult = { entry ->
+                // Persist into WasteSortStore (same as WasteSortScreen) and
+                // trigger this screen to refetch the detect history so the
+                // new scan shows up in the impact aggregation immediately.
+                WasteSortStore.add(entry)
+                WasteSortStore.triggerRefresh()
+                refreshKey++
+                showScan = false
+            },
+            onBack = { showScan = false },
+            useGallery = useGallery,
         )
         return
     }
@@ -286,6 +316,89 @@ fun WasteImpactScreen() {
                 onEntryClick      = { selectedEntry = it },
                 onRefresh         = { refreshKey++ },
             )
+        }
+
+        // ── Scan FAB ─────────────────────────────────────────────────────────
+        // Same mechanism as the Waste Sort screen — expandable into camera /
+        // gallery mini-FABs that launch WasteSortScanScreen and reuse the
+        // shared detect-trash API.
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(16.dp),
+        ) {
+            AnimatedVisibility(
+                visible = fabExpanded,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit  = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    ImpactMiniFabRow(
+                        icon = "🖼",
+                        label = s.uploadImage,
+                        onClick = {
+                            fabExpanded = false
+                            useGallery = true
+                            showScan = true
+                        },
+                    )
+                    ImpactMiniFabRow(
+                        icon = "📷",
+                        label = s.takePhoto,
+                        onClick = {
+                            fabExpanded = false
+                            useGallery = false
+                            showScan = true
+                        },
+                    )
+                }
+            }
+
+            FloatingActionButton(
+                onClick = { fabExpanded = !fabExpanded },
+                containerColor = green800,
+                contentColor = Color.White,
+                shape = CircleShape,
+            ) {
+                Text(
+                    if (fabExpanded) s.fabCollapse else s.fabExpand,
+                    fontSize = if (fabExpanded) 20.sp else 28.sp,
+                    fontWeight = FontWeight.Light,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImpactMiniFabRow(icon: String, label: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.clickable(onClick = onClick),
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+            Text(label, fontSize = 13.sp, color = Color(0xFF1B1B1B), fontWeight = FontWeight.Medium)
+        }
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(green800),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(icon, fontSize = 18.sp)
         }
     }
 }
@@ -392,7 +505,7 @@ private fun WasteImpactContent(
                             modifier = Modifier.size(56.dp).clip(CircleShape).background(ecoScoreColor(avgEcoScore).copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("$avgEcoScore%", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = ecoScoreColor(avgEcoScore))
+                            Text(s.ecoScorePercent(avgEcoScore), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = ecoScoreColor(avgEcoScore))
                         }
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -439,7 +552,7 @@ private fun WasteImpactContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(s.topPollutantsAvg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
-                        Text("${allActivePollutants.size} active", fontSize = 11.sp, color = Color.Gray)
+                        Text(s.activePollutants(allActivePollutants.size), fontSize = 11.sp, color = Color.Gray)
                     }
                     val displayList = if (showAllPollutants) allActivePollutants else aggregatedPollutants
                     displayList.forEachIndexed { idx, (key, value) ->
@@ -457,7 +570,7 @@ private fun WasteImpactContent(
                             contentPadding = PaddingValues(vertical = 0.dp),
                         ) {
                             Text(
-                                if (showAllPollutants) "Show less" else "Show all ${allActivePollutants.size} pollutants",
+                                if (showAllPollutants) s.showLess else s.showAllPollutants(allActivePollutants.size),
                                 fontSize = 12.sp, color = orange700
                             )
                         }
@@ -487,7 +600,7 @@ private fun WasteImpactContent(
                         ) {
                             Text(entry.createdAt.take(10), fontSize = 11.sp, color = Color.Gray)
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text("${entry.previousScore} → ${entry.finalScore}", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF424242))
+                                Text(s.scoreTransition(entry.previousScore, entry.finalScore), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF424242))
                                 Box(Modifier.clip(RoundedCornerShape(6.dp)).background(db).padding(horizontal = 6.dp, vertical = 2.dp)) {
                                     Text(if (isPositive) "+${entry.delta}" else "${entry.delta}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = dc)
                                 }

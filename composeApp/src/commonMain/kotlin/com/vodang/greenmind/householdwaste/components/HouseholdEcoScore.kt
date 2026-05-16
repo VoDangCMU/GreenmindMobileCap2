@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.api.households.GreenScoreEntryDto
 import com.vodang.greenmind.fmt
+import com.vodang.greenmind.i18n.LocalAppStrings
+import androidx.compose.ui.res.stringResource
 
 private val green700 = Color(0xFF2E7D32)
 private val green50  = Color(0xFFE8F5E9)
@@ -30,6 +32,7 @@ private val gray700c = Color(0xFF374151)
 
 @Composable
 internal fun EcoScoreRow(entry: GreenScoreEntryDto?) {
+    val s = LocalAppStrings.current
     val hasDetail = entry != null && (!entry.items.isNullOrEmpty() || !entry.reasons.isNullOrEmpty())
     var expanded  by remember { mutableStateOf(false) }
 
@@ -83,7 +86,7 @@ internal fun EcoScoreRow(entry: GreenScoreEntryDto?) {
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Text("Eco Score", fontSize = 11.sp, color = gray400c)
+                    Text(s.ecoScore, fontSize = 11.sp, color = gray400c)
                     Text(
                         if (entry == null) "—" else "${entry.finalScore}",
                         fontSize = 18.sp,
@@ -112,14 +115,14 @@ internal fun EcoScoreRow(entry: GreenScoreEntryDto?) {
             ) {
                 // Items
                 if (!entry.items.isNullOrEmpty()) {
-                    Text("Detected items", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                    Text(s.detectedItems, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         entry.items.forEach { item ->
                             Row(
                                 Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Text("• ${item.name}", fontSize = 11.sp, color = gray700c, modifier = Modifier.weight(1f))
+                                Text(s.itemBullet(item.name), fontSize = 11.sp, color = gray700c, modifier = Modifier.weight(1f))
                                 Text(
                                     "×${item.quantity}",
                                     fontSize = 11.sp,
@@ -134,7 +137,7 @@ internal fun EcoScoreRow(entry: GreenScoreEntryDto?) {
                 // Reasons
                 if (!entry.reasons.isNullOrEmpty()) {
                     if (!entry.items.isNullOrEmpty()) HorizontalDivider(color = Color(0xFFDDDDDD).copy(alpha = 0.4f))
-                    Text("Score breakdown", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                    Text(s.scoreBreakdown, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         entry.reasons.forEach { reason ->
                             val isPositive = reason.contains("→ +") || reason.contains("(tốt)")

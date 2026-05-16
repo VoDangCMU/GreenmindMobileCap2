@@ -273,6 +273,7 @@ private fun InvoiceDetailSheet(invoice: InvoiceDto, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val symbol     = currencySymbol(invoice.doc?.currency)
     val totals     = invoice.totals
+    val s = LocalAppStrings.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -311,14 +312,14 @@ private fun InvoiceDetailSheet(invoice: InvoiceDto, onDismiss: () -> Unit) {
             // Items
             if (!invoice.items.isNullOrEmpty()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Items", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
+                Text(s.paymentItems, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     // Header row
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Text("Item", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.weight(1f))
-                        Text("Qty", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.width(28.dp))
-                        Text("Unit", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.width(54.dp))
-                        Text("Total", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.width(56.dp))
+                        Text(s.paymentItems, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.weight(1f))
+                        Text(s.billQty, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.width(28.dp))
+                        Text(s.billUnit, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.width(54.dp))
+                        Text(s.billTotal, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.width(56.dp))
                     }
                     HorizontalDivider(color = Color(0xFFF0F0F0))
                     invoice.items.forEach { item ->
@@ -372,13 +373,13 @@ private fun InvoiceDetailSheet(invoice: InvoiceDto, onDismiss: () -> Unit) {
             // Totals
             if (totals != null) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Totals", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
+                Text(s.billTotals, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161))
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    totals.subtotalDouble().let  { TotalsRow("Subtotal", formatAmount(it, symbol)) }
-                    totals.discountDouble().let  { if (it != 0.0) TotalsRow("Discount", "− ${formatAmount(it, symbol)}", red) }
-                    totals.taxDouble().let       { if (it != 0.0) TotalsRow("Tax", formatAmount(it, symbol)) }
+                    totals.subtotalDouble().let  { TotalsRow(s.billSubtotal, formatAmount(it, symbol)) }
+                    totals.discountDouble().let  { if (it != 0.0) TotalsRow(s.billDiscount, "− ${formatAmount(it, symbol)}", red) }
+                    totals.taxDouble().let       { if (it != 0.0) TotalsRow(s.billTax, formatAmount(it, symbol)) }
                     HorizontalDivider(color = Color(0xFFF0F0F0))
-                    TotalsRow("Grand Total", formatAmount(totals.grandTotalDouble(), symbol), green800, bold = true)
+                    TotalsRow(s.billGrandTotal, formatAmount(totals.grandTotalDouble(), symbol), green800, bold = true)
                 }
             } else if (invoice.pollution != null && invoice.impact != null) {
                 Spacer(Modifier.height(8.dp))

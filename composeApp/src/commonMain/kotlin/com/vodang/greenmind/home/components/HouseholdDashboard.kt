@@ -10,7 +10,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
@@ -24,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.theme.*
 import com.vodang.greenmind.home.components.StatsSummaryCard
@@ -85,7 +83,6 @@ fun HouseholdDashboard(
     onScanBillClick: () -> Unit = {},
     // Lifestyle features
     onWasteStatusClick: () -> Unit = {},
-    onWalkDistanceClick: () -> Unit = {},
     onEnvironmentalImpactClick: () -> Unit = {},
     onPaymentClick: () -> Unit = {},
     // Community features
@@ -96,41 +93,6 @@ fun HouseholdDashboard(
     onPreAppSurveyClick: () -> Unit = {},
 ) {
     val s = LocalAppStrings.current
-    var showScanModal by remember { mutableStateOf(false) }
-
-    if (showScanModal) {
-        Dialog(onDismissRequest = { showScanModal = false }) {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(s.scanBillMealTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Green800)
-                    Spacer(Modifier.height(8.dp))
-                    Text(s.scanBillMealDesc, fontSize = 14.sp, color = TextSecondary)
-                    Spacer(Modifier.height(24.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        FeatureButton(Icons.Filled.Restaurant, s.scanMeal, s.scanMealDesc, GreenBg50, GreenIcon, Modifier.weight(1f)) {
-                            showScanModal = false
-                            onScanMealClick()
-                        }
-                        FeatureButton(Icons.Filled.Receipt, s.scanBill, s.scanBillDesc, YellowBg50, YellowIcon, Modifier.weight(1f)) {
-                            showScanModal = false
-                            onScanBillClick()
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -157,27 +119,27 @@ fun HouseholdDashboard(
             // Row 1: Waste core features
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Max)) {
                 FeatureGridButton(Icons.Filled.Recycling, s.wasteSort, GreenBg50, GreenIcon, Modifier.weight(1f)) { onWasteSortClick() }
-                FeatureGridButton(Icons.Filled.Delete, s.wasteReport, RedBg50, RedIcon, Modifier.weight(1f)) { onWasteReportClick() }
+                FeatureGridButton(Icons.Filled.Analytics, s.wasteImpactTitle, OrangeBg50, OrangeIcon, Modifier.weight(1f)) { onWasteImpactClick() }
                 FeatureGridButton(Icons.Filled.Scale, s.wasteTotalMassTitle, BlueBg50, BlueIcon, Modifier.weight(1f)) { onWasteTotalMassClick() }
             }
 
             // Row 2: Impact & analytics
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Max)) {
                 PaymentGridButton(label = s.paymentTitle, modifier = Modifier.weight(1f)) { onPaymentClick() }
-                FeatureGridButton(Icons.Filled.Analytics, s.wasteImpactTitle, OrangeBg50, OrangeIcon, Modifier.weight(1f)) { onWasteImpactClick() }
+                FeatureGridButton(Icons.Filled.Delete, s.wasteReport, RedBg50, RedIcon, Modifier.weight(1f)) { onWasteReportClick() }
                 FeatureGridButton(Icons.AutoMirrored.Filled.TrendingUp, s.wasteStatTitle, BlueBg50, BlueIcon, Modifier.weight(1f)) { onWasteStatClick() }
             }
 
             // Row 3: Household & lifestyle
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Max)) {
-                FeatureGridButton(Icons.Filled.AssignmentInd, s.householdWasteStatusTitle, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onHouseholdWasteClick() }
+                FeatureGridButton(Icons.Filled.AssignmentInd, s.householdDashboardTitle, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onHouseholdWasteClick() }
                 FeatureGridButton(Icons.Filled.ListAlt, s.householdWasteStatusTitle, PurpleBg50, PurpleIcon, Modifier.weight(1f)) { onWasteStatusClick() }
-                FeatureGridButton(Icons.AutoMirrored.Filled.DirectionsWalk, s.walkDistance, GreenBg50, GreenIcon, Modifier.weight(1f)) { onWalkDistanceClick() }
+                FeatureGridButton(Icons.Filled.Restaurant, s.scanMeal, GreenBg50, GreenIcon, Modifier.weight(1f)) { onScanMealClick() }
             }
 
             // Row 4: Community & scanning
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.height(IntrinsicSize.Max)) {
-                FeatureGridButton(Icons.Filled.CameraAlt, s.scanBillMealTitle, GreenBg50, GreenIcon, Modifier.weight(1f)) { showScanModal = true }
+                FeatureGridButton(Icons.Filled.Receipt, s.scanBill, YellowBg50, YellowIcon, Modifier.weight(1f)) { onScanBillClick() }
                 FeatureGridButton(Icons.Filled.Newspaper, s.blog, YellowBg50, YellowIcon, Modifier.weight(1f)) { onBlogClick() }
                 FeatureGridButton(Icons.Filled.Handshake, s.campaignsTitle, TealBg50, TealIcon, Modifier.weight(1f)) { onCampaignsClick() }
             }

@@ -139,6 +139,9 @@ fun HomeScreen(
             PermissionRequester.request(PermissionGroup.LOCATION)
         }
         HouseholdStore.fetchHousehold()
+        // Foreground daily-metrics auto-runner. Fires once per ~24 h while the
+        // user has metricsAutoEnabled = true (the 21:00 "tối" cadence).
+        com.vodang.greenmind.store.OceanStore.maybeRunDailyMetrics()
     }
     LaunchedEffect(locationGranted) {
         if (locationGranted) Geo.service.start()
@@ -388,7 +391,6 @@ fun HomeScreen(
                             onScanMealClick = { Navigation.navigate(AppScreen.MEAL_SCAN) },
                             onScanBillClick = { Navigation.navigate(AppScreen.BILL_SCAN) },
                             onWasteStatusClick = { Navigation.navigate(AppScreen.WASTE_STATUS) },
-                            onWalkDistanceClick = { Navigation.navigate(AppScreen.WALK_DISTANCE) },
                             onEnvironmentalImpactClick = { Navigation.navigate(AppScreen.ENVIRONMENTAL_IMPACT) },
                             onPaymentClick = { Navigation.navigate(AppScreen.PAYMENT) },
                             onBlogClick = { Navigation.navigate(AppScreen.BLOG) },

@@ -141,6 +141,7 @@ val EnStrings = AppStrings("en").apply {
     wasteImpactTip = "♻️  Each report you submit helps collectors prioritise clean-ups in your area."
     householdWasteStatusTitle = "Household Status"
     householdWasteStatusDesc = "Your waste status"
+    householdDashboardTitle = "Household Dashboard"
     wasteStatus = "Waste Status"
     noScans = "No scans yet"
     wasteStatTitle = "Waste Stats"
@@ -708,6 +709,19 @@ val EnStrings = AppStrings("en").apply {
     fabCollapse = "✕"
     fabExpand = "+"
 
+    // ── Filter ────────────────────────────────────────────────────────────────────
+    filterAll = "All"
+    filterSorted = "Sorted"
+    filterBroughtOut = "Brought Out"
+    filterCollected = "Collected"
+    filterByStatus = "Filter by status"
+    filterByDate = "Filter by date"
+    periodToday = "Today"
+    period7Days = "7 days"
+    period30Days = "30 days"
+    periodAllTime = "All Time"
+    apply = "Apply"
+
     // ── Scan Detail ─────────────────────────────────────────────────────────────
     ecoScore = "Eco Score"
     noScoreYet = "No score yet"
@@ -735,6 +749,18 @@ val EnStrings = AppStrings("en").apply {
     totalMass = "Total Mass"
     detectedItemsList = "Detected Items"
     massItemsDetected = { n -> "$n items detected" }
+    status = "Status"
+    notApplicable = "N/A"
+    detectedBy = "Scanned by"
+    annotatedImage = "Annotated Image"
+    aiAnalysis = "AI Analysis"
+    depthMap = "Depth Map"
+    scanReport = "Scan Report"
+    segments = "Segments"
+    itemMasses = "Item masses"
+    totalMassLabel = "Total Mass"
+    estimatedValue = "Estimated Value"
+    updatingLabel = "Updating…"
 
     // ── Error Log ───────────────────────────────────────────────────────────────
     errorLog = { n -> "🔴  Error Log ($n)" }
@@ -791,6 +817,66 @@ val EnStrings = AppStrings("en").apply {
     paymentStatusOverdue = "Overdue"
     paymentStatusCancelled = "Cancelled"
     paymentStatus = "Status"
+
+    // ── Bill / Invoice ───────────────────────────────────────────────────────────
+    billTotals = "Totals"
+    billSubtotal = "Subtotal"
+    billDiscount = "Discount"
+    billGrandTotal = "Grand Total"
+    billQty = "Qty"
+    billUnit = "Unit"
+    billTax = "Tax"
+    billItem = "Item"
+
+    // ── Household ────────────────────────────────────────────────────────────────
+    noLocationEvents = "No location events yet"
+
+    // ── Blog / Leaderboard ───────────────────────────────────────────────────────
+    sponsored = "Sponsored"
+    readMinutes = { n -> "$n min read" }
+    leaderboardTrophy = "🏆"
+    leaderboardMoreContributors = { n -> "+ $n more contributors" }
+    leaderboardSeparator = " ··· "
+    leaderboardRank = "#"
+    leaderboardUsername = "@"
+    leaderboardYou = "You"
+    maxImpact = "max impact"
+    showAll = { n -> "Show all $n pollutants" }
+    showLess = "Show less"
+    collectedCycleComplete = "Collected — cycle complete!"
+    waitingCollectorPickup = "Waiting for collector to pick up"
+    detectedItemsCount = { n -> "$n objects" }
+    itemMassesLabel = "Item masses"
+    pollutionLabel = "Pollution"
+    byCategoryLabel = "By Category"
+    itemBullet = { name -> "• $name" }
+    massKg = { v -> "${v.fmt(2)} kg" }
+    objectsDetected = { n -> "$n objects detected" }
+    noSignificantPollutants = "No significant pollutants detected"
+    massKgPrecision3 = { v -> "${v.fmt(3)} kg" }
+
+    // ── Waste Analytics ─────────────────────────────────────────────────────────
+    dateLabel = "Date: %02d/%02d/%04d"
+    fromLabel = "From: %02d/%02d/%04d"
+    toLabel = "To: %02d/%02d/%04d"
+    yearLabel = "Year: %s"
+    monthLabel = "Month: %s"
+
+    // ── Campaign ────────────────────────────────────────────────────────────────
+    campaignTime = "Time"
+    campaignDescriptionLabel = "Description"
+    campaignLocation = "Location"
+    collectionEvidence = "Collection Evidence"
+
+    // ── Waste Report Status ─────────────────────────────────────────────────────
+    wasteReportComplete = "Complete!"
+    wasteReportSendingReport = "Sending report…"
+    wasteReportPhotoUploaded = "Photo uploaded"
+    wasteReportSendingInfo = "Sending information…"
+
+    // ── Settings ────────────────────────────────────────────────────────────────
+    testNotification = "Test Notification"
+    sendTestNotification = "Send Test Notification"
 
     // ── Bottom Navigation ─────────────────────────────────────────────────────────
     community = "Community"

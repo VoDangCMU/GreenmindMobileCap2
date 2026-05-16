@@ -33,6 +33,8 @@ import com.vodang.greenmind.scandetail.ScanDetailData
 import com.vodang.greenmind.scandetail.ScanImpact
 import com.vodang.greenmind.scandetail.neutralGray400
 import com.vodang.greenmind.scandetail.neutralGray700
+import com.vodang.greenmind.i18n.LocalAppStrings
+import androidx.compose.ui.res.stringResource
 import com.vodang.greenmind.scandetail.scanGreen
 import com.vodang.greenmind.scandetail.scanGreenBg
 import com.vodang.greenmind.scandetail.scanGray
@@ -175,7 +177,7 @@ fun FixedBottomBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Status", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = neutralGray700)
+            Text(s.status, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = neutralGray700)
             StatusBadge(status = status)
         }
 
@@ -216,7 +218,7 @@ fun FixedBottomBar(
                     if (isBusy) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
-                        Text("Updating…", fontWeight = FontWeight.Bold)
+                        Text(s.updatingLabel, fontWeight = FontWeight.Bold)
                     } else {
                         Text(s.markAsBroughtOut, fontWeight = FontWeight.Bold)
                     }
@@ -350,7 +352,7 @@ fun ScanDetailView(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Scanned by", fontSize = 12.sp, color = neutralGray400)
+                        Text(s.detectedBy, fontSize = 12.sp, color = neutralGray400)
                         Text(data.scannedBy, fontSize = 12.sp, color = neutralGray700, fontWeight = FontWeight.Medium)
                     }
                     HorizontalDivider(color = Color(0xFFE0E0E0))
@@ -428,7 +430,7 @@ fun ScanDetailView(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("Scanned by", fontSize = 12.sp, color = neutralGray400)
+                            Text(s.detectedBy, fontSize = 12.sp, color = neutralGray400)
                             Text(data.scannedBy, fontSize = 12.sp, color = neutralGray700, fontWeight = FontWeight.Medium)
                         }
                         HorizontalDivider(color = Color(0xFFE0E0E0))
@@ -449,6 +451,7 @@ fun ScanDetailView(
 
 @Composable
 private fun SegmentsSection(grouped: Map<String, List<String>>) {
+    val s = LocalAppStrings.current
     val categories = grouped.keys.toList()
     var selectedCategory by remember { mutableStateOf(categories.firstOrNull() ?: "") }
 
@@ -460,7 +463,7 @@ private fun SegmentsSection(grouped: Map<String, List<String>>) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            "By Category",
+            s.byCategoryLabel,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF1B1B1B),
@@ -505,7 +508,7 @@ private fun SegmentsSection(grouped: Map<String, List<String>>) {
             val imageUrls = grouped[selectedCategory] ?: emptyList()
             SegmentGrid(imageUrls = imageUrls, category = selectedCategory)
         } else {
-            Text("N/A", fontSize = 13.sp, color = Color.Gray)
+            Text(s.notApplicable, fontSize = 13.sp, color = Color.Gray)
         }
     }
 }
@@ -514,6 +517,7 @@ private fun SegmentsSection(grouped: Map<String, List<String>>) {
 
 @Composable
 private fun TotalMassResultCard(totalMassKg: Double?) {
+    val s = LocalAppStrings.current
     val mass = totalMassKg ?: 0.0
     val money = (mass * 500).toInt()
 
@@ -535,7 +539,7 @@ private fun TotalMassResultCard(totalMassKg: Double?) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Text("Total Mass", fontSize = 12.sp, color = neutralGray400)
+                    Text(s.totalMassLabel, fontSize = 12.sp, color = neutralGray400)
                     Text(
                         "${"%.2f".fmt(mass)} kg",
                         fontSize = 24.sp,
@@ -550,7 +554,7 @@ private fun TotalMassResultCard(totalMassKg: Double?) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Estimated Value", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = neutralGray700)
+                Text(s.estimatedValue, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = neutralGray700)
                 val moneyStr = money.toString().reversed().chunked(3).joinToString(",").reversed()
                 Text(
                     "$moneyStr ₫",

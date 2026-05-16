@@ -264,10 +264,10 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                             tint = Color.White,
                             modifier = Modifier.size(48.dp)
                         )
-                        Text("Hoàn thành!", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(s.wasteReportComplete, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     } else {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Đang gửi báo cáo…", color = Color.White, fontSize = 15.sp)
+                            Text(s.wasteReportSendingReport, color = Color.White, fontSize = 15.sp)
                             Spacer(modifier = Modifier.height(12.dp))
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -279,7 +279,7 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                                     tint = Color.White.copy(alpha = 0.5f),
                                     modifier = Modifier.size(16.dp)
                                 )
-                                Text("Đã upload ảnh", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                                Text(s.wasteReportPhotoUploaded, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
                             }
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -290,7 +290,7 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                                     color = Color.White,
                                     strokeWidth = 2.dp,
                                 )
-                                Text("Đang gửi thông tin…", color = Color.White, fontSize = 13.sp)
+                                Text(s.wasteReportSendingInfo, color = Color.White, fontSize = 13.sp)
                             }
                         }
                     }
@@ -307,7 +307,7 @@ fun WasteReportScreen(lazyListState: androidx.compose.foundation.lazy.LazyListSt
                     .navigationBarsPadding(),
                 action = {
                     TextButton(onClick = { submitError = null }) {
-                        Text("Đóng", color = Color.White)
+                        Text(s.close, color = Color.White)
                     }
                 },
                 containerColor = Color(0xFFC62828),

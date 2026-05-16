@@ -26,6 +26,7 @@ import com.vodang.greenmind.api.households.DetectTrashHistoryDto
 import com.vodang.greenmind.api.households.GreenScoreEntryDto
 import com.vodang.greenmind.api.households.getGreenScoreByHousehold
 import com.vodang.greenmind.fmt
+import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.store.HouseholdStore
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.util.AppLogger
@@ -70,6 +71,7 @@ internal fun StatusBadge(status: WasteSortStatus) {
 
 @Composable
 internal fun DetectScanCard(record: DetectTrashHistoryDto, onClick: () -> Unit) {
+    val s = LocalAppStrings.current
     val detectLabel = when (record.detectType) {
         "detect_trash"             -> "Detect Trash"
         "predict_pollutant_impact" -> "Pollutant Impact"
@@ -120,13 +122,13 @@ internal fun DetectScanCard(record: DetectTrashHistoryDto, onClick: () -> Unit) 
                     }
                 }
                 Text(
-                    "${record.totalObjects ?: 0} objects detected",
+                    s.objectsDetected(record.totalObjects ?: 0),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = gray700c
                 )
                 record.items?.take(3)?.joinToString(" · ") {
-                    if (it.massKg != null) "${"%.2f".fmt(it.massKg)}kg ${it.name}"
+                    if (it.massKg != null) "${s.massKg(it.massKg!!)} ${it.name}"
                     else "${it.quantity}× ${it.name}"
                 }?.let {
                     Text(it, fontSize = 11.sp, color = gray400c, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -134,7 +136,7 @@ internal fun DetectScanCard(record: DetectTrashHistoryDto, onClick: () -> Unit) 
                 record.totalMassKg?.let {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Filled.Category, contentDescription = null, modifier = Modifier.size(14.dp), tint = green700)
-                        Text("${"%.2f".fmt(it)} kg", fontSize = 11.sp, color = green700)
+                        Text(s.massKg(it), fontSize = 11.sp, color = green700)
                     }
                 }
             }
@@ -147,6 +149,7 @@ internal fun DetectScanCard(record: DetectTrashHistoryDto, onClick: () -> Unit) 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () -> Unit) {
+    val s = LocalAppStrings.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var previewUrl       by remember { mutableStateOf<String?>(null) }
     var latestGreenScore by remember { mutableStateOf<GreenScoreEntryDto?>(null) }
@@ -216,7 +219,7 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
                     DetectStatChip("$it objects", green50c, green700, icon = Icons.Filled.Search)
                 }
                 scan.totalMassKg?.let {
-                    DetectStatChip("${"%.2f".fmt(it)} kg", Color(0xFFEFF6FF), Color(0xFF1D4ED8), icon = Icons.Filled.Category)
+                    DetectStatChip(s.massKg(it), Color(0xFFEFF6FF), Color(0xFF1D4ED8), icon = Icons.Filled.Category)
                 }
             }
 
@@ -226,13 +229,13 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
             // Detected items
             if (!scan.items.isNullOrEmpty()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Detected items", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.detectedItems, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     scan.items.forEach { item ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("• ${item.name}", fontSize = 12.sp, color = gray700c, modifier = Modifier.weight(1f))
+                            Text(s.itemBullet(item.name), fontSize = 12.sp, color = gray700c, modifier = Modifier.weight(1f))
                             val detail = when {
-                                item.massKg != null -> "${"%.3f".fmt(item.massKg)} kg"
+                                item.massKg != null -> s.massKgPrecision3(item.massKg!!)
                                 item.quantity > 0   -> "×${item.quantity}"
                                 else                -> ""
                             }
@@ -247,7 +250,7 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
             // AI analysis image
             if (!scan.aiAnalysis.isNullOrBlank()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("AI Analysis", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.aiAnalysis, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 NetworkImage(
                     url = scan.aiAnalysis,
                     modifier = Modifier
@@ -261,7 +264,7 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
             // Annotated image
             if (!scan.annotatedImageUrl.isNullOrBlank()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Annotated Image", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.annotatedImage, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 NetworkImage(
                     url = scan.annotatedImageUrl,
                     modifier = Modifier
@@ -275,7 +278,7 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
             // Depth map
             if (!scan.depthMapUrl.isNullOrBlank()) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Depth Map", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.depthMap, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 NetworkImage(
                     url = scan.depthMapUrl,
                     modifier = Modifier
@@ -290,7 +293,7 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
             val p = scan.pollution
             if (p != null) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Pollution", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.pollutionLabel, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 val pollutants = listOfNotNull(
                     p.co2?.let              { "CO₂"               to it },
                     p.ch4?.let              { "CH₄"               to it },
@@ -310,7 +313,7 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
                 ).filter { it.second > 0.0 }
 
                 if (pollutants.isEmpty()) {
-                    Text("No significant pollutants detected", fontSize = 12.sp, color = gray400c)
+                    Text(s.noSignificantPollutants, fontSize = 12.sp, color = gray400c)
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         pollutants.forEach { (label, value) ->
@@ -324,18 +327,18 @@ internal fun DetectScanDetailSheet(scan: DetectTrashHistoryDto, onDismiss: () ->
             val imp = scan.impact
             if (imp != null) {
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Environmental Impact", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.envImpact, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    imp.airPollution?.let   { DetectImpactBar("Air pollution",   it, icon = Icons.Filled.Air) }
-                    imp.soilPollution?.let  { DetectImpactBar("Soil pollution",  it, icon = Icons.Filled.Eco) }
-                    imp.waterPollution?.let { DetectImpactBar("Water pollution", it, icon = Icons.Filled.WaterDrop) }
+                    imp.airPollution?.let   { DetectImpactBar(s.airPollution,   it, icon = Icons.Filled.Air) }
+                    imp.soilPollution?.let  { DetectImpactBar(s.soilPollution,  it, icon = Icons.Filled.Eco) }
+                    imp.waterPollution?.let { DetectImpactBar(s.waterPollution, it, icon = Icons.Filled.WaterDrop) }
                 }
             }
 
             // Detected by
             scan.detectedBy?.let { by ->
                 HorizontalDivider(color = Color(0xFFEEEEEE))
-                Text("Detected by", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
+                Text(s.detectedBy, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = gray700c)
                 Text("${by.fullName} (${by.username})", fontSize = 12.sp, color = gray400c)
             }
 

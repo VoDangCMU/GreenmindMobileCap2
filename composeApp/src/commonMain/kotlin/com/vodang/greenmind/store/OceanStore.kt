@@ -1,14 +1,20 @@
 package com.vodang.greenmind.store
 
 import com.vodang.greenmind.api.ocean.CreateOceanRequest
+import com.vodang.greenmind.api.ocean.OceanMetricType
 import com.vodang.greenmind.api.ocean.OceanScores
 import com.vodang.greenmind.api.ocean.OceanScoresInput
 import com.vodang.greenmind.api.ocean.UpdateOceanRequest
 import com.vodang.greenmind.api.ocean.createOcean
 import com.vodang.greenmind.api.ocean.getOcean
+import com.vodang.greenmind.api.ocean.postOceanMetric
 import com.vodang.greenmind.api.ocean.updateOcean
+import com.vodang.greenmind.time.currentTimeMillis
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -69,5 +75,78 @@ object OceanStore {
 
     fun clearError() {
         _error.value = null
+    }
+
+    // ── Metrics ──────────────────────────────────────────────────────────────
+
+    private val _refreshingMetrics = MutableStateFlow<Set<String>>(emptySet())
+    val refreshingMetrics: StateFlow<Set<String>> = _refreshingMetrics.asStateFlow()
+
+    /** Posts a single ocean-metric, then refetches the OCEAN scores. */
+    fun refreshMetric(metric: OceanMetricType, onDone: (Throwable?) -> Unit = {}) {
+        val token = SettingsStore.getAccessToken() ?: return onDone(IllegalStateException("Not signed in"))
+        scope.launch {
+            val key = metric.path
+            _refreshingMetrics.value = _refreshingMetrics.value + key
+            try {
+                postOceanMetric(token, metric)
+                load()
+                onDone(null)
+            } catch (e: Throwable) {
+                _error.value = e.message
+                onDone(e)
+            } finally {
+                _refreshingMetrics.value = _refreshingMetrics.value - key
+            }
+        }
+    }
+
+    /**
+     * Foreground-only "21:00" auto-runner. Triggers [refreshAllMetrics] if the
+     * user has enabled auto-update AND it has been ≥ 23 h since the last run.
+     *
+     * Note: real OS-level scheduling at a precise local time requires
+     * WorkManager (Android) / BGTaskScheduler (iOS). This in-app check fires
+     * the daily refresh whenever the app comes to the foreground after the
+     * cooldown expires, which is sufficient for typical usage.
+     */
+    fun maybeRunDailyMetrics() {
+        if (!SettingsStore.metricsAutoEnabled.value) return
+        if (SettingsStore.getAccessToken() == null) return
+        val now = currentTimeMillis()
+        val last = SettingsStore.metricsLastRunMs.value
+        val cooldownMs = 23L * 60L * 60L * 1000L  // ~once per day
+        if (now - last < cooldownMs) return
+        refreshAllMetrics()
+    }
+
+    /**
+     * Posts all supported ocean-metric endpoints in parallel, then refetches the
+     * OCEAN scores once. Records `metricsLastRunMs` on the SettingsStore so the
+     * 21:00 auto-update can avoid double-firing within the same day.
+     */
+    fun refreshAllMetrics(onDone: (Throwable?) -> Unit = {}): Job? {
+        val token = SettingsStore.getAccessToken() ?: return null
+        val all = OceanMetricType.values().toList()
+        return scope.launch {
+            val keys = all.map { it.path }.toSet()
+            _refreshingMetrics.value = _refreshingMetrics.value + keys
+            try {
+                all.map { m ->
+                    async {
+                        runCatching { postOceanMetric(token, m) }
+                    }
+                }.awaitAll()
+                // Refetch the ocean record so OceanScoreCard updates.
+                load()
+                SettingsStore.setMetricsLastRunMs(currentTimeMillis())
+                onDone(null)
+            } catch (e: Throwable) {
+                _error.value = e.message
+                onDone(e)
+            } finally {
+                _refreshingMetrics.value = _refreshingMetrics.value - keys
+            }
+        }
     }
 }

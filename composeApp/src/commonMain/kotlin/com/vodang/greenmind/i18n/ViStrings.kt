@@ -141,6 +141,7 @@ val ViStrings = AppStrings("vi").apply {
     wasteImpactTip = "♻️  Mỗi báo cáo giúp người thu gom ưu tiên dọn dẹp khu vực của bạn."
     householdWasteStatusTitle = "Tình trạng rác hộ GĐ"
     householdWasteStatusDesc = "Xem tình trạng rác"
+    householdDashboardTitle = "Bảng điều khiển hộ GĐ"
     wasteStatus = "Tình trạng rác"
     noScans = "Chưa có scan nào"
     wasteStatTitle = "Thống kê rác thải"
@@ -708,6 +709,19 @@ val ViStrings = AppStrings("vi").apply {
     fabCollapse = "✕"
     fabExpand = "+"
 
+    // ── Filter ────────────────────────────────────────────────────────────────────
+    filterAll = "Tất cả"
+    filterSorted = "Đã phân loại"
+    filterBroughtOut = "Đã đưa ra"
+    filterCollected = "Đã thu gom"
+    filterByStatus = "Lọc theo trạng thái"
+    filterByDate = "Lọc theo ngày"
+    periodToday = "Hôm nay"
+    period7Days = "7 ngày"
+    period30Days = "30 ngày"
+    periodAllTime = "Tất cả"
+    apply = "Áp dụng"
+
     // ── Scan Detail ─────────────────────────────────────────────────────────────
     ecoScore = "Điểm sinh thái"
     noScoreYet = "Chưa có điểm"
@@ -735,6 +749,18 @@ val ViStrings = AppStrings("vi").apply {
     totalMass = "Tổng khối lượng"
     detectedItemsList = "Danh sách vật thể"
     massItemsDetected = { n -> "$n vật thể phát hiện" }
+    status = "Trạng thái"
+    notApplicable = "N/A"
+    detectedBy = "Người quét"
+    annotatedImage = "Ảnh chú thích"
+    aiAnalysis = "Phân tích AI"
+    depthMap = "Bản đồ độ sâu"
+    scanReport = "Báo cáo quét"
+    segments = "Phân đoạn"
+    itemMasses = "Khối lượng vật thể"
+    totalMassLabel = "Tổng khối lượng"
+    estimatedValue = "Giá trị ước tính"
+    updatingLabel = "Đang cập nhật…"
 
     // ── Error Log ───────────────────────────────────────────────────────────────
     errorLog = { n -> "🔴  Nhật ký lỗi ($n)" }
@@ -791,6 +817,66 @@ val ViStrings = AppStrings("vi").apply {
     paymentStatusOverdue = "Quá hạn"
     paymentStatusCancelled = "Đã hủy"
     paymentStatus = "Trạng thái"
+
+    // ── Bill / Invoice ───────────────────────────────────────────────────────────
+    billTotals = "Tổng cộng"
+    billSubtotal = "Tổng phụ"
+    billDiscount = "Giảm giá"
+    billGrandTotal = "Tổng cộng"
+    billQty = "SL"
+    billUnit = "Đơn vị"
+    billTax = "Thuế"
+    billItem = "Mặt hàng"
+
+    // ── Household ────────────────────────────────────────────────────────────────
+    noLocationEvents = "Chưa có sự kiện vị trí"
+
+    // ── Blog / Leaderboard ───────────────────────────────────────────────────────
+    sponsored = "Chiến dịch"
+    readMinutes = { n -> "$n phút đọc" }
+    leaderboardTrophy = "🏆"
+    leaderboardMoreContributors = { n -> "+ $n người đóng góp khác" }
+    leaderboardSeparator = " ··· "
+    leaderboardRank = "#"
+    leaderboardUsername = "@"
+    leaderboardYou = "Bạn"
+    maxImpact = "tác động tối đa"
+    showAll = { n -> "Hiện tất cả $n chất ô nhiễm" }
+    showLess = "Thu gọn"
+    collectedCycleComplete = "Đã thu gom — hoàn thành!"
+    waitingCollectorPickup = "Đang chờ thu gom"
+    detectedItemsCount = { n -> "$n vật thể" }
+    itemMassesLabel = "Khối lượng vật thể"
+    pollutionLabel = "Ô nhiễm"
+    byCategoryLabel = "Theo loại"
+    itemBullet = { name -> "• $name" }
+    massKg = { v -> "${v.fmt(2)} kg" }
+    objectsDetected = { n -> "$n vật thể phát hiện" }
+    noSignificantPollutants = "Không có chất gây ô nhiễm đáng kể"
+    massKgPrecision3 = { v -> "${v.fmt(3)} kg" }
+
+    // ── Waste Analytics ─────────────────────────────────────────────────────────
+    dateLabel = "Ngày: %02d/%02d/%04d"
+    fromLabel = "Từ: %02d/%02d/%04d"
+    toLabel = "Đến: %02d/%02d/%04d"
+    yearLabel = "Năm: %s"
+    monthLabel = "Tháng: %s"
+
+    // ── Campaign ────────────────────────────────────────────────────────────────
+    campaignTime = "Thời gian"
+    campaignDescriptionLabel = "Mô tả"
+    campaignLocation = "Địa điểm"
+    collectionEvidence = "Bằng chứng thu gom"
+
+    // ── Waste Report Status ─────────────────────────────────────────────────────
+    wasteReportComplete = "Hoàn thành!"
+    wasteReportSendingReport = "Đang gửi báo cáo…"
+    wasteReportPhotoUploaded = "Đã upload ảnh"
+    wasteReportSendingInfo = "Đang gửi thông tin…"
+
+    // ── Settings ────────────────────────────────────────────────────────────────
+    testNotification = "Thông báo test"
+    sendTestNotification = "Gửi thông báo test"
 
     // ── Bottom Navigation ─────────────────────────────────────────────────────────
     community = "Cộng đồng"
