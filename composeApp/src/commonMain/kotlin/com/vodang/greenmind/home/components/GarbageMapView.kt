@@ -52,6 +52,8 @@ expect fun RouteMapView(
     center: Location?,
     zoomLevel: Float,
     modifier: Modifier = Modifier,
+    /** Emits the OSRM-optimized order as 0-based indices into [points]. */
+    onRouteOrderChanged: ((List<Int>) -> Unit)? = null,
 )
 
 fun buildRoutingHtml(
@@ -63,22 +65,17 @@ fun buildRoutingHtml(
 ): String {
     val leafletCss = if (localLeaflet) "leaflet.css" else "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     val leafletJs  = if (localLeaflet) "leaflet.js"  else "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    val lrmCss = "https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
-    val lrmJs  = "https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"
-    val waypoints = points.joinToString(",") { "L.latLng(${it.lat},${it.lng})" }
+    val waypoints = points.joinToString(",") { "{lat:${it.lat},lng:${it.lng}}" }
     return """<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <link rel="stylesheet" href="$leafletCss"/>
-  <link rel="stylesheet" href="$lrmCss"/>
   <script src="$leafletJs"></script>
-  <script src="$lrmJs"></script>
   <style>
     html,body{margin:0;padding:0;width:100%;height:100%;}
     #map{width:100%;height:100%;}
-    .leaflet-routing-container{display:none!important;}
   </style>
 </head>
 <body>
@@ -88,7 +85,6 @@ fun buildRoutingHtml(
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{
       maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
-    var routeControl=null;
     var vnBoundaryStyle={color:'#C62828',weight:2,opacity:0.8,fillColor:'#E53935',fillOpacity:0.15};
     var vnBoundaryUrl='https://raw.githubusercontent.com/ngotuankhoi/leaflet-with-hoangsa-truongsa/main/HoangSa-TruongSa.geojson';
     fetch(vnBoundaryUrl).then(function(resp){return resp.json();}).then(function(geojson){
@@ -109,44 +105,98 @@ fun buildRoutingHtml(
       var iconTS = L.divIcon({className: '', html: '<div style="'+labelStyle+'">Quần đảo Trường Sa</div>', iconSize: [150, 20], iconAnchor: [75, 10]});
       L.marker([10.0, 114.0], {icon: iconTS, interactive: false}).addTo(map);
     }).catch(function(e){console.log('Failed to load Vietnam boundary:',e);});
-    function buildRoute(wp){
-      if(routeControl){map.removeControl(routeControl);}
+    var routeLayers=[];
+    var stopMarkers=[];
+    function clearRoute(){
+      routeLayers.forEach(function(l){map.removeLayer(l);});
+      routeLayers=[];
+      stopMarkers.forEach(function(m){map.removeLayer(m);});
+      stopMarkers=[];
+    }
+    // OSRM Trip service: solves TSP given waypoints.
+    // wp[0] is the user's position (source=first); the rest are collection stops.
+    // First leg (user -> nearest stop) drawn as solid green; remaining legs drawn dashed.
+    function buildRoute(wp,fitMap){
+      clearRoute();
       if(wp.length<2) return;
-      routeControl=L.Routing.control({
-        waypoints:wp,
-        routeWhileDragging:false,
-        showAlternatives:false,
-        fitSelectedRoutes:true,
-        lineOptions:{styles:[{color:'#2E7D32',weight:5,opacity:0.85}]},
-        createMarker:function(i,w,n){
-          var big=i===0||i===n-1;
-          var color=i===0?'#1976D2':(i===n-1?'#D32F2F':'#388E3C');
-          var sz=big?16:12;
+      var coords=wp.map(function(p){return p.lng+','+p.lat;}).join(';');
+      var url='https://router.project-osrm.org/trip/v1/driving/'+coords+
+              '?source=first&destination=any&roundtrip=false&steps=true&geometries=geojson&overview=full';
+      fetch(url).then(function(r){return r.json();}).then(function(data){
+        if(!data||data.code!=='Ok'||!data.trips||!data.trips[0]){console.log('OSRM trip failed',data);return;}
+        var trip=data.trips[0];
+        var n=wp.length;
+        // input index i -> optimized position data.waypoints[i].waypoint_index
+        var orderedInputIndices=new Array(n);
+        data.waypoints.forEach(function(w,i){orderedInputIndices[w.waypoint_index]=i;});
+        // Draw legs: leg 0 (user -> nearest stop) solid; rest dashed.
+        trip.legs.forEach(function(leg,idx){
+          var pts=[];
+          (leg.steps||[]).forEach(function(step){
+            (step.geometry.coordinates||[]).forEach(function(c){pts.push([c[1],c[0]]);});
+          });
+          if(pts.length<2) return;
+          var style=idx===0
+            ?{color:'#2E7D32',weight:5,opacity:0.95}
+            :{color:'#2E7D32',weight:4,opacity:0.85,dashArray:'8,8'};
+          routeLayers.push(L.polyline(pts,style).addTo(map));
+        });
+        // Draw markers for stops (skip user — shown via userDot).
+        orderedInputIndices.forEach(function(inputIdx,optIdx){
+          if(optIdx===0) return;
+          var p=wp[inputIdx];
+          var isLast=optIdx===n-1;
+          var color=isLast?'#D32F2F':'#388E3C';
+          var sz=isLast?16:12;
           var icon=L.divIcon({
             className:'',
-            html:'<div style="background:'+color+';width:'+sz+'px;height:'+sz+'px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:bold;">'+(i+1)+'</div>',
+            html:'<div style="background:'+color+';width:'+sz+'px;height:'+sz+'px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:bold;">'+optIdx+'</div>',
             iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]
           });
-          return L.marker(w.latLng,{icon:icon,draggable:false});
+          stopMarkers.push(L.marker([p.lat,p.lng],{icon:icon}).addTo(map));
+        });
+        if(fitMap){
+          var bounds=L.latLngBounds(wp.map(function(p){return [p.lat,p.lng];}));
+          map.fitBounds(bounds,{padding:[30,30]});
         }
-      }).addTo(map);
+        // Notify Android — skip user (optIdx 0), report 0-based indices into the original
+        // `points` list (allWp[0] is user, so input index k maps to points index k-1).
+        // Indices are unique even when waypoints share coords (e.g., user standing on a stop).
+        var order=orderedInputIndices.slice(1).map(function(inputIdx){return inputIdx-1;});
+        if(window.AndroidRouteCallback){
+          window.AndroidRouteCallback.onRouteOrderUpdated(JSON.stringify(order));
+        }
+      }).catch(function(e){console.log('OSRM error',e);});
     }
-    // allWp[0] is always the user's current position; the rest are fixed collection stops
-    var allWp=[$waypoints];
-    buildRoute(allWp);
+    // allWp[0] is always the user's current position; the rest are fixed collection stops.
+    // Until GPS arrives we seed [0] with the map center so no collection stop is overwritten/dropped.
+    var allWp=[{lat:$lat,lng:$lng},$waypoints];
+    buildRoute(allWp,true);
     var userDot=null;
     var routeRebuildTimer=null;
-    function updateView(lat,lng,zoom){
-      map.setView([lat,lng],zoom,{animate:true});
-      // Move / create the user location dot
+    function updateRouteOnly(lat,lng){
+      allWp[0]={lat:lat,lng:lng};
       if(userDot){userDot.setLatLng([lat,lng]);}
       else{userDot=L.circleMarker([lat,lng],{radius:8,color:'#fff',weight:2,fillColor:'#1976D2',fillOpacity:1}).addTo(map);}
-      // Debounce route rebuild so we don't spam OSRM on every GPS tick
+      clearTimeout(routeRebuildTimer);
+      routeRebuildTimer=setTimeout(function(){buildRoute(allWp,false);},500);
+    }
+    function updateView(lat,lng,zoom){
+      map.setView([lat,lng],zoom,{animate:true});
+      if(userDot){userDot.setLatLng([lat,lng]);}
+      else{userDot=L.circleMarker([lat,lng],{radius:8,color:'#fff',weight:2,fillColor:'#1976D2',fillOpacity:1}).addTo(map);}
       clearTimeout(routeRebuildTimer);
       routeRebuildTimer=setTimeout(function(){
-        allWp[0]=L.latLng(lat,lng);
-        buildRoute(allWp);
+        allWp[0]={lat:lat,lng:lng};
+        buildRoute(allWp,false);
       },2500);
+    }
+    // Replace collection stops (preserves user at allWp[0]). Used after backend refetch
+    // — e.g. after a check-in completes and the stop list shrinks.
+    function setWaypoints(arr){
+      allWp=[allWp[0]].concat(arr);
+      clearTimeout(routeRebuildTimer);
+      routeRebuildTimer=setTimeout(function(){buildRoute(allWp,true);},200);
     }
   </script>
 </body>

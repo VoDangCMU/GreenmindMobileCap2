@@ -1,292 +1,98 @@
 package com.vodang.greenmind.scandetail.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Help
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.fmt
 import com.vodang.greenmind.i18n.LocalAppStrings
 import com.vodang.greenmind.scandetail.ScanImpact
-import com.vodang.greenmind.scandetail.getImpactColor
-import com.vodang.greenmind.scandetail.neutralGray400
-import com.vodang.greenmind.scandetail.neutralGray700
-import com.vodang.greenmind.scandetail.pollutantGreen
-import com.vodang.greenmind.scandetail.pollutantOrange
-import com.vodang.greenmind.scandetail.pollutantRed
-
-// ── Impact Meter Section ──────────────────────────────────────────────────────
 
 @Composable
-fun ImpactMeterSection(
-    impact: ScanImpact?,
-    modifier: Modifier = Modifier,
-) {
+fun ImpactMeterSection(impact: ScanImpact?) {
+    if (impact == null) return
     val s = LocalAppStrings.current
-    val hasImpact = impact != null
-
-    var expanded by remember { mutableStateOf(false) }
+    val gray700 = Color(0xFF374151)
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White),
+            .background(Color.White)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // Summary row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (hasImpact) Modifier.clickable { expanded = !expanded } else Modifier)
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(s.envImpact, fontSize = 12.sp, color = neutralGray400)
-                if (impact == null) {
-                    Text(s.notApplicable, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = neutralGray400)
-                    Text(s.noPollutantData, fontSize = 11.sp, color = neutralGray400)
-                } else {
-                    // Show max impact
-                    val maxImpact = maxOf(impact.air, impact.water, impact.soil)
-                    val normalizedMax = (maxImpact * 100).coerceIn(0.0, 100.0)
-                    val maxColor = getImpactColor(normalizedMax)
-                    Text(
-                        "%.0f%%".fmt(normalizedMax),
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = maxColor,
+        Text(s.envImpact, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = gray700)
+
+        val items = listOf(
+            s.airPollution to impact.air,
+            s.waterPollution to impact.water,
+            s.soilPollution to impact.soil,
+        )
+        items.forEach { (label, value) ->
+            val normalized = (value * 100).coerceIn(0.0, 100.0)
+            val color = when {
+                normalized < 20 -> Color(0xFF2E7D32)
+                normalized < 50 -> Color(0xFFF57C00)
+                else            -> Color(0xFFD32F2F)
+            }
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(label, fontSize = 12.sp, color = gray700)
+                    Text("%.1f%%".fmt(normalized), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = color)
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color(0xFFEEEEEE))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(fraction = (normalized / 100.0).toFloat())
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(color)
                     )
-                    Text(s.maxImpact, fontSize = 11.sp, color = maxColor.copy(alpha = 0.7f))
                 }
-            }
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(
-                        when {
-                            impact == null -> Color(0xFFF5F5F5)
-                            maxOf(impact.air, impact.water, impact.soil) < 0.2 -> Color(0xFFE8F5E9)
-                            maxOf(impact.air, impact.water, impact.soil) < 0.5 -> Color(0xFFFFF3E0)
-                            else -> Color(0xFFFFEBEE)
-                        }
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                val icon = when {
-                    impact == null -> Icons.Filled.Help
-                    maxOf(impact.air, impact.water, impact.soil) < 0.2 -> Icons.Filled.Check
-                    maxOf(impact.air, impact.water, impact.soil) < 0.5 -> Icons.Filled.Warning
-                    else -> Icons.Filled.Close
-                }
-                val tint = when {
-                    impact == null -> neutralGray400
-                    maxOf(impact.air, impact.water, impact.soil) < 0.2 -> pollutantGreen
-                    maxOf(impact.air, impact.water, impact.soil) < 0.5 -> pollutantOrange
-                    else -> pollutantRed
-                }
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = tint,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-
-        // Expanded detail with bars
-        if (expanded && impact != null) {
-            HorizontalDivider(color = Color(0xFFEEEEEE))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                ImpactBar(label = s.airPollution, icon = "💨", value = impact.air)
-                ImpactBar(label = s.waterPollution, icon = "💧", value = impact.water)
-                ImpactBar(label = s.soilPollution, icon = "🌱", value = impact.soil)
             }
         }
     }
 }
 
 @Composable
-private fun ImpactBar(label: String, icon: String, value: Double) {
-    val normalizedValue = (value * 100).coerceIn(0.0, 100.0)
-    val barColor = getImpactColor(normalizedValue)
-
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(icon, fontSize = 14.sp)
-                Text(label, fontSize = 12.sp, color = neutralGray700)
-            }
-            Text(
-                "%.1f%%".fmt(normalizedValue),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = barColor,
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(Color(0xFFEEEEEE))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(fraction = (normalizedValue / 100f).toFloat())
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(barColor)
-            )
-        }
-    }
-}
-
-// ── Pollutant Breakdown Section ────────────────────────────────────────────────
-
-@Composable
-fun PollutantBreakdownSection(
-    pollution: Map<String, Double>?,
-    modifier: Modifier = Modifier,
-) {
+fun PollutantBreakdownSection(pollution: Map<String, Double>?) {
+    if (pollution.isNullOrEmpty()) return
     val s = LocalAppStrings.current
-    val hasPollution = pollution != null && pollution.isNotEmpty()
-
-    var expanded by remember { mutableStateOf(false) }
+    val gray700 = Color(0xFF374151)
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White),
+            .background(Color.White)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Summary row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (hasPollution) Modifier.clickable { expanded = !expanded } else Modifier)
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(s.pollutantAnalysis, fontSize = 12.sp, color = neutralGray400)
-                if (pollution == null) {
-                    Text(s.notApplicable, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = neutralGray400)
-                    Text(s.noPollutantData, fontSize = 11.sp, color = neutralGray400)
-                } else if (pollution.isEmpty()) {
-                    Text(s.cleanWaste, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = pollutantGreen)
-                    Text(s.noPollutantsDetected, fontSize = 11.sp, color = pollutantGreen)
-                } else {
-                    Text("${pollution.size}", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = pollutantRed)
-                    Text("${pollution.size} pollutants detected", fontSize = 11.sp, color = pollutantRed)
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(
-                        when {
-                            pollution == null -> Color(0xFFF5F5F5)
-                            pollution.isEmpty() -> Color(0xFFE8F5E9)
-                            pollution.size <= 2 -> Color(0xFFFFF3E0)
-                            else -> Color(0xFFFFEBEE)
-                        }
-                    ),
-                contentAlignment = Alignment.Center,
+        Text(s.pollutantDetails, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = gray700)
+        pollution.forEach { (name, value) ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                val icon = when {
-                    pollution == null -> Icons.Filled.Help
-                    pollution.isEmpty() -> Icons.Filled.Check
-                    pollution.size <= 2 -> Icons.Filled.Warning
-                    else -> Icons.Filled.Close
-                }
-                val tint = when {
-                    pollution == null -> neutralGray400
-                    pollution.isEmpty() -> pollutantGreen
-                    pollution.size <= 2 -> pollutantOrange
-                    else -> pollutantRed
-                }
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = tint,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-
-        // Expanded detail
-        if (expanded && hasPollution) {
-            HorizontalDivider(color = Color(0xFFEEEEEE))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // Sort by value descending
-                val sortedPollutants = pollution.entries
-                    .filter { it.value > 0.0 }
-                    .sortedByDescending { it.value }
-
-                sortedPollutants.forEach { (key, value) ->
-                    val label = com.vodang.greenmind.scandetail.getPollutantLabel(key)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(label, fontSize = 12.sp, color = neutralGray700, modifier = Modifier.weight(1f))
-                        Text(
-                            "%.2f".fmt(value),
-                            fontSize = 12.sp,
-                            color = getImpactColor(value * 100),
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-                }
+                Text(name, fontSize = 12.sp, color = gray700)
+                Text("%.2f".fmt(value), fontSize = 12.sp, color = Color(0xFFD32F2F), fontWeight = FontWeight.Medium)
             }
         }
     }
 }
-
-// ── WasteDetectResponse Extension ─────────────────────────────────────────────
-
-val WasteDetectResponse.ecoScore: Int
-    get() {
-        val avg = (impact.airPollution + impact.waterPollution + impact.soilPollution) / 3.0
-        return ((1.0 - avg) * 100).toInt().coerceIn(0, 100)
-    }
-
-val WasteDetectResponse.activePollutants: List<Pair<String, Double>>
-    get() = pollution.entries
-        .filter { it.value > 0.0 }
-        .sortedByDescending { it.value }
-        .map { it.key to it.value }

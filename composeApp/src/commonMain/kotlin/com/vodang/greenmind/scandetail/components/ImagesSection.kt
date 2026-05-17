@@ -26,21 +26,19 @@ import com.vodang.greenmind.wastereport.ZoomableImagePreview
 fun ImagesSection(
     imageUrl: String,
     annotatedImageUrl: String?,
-    aiAnalysisUrl: String?,
-    depthMapUrl: String?,
+    aiAnalysisUrl: String? = null,
+    depthMapUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
     var previewUrl by remember { mutableStateOf<String?>(null) }
 
-    // Primary image: AI Analyst (falls back to original if not available)
-    val primaryUrl = aiAnalysisUrl ?: imageUrl
+    val primaryUrl = aiAnalysisUrl ?: annotatedImageUrl ?: imageUrl
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.White),
     ) {
-        // Main image (AI Analyst) - full width with aspect ratio, no fixed height crop
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -54,13 +52,12 @@ fun ImagesSection(
             )
         }
 
-        // Additional images (horizontal scroll): original image and depth map only
-        val additionalImages = listOfNotNull(
+        val additional = listOfNotNull(
             imageUrl.takeIf { it != primaryUrl }?.let { "Original" to it },
+            annotatedImageUrl?.takeIf { it != primaryUrl }?.let { "Detected" to it },
             depthMapUrl?.let { "Depth Map" to it },
         )
-
-        if (additionalImages.isNotEmpty()) {
+        if (additional.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -68,7 +65,7 @@ fun ImagesSection(
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                additionalImages.forEach { (label, url) ->
+                additional.forEach { (label, url) ->
                     Column(
                         modifier = Modifier
                             .width(100.dp)

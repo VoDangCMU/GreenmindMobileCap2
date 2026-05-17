@@ -266,14 +266,6 @@ data class AnalyzeImageRequest(
 )
 
 @Serializable
-data class AnalyzeImageItemDto(
-    val name: String,
-    val quantity: Int,
-    val area: Int,
-    @SerialName("mass_kg") val massKg: Double? = null
-)
-
-@Serializable
 data class AnalyzeImageResponse(
     val message: String? = null,
     val data: AnalyzeImageDataDto
@@ -281,17 +273,10 @@ data class AnalyzeImageResponse(
 
 @Serializable
 data class AnalyzeImageDataDto(
-    val id: String,
-    val imageUrl: String? = null,
-    val items: List<AnalyzeImageItemDto>? = null,
-    val pollution: DetectPollutionDto? = null,
-    val impact: DetectImpactDto? = null,
-    val totalObjects: Int? = null,
-    @SerialName("totalMassKg") val totalMassKg: Double? = null,
-    @SerialName("annotatedImageUrl") val annotatedImageUrl: String? = null,
-    @SerialName("depthMapUrl") val depthMapUrl: String? = null,
-    @SerialName("aiAnalysis") val aiAnalysis: String? = null,
-    val segments: SegmentsDto? = null,
+    val id: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("total_objects") val totalObjects: Int? = null,
+    val grouped: SegmentsDto? = null,
     val household: HouseholdDto? = null,
     @SerialName("detectedBy") val detectedBy: HouseholdMemberDto? = null,
     val status: String? = null,
@@ -456,6 +441,11 @@ suspend fun detectTotalMass(accessToken: String, request: DetectImageUrlRequest)
             header("Authorization", "Bearer $accessToken")
             contentType(ContentType.Application.Json)
             setBody(request)
+            timeout {
+                requestTimeoutMillis = 500_000
+                socketTimeoutMillis  = 500_000
+                connectTimeoutMillis = 30_000
+            }
         }
     }
 }

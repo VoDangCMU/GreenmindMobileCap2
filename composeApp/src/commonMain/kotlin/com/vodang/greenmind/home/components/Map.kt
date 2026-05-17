@@ -35,9 +35,12 @@ fun RouteMap(
     points: List<RouteMapPoint>,
     modifier: Modifier = Modifier,
     height: Dp = 300.dp,
+    /** Emits the OSRM-optimized order as 0-based indices into [points]. */
+    onRouteOrderChanged: ((List<Int>) -> Unit)? = null,
 ) {
     var center by remember { mutableStateOf<Location?>(null) }
     var currentLocation by remember { mutableStateOf<Location?>(null) }
+
     LaunchedEffect(Unit) {
         Geo.service.locationUpdates.collect { loc ->
             currentLocation = loc
@@ -69,7 +72,8 @@ fun RouteMap(
                 .graphicsLayer {
                     clip = true
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-                }
+                },
+            onRouteOrderChanged = onRouteOrderChanged,
         )
 
         Column(

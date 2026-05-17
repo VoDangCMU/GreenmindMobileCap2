@@ -17,10 +17,18 @@ import com.vodang.greenmind.i18n.LocalAppStrings
 private val green800r = Color(0xFF2E7D32)
 
 @Composable
-fun CollectionRouteCard(points: List<WastePoint>) {
+fun CollectionRouteCard(
+    points: List<WastePoint>,
+    /** Pending points pre-sorted by OSRM-optimized route order. Null = use API order. */
+    sortedPendingPoints: List<WastePoint>? = null,
+) {
     val s = LocalAppStrings.current
-    val groups = remember(points) {
-        points.groupBy { it.address }.entries.toList()
+    val pendingPoints = remember(points) { points.filter { !it.collected } }
+    val groups: List<Map.Entry<String, List<WastePoint>>> = remember(pendingPoints, sortedPendingPoints) {
+        val ordered = sortedPendingPoints ?: pendingPoints
+        val byAddress = pendingPoints.groupBy { it.address }
+        ordered.map { it.address }.distinct()
+            .mapNotNull { addr -> byAddress[addr]?.let { records -> object : Map.Entry<String, List<WastePoint>> { override val key = addr; override val value = records } } }
     }
 
     SectionCard {
@@ -29,9 +37,9 @@ fun CollectionRouteCard(points: List<WastePoint>) {
         groups.forEachIndexed { index, entry ->
             val address = entry.key
             val groupPoints = entry.value
-            val allCollected = groupPoints.all { it.collected }
-            val totalBags = groupPoints.sumOf { it.bags }
-            
+            val allCollected = groupPoints.all { pt -> pt.collected }
+            val totalBags = groupPoints.sumOf { pt -> pt.bags }
+
             Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxHeight()) {
                     Box(modifier = Modifier.size(14.dp).background(if (allCollected) green800r else Color(0xFFBDBDBD), CircleShape))

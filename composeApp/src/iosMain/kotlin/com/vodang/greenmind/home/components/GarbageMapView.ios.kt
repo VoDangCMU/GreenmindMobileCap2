@@ -19,6 +19,7 @@ actual fun RouteMapView(
     center: Location?,
     zoomLevel: Float,
     modifier: Modifier,
+    onRouteOrderChanged: ((List<Int>) -> Unit)?,
 ) {
     val initLat = center?.latitude ?: 16.0544
     val initLng = center?.longitude ?: 108.2022

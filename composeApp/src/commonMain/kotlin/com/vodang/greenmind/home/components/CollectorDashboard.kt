@@ -58,6 +58,8 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var checkInReportId by remember { mutableStateOf<String?>(null) }
+    // OSRM-optimized order as indices into routedPendingPoints (see below).
+    var sortedIndices by remember { mutableStateOf<List<Int>?>(null) }
 
     LaunchedEffect(Unit) {
         val token = SettingsStore.getAccessToken() ?: run { isLoading = false; return@LaunchedEffect }
@@ -72,83 +74,90 @@ fun CollectorDashboard(user: UserDto? = null, scrollState: ScrollState = remembe
     }
 
     val points = reports.mapIndexed { i, dto -> dto.toWastePoint(i, s.unknownLocation) }
-    val routePoints = reports.mapNotNull {
-        val lat = it.household?.lat?.toDoubleOrNull()
-        val lng = it.household?.lng?.toDoubleOrNull()
-        if (lat != null && lng != null) {
-            RouteMapPoint(lat = lat, lng = lng, label = it.detectedBy?.fullName ?: "User")
-        } else null
+    val pendingPoints = points.filter { !it.collected }
+    // Only pending points with valid coords can be routed by OSRM.
+    // routedPendingPoints[i] corresponds 1:1 with routePoints[i] — same index across both lists,
+    // so OSRM-returned indices map back unambiguously even if multiple stops share coordinates.
+    val routedPendingPoints = pendingPoints.filter { it.lat != null && it.lng != null }
+    val routePoints = routedPendingPoints.map {
+        RouteMapPoint(lat = it.lat!!, lng = it.lng!!, label = it.address)
+    }
+    // When OSRM has sorted, expose all pending points in route order:
+    // routed stops first (OSRM-optimized), then any stops missing coords appended at the end.
+    val sortedPendingPoints: List<WastePoint>? = sortedIndices?.let { idxs ->
+        val routed = idxs.mapNotNull { routedPendingPoints.getOrNull(it) }
+        if (routed.isEmpty()) null
+        else routed + pendingPoints.filter { it.lat == null || it.lng == null }
     }
     val collectedCount = points.count { it.collected }
     val totalCount = points.size
 
     val token = SettingsStore.getAccessToken() ?: ""
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        when {
-            isLoading -> {
-                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = amber600)
-                }
-            }
-            errorMsg != null -> {
-                SectionCard {
-                    Text(
-                        s.errorDisplay(errorMsg ?: ""),
-                        fontSize = 13.sp,
-                        color = Color(0xFFC62828),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    )
-                }
-            }
-            else -> {
-                SectionCard {
-                    Text(s.progressToday, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    Spacer(Modifier.height(10.dp))
-                    LinearProgressIndicator(
-                        progress = { if (totalCount == 0) 0f else collectedCount.toFloat() / totalCount },
-                        modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(6.dp)),
-                        color = amber600,
-                        trackColor = Color(0xFFFFF8E1),
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(s.pointsCollected(collectedCount), fontSize = 12.sp, color = green600, fontWeight = FontWeight.Medium)
-                        Text(s.pointsRemaining(totalCount - collectedCount), fontSize = 12.sp, color = Color(0xFFE65100))
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            when {
+                isLoading -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = amber600)
                     }
                 }
-
-                Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MetricCard(Icons.Filled.Map, s.zoneLabel, s.zoneValue, s.today, Color(0xFFFFF8E1), amber600, amber600, Modifier.weight(1f).aspectRatio(1f))
-                    MetricCard(Icons.Filled.Scale, s.bagsLabel, "${points.sumOf { it.bags }} kg", s.bagsEstimated, green50, green800, green800, Modifier.weight(1f).aspectRatio(1f))
-                    MetricCard(Icons.Filled.AssignmentInd, s.routeLabel, "$totalCount", s.today, blue50, blue600, blue600, Modifier.weight(1f).aspectRatio(1f))
+                errorMsg != null -> {
+                    SectionCard {
+                        Text(
+                            s.errorDisplay(errorMsg ?: ""),
+                            fontSize = 13.sp,
+                            color = Color(0xFFC62828),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        )
+                    }
                 }
-
-                CheckInCard(points, onCheckInClick = { group -> checkInReportId = group.firstOrNull()?.reportId })
-                CollectionRouteCard(points)
-                CollectionRouteMapCard(points = routePoints)
-                CheckInScanFlow(
-                    allPoints = points,
-                    reportId = checkInReportId,
-                    accessToken = token,
-                    onSuccess = {
-                        checkInReportId = null
-                        scope.launch {
-                            runCatching {
-                                reports = getBroughtOut(token).data
-                            }
-                        }
-                    },
-                    onDismiss = { checkInReportId = null },
-                )
+                else -> {
+                    CollectionRouteMapCard(points = routePoints, onRouteOrderChanged = { sortedIndices = it })
+                    CollectionRouteCard(points, sortedPendingPoints = sortedPendingPoints)
+                    // Reserve space so the sticky CheckInCard doesn't cover the last item when scrolled to bottom.
+                    Spacer(Modifier.height(140.dp))
+                }
             }
         }
+
+        // Sticky bottom action card — always reachable, easy to thumb-tap.
+        if (!isLoading && errorMsg == null) {
+            CheckInCard(
+                points = points,
+                sortedPendingPoints = sortedPendingPoints,
+                isBusy = checkInReportId != null,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                onCheckInClick = { group -> checkInReportId = group.firstOrNull()?.reportId },
+            )
+        }
+
+        CheckInScanFlow(
+            allPoints = points,
+            reportId = checkInReportId,
+            accessToken = token,
+            onSuccess = {
+                checkInReportId = null
+                // Stale indices reference the OLD routedPendingPoints; clear so cards
+                // fall back to API order until the new OSRM trip resolves.
+                sortedIndices = null
+                scope.launch {
+                    runCatching {
+                        reports = getBroughtOut(token).data
+                    }
+                }
+            },
+            onDismiss = { checkInReportId = null },
+        )
     }
 }

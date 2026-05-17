@@ -113,7 +113,7 @@ internal fun WasteStatusCard(
                     }
                 }
 
-                scan.items?.take(2)?.joinToString(" · ") { "${it.name}" }?.let {
+                scan.items?.take(2)?.joinToString(" · ") { it.name }?.let {
                     Text(
                         it,
                         fontSize = 11.sp,

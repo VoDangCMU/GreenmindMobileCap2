@@ -15,13 +15,16 @@ import androidx.compose.ui.unit.sp
 import com.vodang.greenmind.i18n.LocalAppStrings
 
 @Composable
-fun CollectionRouteMapCard(points: List<RouteMapPoint>) {
+fun CollectionRouteMapCard(
+    points: List<RouteMapPoint>,
+    onRouteOrderChanged: ((List<Int>) -> Unit)? = null,
+) {
     val s = LocalAppStrings.current
     SectionCard {
         Text(s.routeMapCardTitle, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Spacer(Modifier.height(8.dp))
         // TODO: Replace sampleRoutePoints with live waypoints from GET /collector/route
-        RouteMap(points = points, height = 300.dp)
+        RouteMap(points = points, height = 300.dp, onRouteOrderChanged = onRouteOrderChanged)
         Spacer(Modifier.height(10.dp))
         // Legend: start → stops → end
         Row(

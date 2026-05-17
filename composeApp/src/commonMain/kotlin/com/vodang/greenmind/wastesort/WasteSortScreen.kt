@@ -57,8 +57,10 @@ data class WasteSortEntry(
     val createdAt: String,   // display string e.g. "Apr 2, 2026"
     val scannedBy: String,
     val status: WasteSortStatus = WasteSortStatus.SORTED,
-    val pollutantResult: WasteDetectResponse? = null,
     val greenScoreResult: GreenScoreEntryDto? = null,
+    /** Legacy field populated only from `/detect-trash` history records; null for `/analyze-image` scans. */
+    val pollutantResult: WasteDetectResponse? = null,
+    /** Legacy field populated only from `/detect-trash` history records; null for `/analyze-image` scans. */
     val totalMassKg: Double? = null,
     val detectType: String? = null,
 )

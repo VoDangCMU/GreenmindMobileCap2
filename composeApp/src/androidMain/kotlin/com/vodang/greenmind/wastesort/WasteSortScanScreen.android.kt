@@ -24,9 +24,6 @@ import com.vodang.greenmind.api.households.AnalyzeImageRequest
 import com.vodang.greenmind.api.households.analyzeImage
 import com.vodang.greenmind.api.households.submitGreenScoreByDetectId
 import com.vodang.greenmind.api.households.getGreenScoreHistory
-import com.vodang.greenmind.api.wastedetect.WasteDetectImpact
-import com.vodang.greenmind.api.wastedetect.WasteDetectItem
-import com.vodang.greenmind.api.wastedetect.WasteDetectResponse
 import com.vodang.greenmind.store.SettingsStore
 import com.vodang.greenmind.store.WasteSortStore
 import com.vodang.greenmind.api.upload.requestAndUpload
@@ -99,34 +96,13 @@ private fun WasteSortScanContent(
                 // 2. Call unified analyzeImage API
                 val data = analyzeImage(token, AnalyzeImageRequest(imageUrl = imageUrl, type = "DETECT_TRASH")).data
 
-                // 3. Build pollution map if available
-                val pollutionMap = data.pollution?.let { p ->
-                    buildMap<String, Double> {
-                        p.cd?.let               { put("Cd", it) }
-                        p.hg?.let               { put("Hg", it) }
-                        p.pb?.let               { put("Pb", it) }
-                        p.ch4?.let              { put("CH4", it) }
-                        p.co2?.let              { put("CO2", it) }
-                        p.nox?.let              { put("NOx", it) }
-                        p.so2?.let              { put("SO2", it) }
-                        p.pm25?.let             { put("PM2.5", it) }
-                        p.dioxin?.let           { put("dioxin", it) }
-                        p.nitrate?.let          { put("nitrate", it) }
-                        p.styrene?.let          { put("styrene", it) }
-                        p.microplastic?.let     { put("microplastic", it) }
-                        p.toxicChemicals?.let   { put("toxic_chemicals", it) }
-                        p.chemicalResidue?.let  { put("chemical_residue", it) }
-                        p.nonBiodegradable?.let { put("non_biodegradable", it) }
-                    }
-                }
-
-                // 4. Build complete entry
+                // 3. Build entry
                 val entry = WasteSortEntry(
                     id              = imageUrl.substringAfterLast("/").substringBeforeLast("."),
                     backendId       = data.id,
-                    imageUrl        = data.annotatedImageUrl ?: data.aiAnalysis ?: imageUrl,
+                    imageUrl        = data.imageUrl ?: imageUrl,
                     totalObjects    = data.totalObjects ?: 0,
-                    grouped         = data.segments?.let { seg ->
+                    grouped         = data.grouped?.let { seg ->
                         buildMap {
                             if (seg.recyclable.isNotEmpty()) put("recyclable", seg.recyclable)
                             if (seg.residual.isNotEmpty()) put("residual", seg.residual)
@@ -135,36 +111,24 @@ private fun WasteSortScanContent(
                     createdAt       = nowIso8601().take(10),
                     scannedBy       = userName,
                     status          = WasteSortStatus.SORTED,
-                    pollutantResult = if (data.pollution != null && data.impact != null) {
-                        WasteDetectResponse(
-                            items        = data.items?.map {
-                                WasteDetectItem(it.name, it.quantity, it.area)
-                            } ?: emptyList(),
-                            totalObjects = data.totalObjects ?: 0,
-                            imageUrl     = data.aiAnalysis ?: imageUrl,
-                            pollution    = pollutionMap ?: emptyMap(),
-                            impact       = WasteDetectImpact(
-                                airPollution   = data.impact.airPollution ?: 0.0,
-                                waterPollution = data.impact.waterPollution ?: 0.0,
-                                soilPollution  = data.impact.soilPollution ?: 0.0,
-                            ),
-                        )
-                    } else null,
-                    totalMassKg     = data.totalMassKg,
                     detectType      = data.detectType,
                 )
 
-                AppLogger.i("HouseholdScan", "analyzeImage ok id=${data.id} mass=${data.totalMassKg}")
+                AppLogger.i("HouseholdScan", "analyzeImage ok id=${data.id} total=${data.totalObjects}")
 
-                // 5. Fetch green score BEFORE showing result (wait for it to complete)
+                // 4. Fetch green score BEFORE showing result (wait for it to complete)
                 var greenScoreEntry: com.vodang.greenmind.api.households.GreenScoreEntryDto? = null
-                try {
-                    val greenScoreResp = submitGreenScoreByDetectId(token, data.id)
-                    greenScoreEntry = greenScoreResp.data
-                    AppLogger.i("HouseholdScan", "submitGreenScoreByDetectId ok id=${greenScoreResp.data.id}")
-                } catch (e: Throwable) {
-                    AppLogger.e("HouseholdScan", "submitGreenScoreByDetectId failed: ${e.message}")
-                    // Fallback: try history
+                val detectId = data.id
+                if (detectId != null) {
+                    try {
+                        val greenScoreResp = submitGreenScoreByDetectId(token, detectId)
+                        greenScoreEntry = greenScoreResp.data
+                        AppLogger.i("HouseholdScan", "submitGreenScoreByDetectId ok id=${greenScoreResp.data.id}")
+                    } catch (e: Throwable) {
+                        AppLogger.e("HouseholdScan", "submitGreenScoreByDetectId failed: ${e.message}")
+                    }
+                }
+                if (greenScoreEntry == null) {
                     try {
                         val historyResp = getGreenScoreHistory(token)
                         greenScoreEntry = historyResp.data.lastOrNull()

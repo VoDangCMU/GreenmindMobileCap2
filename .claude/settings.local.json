@@ -65,7 +65,8 @@
       "Bash(./gradlew :composeApp:compileDebugKotlinAndroid --no-daemon)",
       "Bash(./gradlew :composeApp:compileKotlinMetadata --no-daemon)",
       "Bash(./gradlew :composeApp:installDebug --no-daemon)",
-      "Bash(./gradlew :composeApp:compileDebugKotlinAndroid --quiet)"
+      "Bash(./gradlew :composeApp:compileDebugKotlinAndroid --quiet)",
+      "Bash(Select-Object -First 30)"
     ]
   }
 }
